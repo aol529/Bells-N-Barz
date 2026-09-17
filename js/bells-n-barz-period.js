@@ -95,7 +95,13 @@
   function addDays(iso, n){
     const d = new Date(iso + 'T00:00:00');
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0,10);
+    // Local-date serialization (same fix as todayIso above) — toISOString()
+    // alone converts to UTC first, which silently shifts the date back a
+    // day for anyone in a positive UTC-offset timezone (most of Europe,
+    // Africa, Asia, Australia). That would throw off predicted next period,
+    // ovulation, and fertile window dates by a day for most of the world.
+    const tz = d.getTimezoneOffset() * 60000;
+    return new Date(d - tz).toISOString().slice(0,10);
   }
 
   function upsertEntry(date, flow, symptoms, notes){

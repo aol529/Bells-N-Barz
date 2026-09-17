@@ -1047,7 +1047,12 @@
     const diffToMonday = (day === 0 ? -6 : 1 - day);
     const monday = new Date(d); monday.setDate(d.getDate() + diffToMonday);
     const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    const fmt = x => x.toISOString().slice(0, 10);
+    // Local-date serialization (same fix as TODAY above) — plain
+    // toISOString() converts to UTC first, which silently shifts the date
+    // back a day for anyone in a positive UTC-offset timezone. That would
+    // throw off the Monday/Sunday boundary used by Trainer Load and the
+    // Coach Dashboard's "Sessions This Week" stat.
+    const fmt = x => { const tz = x.getTimezoneOffset() * 60000; return new Date(x - tz).toISOString().slice(0, 10); };
     return { start: fmt(monday), end: fmt(sunday) };
   }
 

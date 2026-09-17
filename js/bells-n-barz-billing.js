@@ -579,7 +579,11 @@
         const st = invoiceStatus(inv);
         return st === 'unpaid' || st === 'overdue';
       }).map(function(inv){
-        return { id: inv.id, userId: inv.userId, amount: inv.amount, status: invoiceStatus(inv), dueDate: inv.dueDate, type: inv.type };
+        // Remaining balance, not the invoice's original face amount — a
+        // partially-paid invoice would otherwise overstate what's still
+        // owed on the Coach Dashboard's "Needs Attention" total.
+        const remaining = inv.amount - paidTowardInvoice(inv.id);
+        return { id: inv.id, userId: inv.userId, amount: remaining, status: invoiceStatus(inv), dueDate: inv.dueDate, type: inv.type };
       });
     }
   };
