@@ -1,0 +1,9 @@
+{
+  "name": "bells-n-barz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bells n Barz gym site (static HTML/CSS/JS, backed by Supabase)",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
