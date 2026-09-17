@@ -42,7 +42,7 @@
   function bnbDetectEnv(){
     try {
       const host = window.location.hostname;
-      if (!host || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.includes('staging') || host.startsWith('dev.')){
+      if (!host || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.includes('staging') || host.startsWith('dev.') || host.endsWith('.github.io')){
         return 'staging';
       }
     } catch(e){}
@@ -3219,6 +3219,21 @@
     return false;
   }
 
+  /* ---- selfId is read from localStorage synchronously at script init
+     (see loadSelfId above), long before this async check runs — so on a
+     refresh where the visitor is NOT actually still signed in (expired
+     inactivity cookie, or the Supabase session itself is gone), that
+     leftover selfId would otherwise keep the nav/account menu painted as
+     "signed in" until some gated action quietly fails against a dead
+     session and forces a re-login. Clearing it here keeps the visible UI
+     honest about auth state the moment we know better. ---- */
+  function clearLocalSignIn(){
+    selfId = null;
+    saveSelfId('');
+    if (sessionExpiryTimer) { clearTimeout(sessionExpiryTimer); sessionExpiryTimer = null; }
+    onAuthStateChanged();
+  }
+
   /* ---- Restore session on page load, so a refresh doesn't log you out —
      but only within the 30-minute inactivity window. Supabase's own client
      will happily keep refreshing its auth token forever, so the expiry
@@ -3230,16 +3245,19 @@
     if (!hasValidSessionCookie()){
       try { await bnbClient.auth.signOut(); } catch(e){}
       clearCookie(SESSION_COOKIE);
+      clearLocalSignIn();
       return;
     }
     const { data } = await bnbClient.auth.getSession();
     const session = data && data.session;
-    if (!session) { clearCookie(SESSION_COOKIE); return; }
+    if (!session) { clearCookie(SESSION_COOKIE); clearLocalSignIn(); return; }
     const matched = await signInLocallyAs(session.user);
     if (matched){
       const remaining = Number(getCookie(SESSION_COOKIE)) - Date.now();
       armSessionExpiryTimer(Math.max(remaining, 0));
       onAuthStateChanged();
+    } else {
+      clearLocalSignIn();
     }
   })();
 

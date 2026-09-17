@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # GitHub Pages always serves "index.html" at the site root, but the
+      # working file keeps its descriptive name so it stays easy to find in
+      # an editor. Copy it into the published output under the name Pages
+      # expects, rather than renaming the source file itself.
+      - name: Build site
+        run: |
+          mkdir -p _site
+          cp "bells n barz (main file).html" _site/index.html
+          cp -r css _site/css
+          cp -r js _site/js
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
