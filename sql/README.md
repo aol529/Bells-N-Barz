@@ -4,23 +4,32 @@
 
 1. **01-schema.sql** — creates all 21 tables.
 
-2. **gym.sql** — `is_staff()` / `my_user_id()` helper functions, plus RLS
+2. **05-grant-schema-privileges.sql** — baseline `GRANT`s on the `public`
+   schema for `anon`/`authenticated`/`service_role`. Supabase normally
+   applies these automatically on project creation, but they can end up
+   missing on a project (this happened on staging) — without them, every
+   query fails with "permission denied for table ..." even for a fully
+   RLS-eligible user, since a missing GRANT is checked before RLS ever
+   runs. Safe and idempotent to run on every project, including
+   production, even if it already has these.
+
+3. **gym.sql** — `is_staff()` / `my_user_id()` helper functions, plus RLS
    policies for everything under the Gym app: users, invoices, payments,
    classes, class_sessions, bookings, slots, pt_bookings, checkins,
    assessments, weight_log, period_log, programs, mls_live_store,
    mls_history, hep_progression_store. **Run this before blog.sql / gallery.sql /
    shop.sql** — they all call `is_staff()`, which is defined here.
 
-3. **blog.sql**, **gallery.sql**, **shop.sql** — policies for the three
+4. **blog.sql**, **gallery.sql**, **shop.sql** — policies for the three
    standalone site sections. Order doesn't matter between these three,
    as long as gym.sql already ran.
 
-4. **03-fix-users-self-escalation.sql** — the trigger that stops a plain
+5. **03-fix-users-self-escalation.sql** — the trigger that stops a plain
    member from editing their own `roles`, `balance`, `credits`,
    `trainer`, `last_checkin`, etc. on their own `users` row. Run after
    gym.sql (needs `is_staff()` to already exist).
 
-5. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+6. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
    Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
