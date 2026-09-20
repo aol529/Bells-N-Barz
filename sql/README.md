@@ -71,7 +71,14 @@
     and `09-notifications.sql` (needs `is_staff()`/`my_user_id()` and the
     `notifications` table).
 
-12. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+12. **12-notifications-delete-policy.sql** — adds a `staff can delete
+    notifications` policy, missing from `09-notifications.sql`. Without
+    it, even staff can't delete a notification row from the app itself
+    (a client-side delete "succeeds" with 0 rows affected, since RLS
+    silently denies any command with no matching policy). Run any time
+    after `09-notifications.sql`.
+
+13. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
