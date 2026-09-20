@@ -1228,11 +1228,8 @@
   <div class="sched-scope">
   <div class="sched-sub" id="member-section-switch">
     <button class="plate active" data-tab="session">Live Session</button>
-    <button class="plate" data-tab="time">Time</button>
-    <button class="plate" data-tab="weight">Weight</button>
-    <button class="plate" data-tab="period">Period</button>
-    <button class="plate" data-tab="track">Track</button>
-    <button class="plate" data-tab="accountability">Accountability</button>
+    <button class="plate" data-tab="time">Timers</button>
+    <button class="plate" data-tab="me">Me</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1320,8 +1317,17 @@
 </div>
 </div>
 </section>
+<!-- ================= ME ================= -->
+<section class="member-section" id="tab-me">
+<div class="sched-sub" id="me-section-switch">
+  <button data-me-section="weight" class="active">Weight</button>
+  <button data-me-section="period">Period</button>
+  <button data-me-section="track">Track</button>
+  <button data-me-section="teams">My Teams</button>
+</div>
+
 <!-- ================= WEIGHT ================= -->
-<section class="member-section" id="tab-weight">
+<section class="me-section active" id="tab-weight">
 <div class="day-head"><h2>Weight — Daily Log</h2></div>
 <div class="day-focus">Track bodyweight day to day and watch the trend, not the noise</div>
 <div class="weight-grid">
@@ -1425,7 +1431,7 @@
 </div>
 </section>
 <!-- ================= PERIOD ================= -->
-<section class="member-section" id="tab-period">
+<section class="me-section" id="tab-period">
 <div class="day-head"><h2>Period — Cycle Tracker</h2></div>
 <div class="day-focus">Log period days and symptoms to see cycle trends and a predicted next start date</div>
 <div class="weight-grid">
@@ -1503,7 +1509,7 @@
 </div>
 </section>
 <!-- ================= TRACK ================= -->
-<section class="member-section" id="tab-track">
+<section class="me-section" id="tab-track">
 <div class="day-head"><h2>Track — Hepburn Progression</h2></div>
 <div class="day-focus">Log submaximal double-progression sessions for your Block A lifts and watch the ladder climb</div>
 <div class="weight-card" style="margin-bottom:22px;">
@@ -1547,6 +1553,49 @@
 </table>
 <div class="weight-chart-empty" id="track-history-empty" style="display:none;">No sessions logged for this exercise yet.</div>
 </div>
+</section>
+
+<!-- ================= MY TEAMS (accountability) ================= -->
+<section class="me-section" id="tab-accountability">
+<div class="day-head"><h2>My Teams</h2></div>
+<div class="day-focus">An accountability partner in your pocket — see what your group is expected to do today, and whether they've shown up.</div>
+
+<div id="acc-pending-invites"></div>
+
+<div class="sched-sub" id="acc-groups-nav" style="display:none;"></div>
+
+<div class="empty-msg" id="acc-feed-empty">You're not in an accountability group yet — connect with someone below to start one.</div>
+<div id="acc-feed-grid" style="display:none;"></div>
+
+<div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+  <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+    <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Connect</span>
+  </div>
+  <p class="field-hint">Search for a member to invite into an existing group, or start a new one.</p>
+  <input type="text" id="acc-search-input" placeholder="Search members by name…">
+  <div id="acc-search-results"></div>
+</div>
+</section>
+
+<!-- ================= MY TEAMS: CONNECT PANEL ================= -->
+<div class="panel-backdrop" id="acc-connect-panel-backdrop">
+  <div class="panel">
+    <h2 id="acc-connect-panel-title">Connect</h2>
+    <div class="field" id="acc-connect-group-field" style="display:none;">
+      <label>Add to group</label>
+      <select id="acc-connect-group-select"></select>
+    </div>
+    <div class="field" id="acc-connect-name-field">
+      <label>Group name</label>
+      <input type="text" id="acc-connect-name-input" placeholder="e.g. Morning Crew">
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="acc-connect-cancel">Cancel</button>
+      <button class="btn2 primary" id="acc-connect-save">Send Invite</button>
+    </div>
+  </div>
+</div>
+
 </section>
 <!-- ================= LIVE SESSION LOG (member) ================= -->
 <section class="member-section active" id="tab-session">
@@ -1608,47 +1657,6 @@
 <div class="weight-chart-empty" id="mls-graph-empty">Save a couple of sessions logging the same exercise to see a trend here.</div>
 </div>
 </section>
-
-<!-- ================= ACCOUNTABILITY ================= -->
-<section class="member-section" id="tab-accountability">
-<div class="day-head"><h2>Accountability</h2></div>
-<div class="day-focus">An accountability partner in your pocket — see what your group is expected to do today, and whether they've shown up.</div>
-
-<div id="acc-pending-invites"></div>
-
-<div class="sched-sub" id="acc-groups-nav" style="display:none;"></div>
-
-<div class="empty-msg" id="acc-feed-empty">You're not in an accountability group yet — connect with someone below to start one.</div>
-<div id="acc-feed-grid" style="display:none;"></div>
-
-<div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
-  <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
-    <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Connect</span>
-  </div>
-  <p class="field-hint">Search for a member to invite into an existing group, or start a new one.</p>
-  <input type="text" id="acc-search-input" placeholder="Search members by name…">
-  <div id="acc-search-results"></div>
-</div>
-</section>
-
-<!-- ================= ACCOUNTABILITY: CONNECT PANEL ================= -->
-<div class="panel-backdrop" id="acc-connect-panel-backdrop">
-  <div class="panel">
-    <h2 id="acc-connect-panel-title">Connect</h2>
-    <div class="field" id="acc-connect-group-field" style="display:none;">
-      <label>Add to group</label>
-      <select id="acc-connect-group-select"></select>
-    </div>
-    <div class="field" id="acc-connect-name-field">
-      <label>Group name</label>
-      <input type="text" id="acc-connect-name-input" placeholder="e.g. Morning Crew">
-    </div>
-    <div class="panel-actions">
-      <button class="btn2" id="acc-connect-cancel">Cancel</button>
-      <button class="btn2 primary" id="acc-connect-save">Send Invite</button>
-    </div>
-  </div>
-</div>
 
 </div>
 </section>
@@ -4160,7 +4168,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Time', weight:'Weight', track:'Track', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', accountability:'Accountability'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -4177,13 +4185,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','weight','period','track','accountability'];
+const memberSectionTabs = ['session','time','me'];
 const adminSectionTabs = ['billing', 'users', 'sessions'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', weight: 'tab-member', period: 'tab-member', track: 'tab-member', accountability: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -4222,8 +4230,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin',
-  session: 'Live Session Log', time: 'Time', weight: 'Weight Log', period: 'Period Tracker', track: 'Track',
-  accountability: 'Accountability'
+  session: 'Live Session Log', time: 'Timers', me: 'Me'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -4246,15 +4253,12 @@ function switchTab(rawTab, scrollTop){
   // a network fetch and every bit of head start helps. Modules already
   // loaded resolve instantly (see bnbLoadModule's cache check).
   const TAB_TO_MODULE = {
-    weight: 'bmi', // loads bmi.js, which pulls in weight.js first via deps
-    period: 'period',
-    track: 'track',
+    me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track/My Teams load lazily from the inner me-section-switch instead, once actually selected.
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
     billing: 'billing',
-    users: 'migrate',
-    accountability: 'accountability'
+    users: 'migrate'
   };
   if (TAB_TO_MODULE[tab] && typeof bnbLoadModule === 'function'){
     bnbLoadModule(TAB_TO_MODULE[tab]).catch(err => {
@@ -4297,11 +4301,6 @@ function switchTab(rawTab, scrollTop){
   // above — a member created elsewhere (Shop checkout, Sign Up) wouldn't
   // otherwise show up until a full reload.
   if (tab === 'users' && typeof window.usersOnTabShown === 'function') window.usersOnTabShown();
-  // Accountability's roster/feed can go stale if a group changed
-  // elsewhere (a pending invite responded to in another tab, a member
-  // signing up mid-session) — refresh on tab-open, same pattern as
-  // Live Session/Schedule/Members above.
-  if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
   // logged — refresh on tab-open so that line doesn't go stale.
@@ -4332,6 +4331,42 @@ let previousLocation = null;
       const key = btn.getAttribute('data-coach-section');
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+    });
+  });
+})();
+
+/* ---------------- ME SUB-SWITCHER (Weight / Period / Track / My Teams) ---------------- */
+// Personal trackers plus My Teams, nested one level under the MEMBER
+// page's own "Me" tab — same pattern as the Coach sub-switcher above,
+// except each section also needs its module lazy-loaded (weight/period/
+// track/accountability used to be top-level MEMBER tabs, each with their
+// own TAB_TO_MODULE entry; now that they're inner sections instead, that
+// same lazy-load has to happen here on first click, and My Teams' own
+// stale-data refresh hook moves here too instead of switchTab()'s.
+(function(){
+  const switchEl = document.getElementById('me-section-switch');
+  if (!switchEl) return;
+  const btns = switchEl.querySelectorAll('button');
+  const sections = {
+    weight: document.getElementById('tab-weight'),
+    period: document.getElementById('tab-period'),
+    track: document.getElementById('tab-track'),
+    teams: document.getElementById('tab-accountability')
+  };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', teams: 'accountability' };
+  btns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-me-section');
+      if (ME_SECTION_TO_MODULE[key] && typeof bnbLoadModule === 'function'){
+        bnbLoadModule(ME_SECTION_TO_MODULE[key]).catch(err => {
+          console.error(err);
+          const t = document.getElementById('t-toast');
+          if (t){ t.textContent = 'Failed to load this section — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+        });
+      }
+      btns.forEach(b=> b.classList.toggle('active', b===btn));
+      Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      if (key === 'teams' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
     });
   });
 })();

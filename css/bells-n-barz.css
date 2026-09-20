@@ -1463,6 +1463,8 @@ header.site{
 .coach-section.active{display:block;}
 .member-section{display:none;}
 .member-section.active{display:block;}
+.me-section{display:none;}
+.me-section.active{display:block;}
 .admin-section{display:none;}
 .admin-section.active{display:block;}
 .sched-scope .sched-sub button{padding:7px 14px; border-radius:2px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; font-size:11.5px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.04em;}
