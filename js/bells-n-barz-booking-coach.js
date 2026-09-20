@@ -1213,6 +1213,15 @@
      ============================================================ */
   function memberBookSession(sessId){
     if (memberBookingForSession(sessId, selfMemberId)){ toast('Already booked into this session.'); return; }
+    // Warn, don't block, same "trust the coach's judgment" pattern as the
+    // zero-credits check on 1-on-1 booking below — an outstanding balance
+    // shouldn't become a wall a member can't get past mid-booking, but
+    // they (and staff, via the toast-free path if they override) should
+    // still see it plainly.
+    const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
+    if (me && Number(me.balance) > 0){
+      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
+    }
     const sess = getSession(sessId); if (!sess) return;
     const cap = sessionCapacity(sess);
     const confirmed = sessionConfirmedCount(sessId);
@@ -1240,6 +1249,11 @@
       return start < oEnd && oStart < end;
     });
     if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
+
+    const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
+    if (me && Number(me.balance) > 0){
+      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
+    }
 
     // Warn, don't block, on zero credits — same "trust the coach's judgment"
     // pattern the rest of this app uses (nothing else here hard-enforces
