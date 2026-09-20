@@ -66,6 +66,7 @@
     bmi:          { file: 'js/bells-n-barz-bmi.js', deps: ['weight'] },
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
+    nutrition:    { file: 'js/bells-n-barz-nutrition.js' },
     blog:         { file: 'js/bells-n-barz-blog.js' },
     gallery:      { file: 'js/bells-n-barz-gallery.js' },
     // Shop's checkout flow calls window.BNB_BILLING.createInvoice()
@@ -1336,6 +1337,7 @@
   <button data-me-section="weight" class="active">Weight</button>
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
+  <button data-me-section="nutrition">Nutrition</button>
 </div>
 
 <!-- ================= WEIGHT ================= -->
@@ -1564,6 +1566,59 @@
 <tbody id="track-history-body"></tbody>
 </table>
 <div class="weight-chart-empty" id="track-history-empty" style="display:none;">No sessions logged for this exercise yet.</div>
+</div>
+</section>
+<!-- ================= NUTRITION ================= -->
+<section class="me-section" id="tab-nutrition">
+<div class="day-head"><h2>Nutrition — Daily Log</h2></div>
+<div class="day-focus">Log a daily calorie/macro summary and watch the trend, not any single day</div>
+<div class="weight-grid">
+<div class="weight-card">
+<h3>Log a Day</h3>
+<div class="weight-form">
+<label for="nutrition-date">Date</label>
+<input id="nutrition-date" type="date"/>
+<label for="nutrition-calories">Calories</label>
+<input id="nutrition-calories" min="0" type="number"/>
+<label for="nutrition-protein">Protein (g)</label>
+<input id="nutrition-protein" min="0" type="number"/>
+<label for="nutrition-carbs">Carbs (g)</label>
+<input id="nutrition-carbs" min="0" type="number"/>
+<label for="nutrition-fat">Fat (g)</label>
+<input id="nutrition-fat" min="0" type="number"/>
+<label for="nutrition-water">Water (ml)</label>
+<input id="nutrition-water" min="0" type="number"/>
+<label for="nutrition-notes">Notes (optional)</label>
+<input id="nutrition-notes" placeholder="e.g. cheat day" type="text"/>
+<button class="weight-submit" id="nutrition-submit" type="button">Log Day</button>
+</div>
+<p class="weight-hint">Logging the same date again overwrites that day's entry.</p>
+</div>
+<div class="weight-stats" id="nutrition-stats" style="display:none;">
+<div class="weight-stat"><span class="lbl">Avg Calories (7d)</span><span class="val" id="nutrition-stat-calories">—</span></div>
+<div class="weight-stat"><span class="lbl">Avg Protein (7d)</span><span class="val" id="nutrition-stat-protein">—</span></div>
+<div class="weight-stat"><span class="lbl">Avg Carbs (7d)</span><span class="val" id="nutrition-stat-carbs">—</span></div>
+<div class="weight-stat"><span class="lbl">Avg Fat (7d)</span><span class="val" id="nutrition-stat-fat">—</span></div>
+</div>
+</div>
+<div class="weight-chart-card" style="margin-top:22px;">
+<h3>Calorie Trend</h3>
+<div class="weight-chart-empty" id="nutrition-chart-empty">Log at least two days to see a trend.</div>
+<svg class="weight-chart-svg" id="nutrition-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<div class="weight-chart-legend" id="nutrition-chart-legend" style="display:none;">
+<span><i class="swatch solid"></i>Calories logged per day</span>
+</div>
+</div>
+<div class="weight-history" style="margin-top:22px;">
+<h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Day Log</h3>
+<table class="weight-history-table" id="nutrition-history-table">
+<thead><tr><th>Date</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Water</th><th>Notes</th><th></th></tr></thead>
+<tbody id="nutrition-history-body"></tbody>
+</table>
+<div class="weight-chart-empty" id="nutrition-history-empty" style="display:none;">Nothing logged yet.</div>
+<div class="weight-clear-row">
+<button class="weight-clear-btn" id="nutrition-clear-btn" type="button">Clear all entries</button>
+</div>
 </div>
 </section>
 
@@ -4383,9 +4438,10 @@ let previousLocation = null;
   const sections = {
     weight: document.getElementById('tab-weight'),
     period: document.getElementById('tab-period'),
-    track: document.getElementById('tab-track')
+    track: document.getElementById('tab-track'),
+    nutrition: document.getElementById('tab-nutrition')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
@@ -5118,6 +5174,10 @@ createIntervalTimer(
 <script>
 /* ---------------- TRACK TAB (Hepburn Progression) ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-track.js (loaded on demand — see bnbLoadModule) -->
+</script>
+<script>
+/* ---------------- NUTRITION TRACKER ---------------- */
+<!-- LAZY-LOADED MODULE: bells-n-barz-nutrition.js (loaded on demand — see bnbLoadModule) -->
 </script>
 <script>
 /* ---- Exercise Glance: search + jump-nav wiring (scoped to .glance-scope) ---- */

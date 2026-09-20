@@ -54,7 +54,13 @@
    on accept. Run after `06-accountability-groups.sql` (replaces those
    two functions).
 
-10. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+10. **10-nutrition-log.sql** — the Nutrition tracker: a new `nutrition_log`
+    table (one row per calendar day — calories, protein/carbs/fat, water,
+    notes) plus RLS. Same ownership pattern as `weight_log`/`period_log`
+    in `gym.sql` (member manages own rows, staff full access), no new
+    RPCs. Run after `gym.sql` (needs `is_staff()`/`my_user_id()`).
+
+11. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
