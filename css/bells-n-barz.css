@@ -584,11 +584,28 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 .weight-form-row{display:flex;gap:10px;}
 .weight-form-row > div{flex:1;}
 .weight-submit{
+  /* Big-button experiment: this is the shared primary-CTA class for
+     every member-facing "commit" action (Weight/Period/Nutrition's Log
+     Day, Messages' Send) — same rationale as the sub-nav tiles. Revert:
+     git checkout pre-atm-ui-experiment -- css/bells-n-barz.css */
   margin-top:16px;width:100%;background:var(--accent);border:1px solid var(--accent);color:var(--on-accent);
-  font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:0.06em;text-transform:uppercase;
-  padding:11px;border-radius:2px;cursor:pointer;font-weight:600;transition:opacity .15s ease;
+  font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:0.03em;text-transform:uppercase;
+  padding:16px;border-radius:8px;cursor:pointer;font-weight:600;
+  transition:opacity .15s ease, transform .08s ease;
 }
 .weight-submit:hover{opacity:0.88;}
+.weight-submit:active{transform:scale(0.97);}
+
+/* Big-button experiment: the member's own "Check In Today" CTA on their
+   Profile page — scoped to this one id rather than the shared .btn2
+   class, which is also used throughout the desk-oriented Admin editors
+   (Blog/Gallery/Shop/Billing) that this experiment isn't touching.
+   Revert: git checkout pre-atm-ui-experiment -- css/bells-n-barz.css */
+#usr-self-checkin-btn{
+  font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:0.03em;
+  padding:16px 28px;border-radius:8px;transition:opacity .15s ease, transform .08s ease;
+}
+#usr-self-checkin-btn:active{transform:scale(0.97);}
 .weight-hint{font-size:11.5px;color:var(--muted-2);margin-top:10px;line-height:1.5;}
 
 .weight-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
