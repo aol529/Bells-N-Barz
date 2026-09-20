@@ -2953,6 +2953,18 @@
   function onAuthStateChanged(){
     refreshModeSwitchVisibility();
     if (window.bnbRefreshNavAuthGate) window.bnbRefreshNavAuthGate();
+    // The very first refreshUsersFromSupabase()/etc. calls (fired at script
+    // parse time, before restoreSession() has finished) can lose a race
+    // against auth actually restoring: querying under RLS as "signed out"
+    // returns a thin/empty result that never gets retried, leaving things
+    // like the Program Builder client picker stuck showing stale seed data.
+    // Re-running them here — on every real auth transition — guarantees at
+    // least one fetch happens once we know who's actually signed in.
+    if (selfId){
+      refreshUsersFromSupabase();
+      refreshCheckinsFromSupabase();
+      refreshAssessmentsFromSupabase();
+    }
   }
 
   /* ================= MEMBER: SIGN UP ================= */
