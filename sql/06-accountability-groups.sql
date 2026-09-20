@@ -57,6 +57,27 @@ create policy "staff full access accountability_groups"
   on public.accountability_groups for all
   using (is_staff());
 
+-- Whether the caller has an ACTIVE row in the given group. Needed as its
+-- own security-definer function rather than an inline subquery in the
+-- policy below: a policy on accountability_group_members that queries
+-- accountability_group_members itself re-triggers the same policy on the
+-- inner query, causing "infinite recursion detected in policy for
+-- relation accountability_group_members". A security-definer function
+-- bypasses RLS on its own internal query (same reason is_staff() and
+-- my_user_id() are security-definer), breaking the recursion.
+create or replace function is_active_group_member(gid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.accountability_group_members
+    where group_id = gid and user_id = my_user_id() and status = 'active'
+  );
+$$;
+
 -- A caller always sees their OWN membership row (pending or active) in any
 -- group, and sees OTHER members' rows in a group only once their own row
 -- there is 'active' — a pending invitee sees the group's name (via the
@@ -67,12 +88,7 @@ create policy "members read their group membership rows"
   using (
     is_staff() or
     user_id = my_user_id() or
-    exists (
-      select 1 from public.accountability_group_members m2
-      where m2.group_id = accountability_group_members.group_id
-        and m2.user_id = my_user_id()
-        and m2.status = 'active'
-    )
+    is_active_group_member(group_id)
   );
 
 drop policy if exists "staff full access accountability_group_members" on public.accountability_group_members;
@@ -300,9 +316,14 @@ begin
   if caller is null then
     raise exception 'Not signed in.';
   end if;
+  -- Table columns qualified with an alias here, not just for style — the
+  -- `returns table(user_id uuid, ...)` clause above makes "user_id" an
+  -- implicit plpgsql variable in this function's scope, so an unqualified
+  -- reference to the accountability_group_members.user_id column is
+  -- ambiguous and fails with "column reference user_id is ambiguous".
   if not is_staff() and not exists (
-    select 1 from public.accountability_group_members
-    where group_id = p_group_id and user_id = caller and status = 'active'
+    select 1 from public.accountability_group_members agm
+    where agm.group_id = p_group_id and agm.user_id = caller and agm.status = 'active'
   ) then
     raise exception 'You are not an active member of that group.';
   end if;
