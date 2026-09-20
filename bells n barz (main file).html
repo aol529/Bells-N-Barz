@@ -4449,6 +4449,10 @@ let previousLocation = null;
       const key = btn.getAttribute('data-coach-section');
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      // Encode which sub-section is active in the hash too (as coach:<key>),
+      // so a refresh restores it — switchTab() only ever wrote the outer
+      // 'coach' tab, leaving every reload stuck back on Dashboard.
+      history.replaceState(null, '', '#coach:' + key);
       if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
       if (key === 'messages'){
         if (typeof bnbLoadModule === 'function'){
@@ -4495,6 +4499,9 @@ let previousLocation = null;
       }
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      // Same fix as the Coach sub-switcher above (as me:<key>) — otherwise
+      // a refresh on Period/Track/Nutrition silently drops back to Weight.
+      history.replaceState(null, '', '#me:' + key);
     });
   });
 })();
@@ -4705,9 +4712,18 @@ plates.forEach(p => {
     switchTab(tab);
   });
 });
-const initial = location.hash.replace('#','');
+// Hash is either a plain tab key ('#reports') or, for the Coach/Me
+// sub-switchers (which aren't part of the generic switchTab()/.plate
+// system), a compound 'outerTab:subKey' ('#coach:messages', '#me:nutrition')
+// — see the sub-switcher IIFEs below, which write that second form.
+const [initial, initialSub] = location.hash.replace('#','').split(':');
 if (initial && document.getElementById('tab-' + initial)) {
   document.querySelector('[data-tab="' + initial + '"]').click();
+  if (initialSub){
+    const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
+                 || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
+    if (subBtn) subBtn.click();
+  }
 }
 
 /* ---------------- DRILL INDEX ---------------- */
