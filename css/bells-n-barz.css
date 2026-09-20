@@ -421,6 +421,12 @@ details.updated .body{padding:14px 18px;font-size:13.5px;color:var(--muted);back
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media (max-width:640px){.grid2{grid-template-columns:1fr;}}
+
+/* Today's Program preview on Overview — phone-width only. On a phone this
+   page is a same-day lookup first, a reference book second; on desktop
+   Overview stays a pure reference page and this would just be clutter. */
+#overview-today-program{display:none;}
+@media (max-width:640px){#overview-today-program{display:block;}}
 .mini-card{background:var(--surface);border:1px solid var(--line-soft);padding:14px 16px;font-size:14px;}
 .mini-card h4{font-size:14px;color:var(--accent);margin-bottom:8px;}
 

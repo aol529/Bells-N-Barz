@@ -851,6 +851,11 @@
 <li><b>Perform</b> — The main working sets for the day.</li>
 </ol>
 <p style="font-size:14px;color:var(--muted);max-width:70ch;">Perform is organized into lettered blocks of exercises. Exercises paired within a block may be supersetted (performed back-to-back with minimal rest) or run as straight sets — use judgment based on the client's conditioning and equipment access.</p>
+<div class="section-block" id="overview-today-program">
+  <h2 id="overview-today-title"></h2>
+  <div id="overview-today-blocks"></div>
+  <a href="#" id="overview-today-viewfull" class="btn2" style="display:inline-block;margin-top:14px;">View full day →</a>
+</div>
 <div class="grid2" style="margin-top:18px;">
 <div class="mini-card"><h4>★ Signature Hold</h4>Each day carries one defining isometric hold that reinforces the movement pattern trained: a quick, repeatable checkpoint for how well the body is moving that day.</div>
 <div class="mini-card"><h4>◆ Core Slot</h4>A short Core slot (Leg Drops, Dead Bug, Torso Rotations, Pallof Press or Suitcase Carry — 2 × 10 each side where unilateral) sits between Mobilize and Activate on Monday, Thursday, and Saturday — the non-leg days, since Tuesday and Friday already carry heavy core-bracing demand from squats, hip hinges, and Copenhagen Plank. Wednesday is a full rest day. (Updated v2.9 — Core-slot days shifted to Monday/Thursday/Saturday when Wednesday and Friday's former sessions merged into Thursday and Wednesday became a rest day.)</div>
@@ -4446,16 +4451,6 @@ plates.forEach(p => {
 const initial = location.hash.replace('#','');
 if (initial && document.getElementById('tab-' + initial)) {
   document.querySelector('[data-tab="' + initial + '"]').click();
-} else if (window.matchMedia('(max-width:640px)').matches) {
-  // On a fresh phone-width visit (no hash, so not returning to a specific
-  // tab), land straight on today's workout instead of Overview — on a
-  // phone this page is a training-day lookup first, a reference book
-  // second. Desktop keeps Overview as the default landing view.
-  const WEEKDAY_ORDER = ['mon','tue','wed','thu','fri','sat','sun'];
-  const todayIdx = new Date().getDay(); // 0=Sun..6=Sat
-  const todayTab = WEEKDAY_ORDER[todayIdx === 0 ? 6 : todayIdx - 1];
-  const todayPlate = document.querySelector('[data-tab="' + todayTab + '"]');
-  if (todayPlate) todayPlate.click();
 }
 
 /* ---------------- DRILL INDEX ---------------- */
@@ -5059,6 +5054,7 @@ createIntervalTimer(
       programRowId = data[0].id;
       programData = data[0].data;
       if (typeof render === 'function') render();
+      renderTodayProgram();
     }
   }
   function saveProgram(){
@@ -5138,6 +5134,57 @@ createIntervalTimer(
     });
   }
   function renderAllPerform(){ DAY_ORDER.forEach(renderPerform); }
+
+  // Today's Program preview on Overview (phone-width only, see CSS) — the
+  // same block/exercise data and rendering the weekday tabs use via
+  // renderPerform, just targeting a dedicated container instead of the
+  // per-weekday .perform-render element (renderPerform's own querySelector
+  // only ever finds the first match for a given day, so a second copy of
+  // that same [data-day] element couldn't coexist with the real one).
+  function renderTodayProgram(){
+    const titleEl = document.getElementById('overview-today-title');
+    const blocksEl = document.getElementById('overview-today-blocks');
+    const viewFullEl = document.getElementById('overview-today-viewfull');
+    if (!titleEl || !blocksEl) return;
+
+    const idx = new Date().getDay(); // 0=Sun..6=Sat
+    const todayKey = DAY_ORDER[idx === 0 ? 6 : idx - 1];
+    const meta = DAY_META[todayKey];
+
+    titleEl.textContent = 'Today — ' + meta.title.split('—')[1].trim() + ' (' + meta.duration + ')';
+    if (viewFullEl) viewFullEl.onclick = (e) => { e.preventDefault(); if (typeof switchTab === 'function') switchTab(todayKey); };
+
+    const blocks = programData[todayKey] || [];
+    blocksEl.innerHTML = '';
+    if (!blocks.length){
+      const p = document.createElement('p');
+      p.style.cssText = 'color:var(--muted);font-size:14px;';
+      p.textContent = 'Rest day — no Perform blocks scheduled.';
+      blocksEl.appendChild(p);
+      return;
+    }
+    blocks.forEach(block => {
+      const table = document.createElement('table');
+      table.className = 'block';
+      const cap = document.createElement('caption');
+      cap.textContent = block.name;
+      table.appendChild(cap);
+      block.exercises.forEach(ex => {
+        const tr = document.createElement('tr');
+        const tdName = document.createElement('td');
+        const a = document.createElement('a');
+        a.href = ytLink(ex.name);
+        a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = ex.name;
+        tdName.appendChild(a);
+        const tdPresc = document.createElement('td');
+        tdPresc.textContent = prescString(ex);
+        tr.appendChild(tdName); tr.appendChild(tdPresc);
+        table.appendChild(tr);
+      });
+      blocksEl.appendChild(table);
+    });
+  }
 
   /* ================================ ADMIN ================================ */
   let adminDay = "mon";
@@ -5253,7 +5300,7 @@ createIntervalTimer(
       try {
         const parsed = JSON.parse(reader.result);
         programData = parsed; saveProgram();
-        renderAdminBlocks(); renderAllPerform(); renderMlsDay();
+        renderAdminBlocks(); renderAllPerform(); renderTodayProgram(); renderMlsDay();
         alert('Program imported.');
       } catch(err){ alert('That file could not be read as valid program JSON.'); }
     };
@@ -6740,6 +6787,7 @@ createIntervalTimer(
 
   /* -------------------------------- INIT ---------------------------------- */
   renderAllPerform();
+  renderTodayProgram();
   renderAdminDayTabs();
   renderAdminBlocks();
   renderSlotSwitch();
