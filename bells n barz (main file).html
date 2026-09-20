@@ -4396,6 +4396,16 @@ plates.forEach(p => {
 const initial = location.hash.replace('#','');
 if (initial && document.getElementById('tab-' + initial)) {
   document.querySelector('[data-tab="' + initial + '"]').click();
+} else if (window.matchMedia('(max-width:640px)').matches) {
+  // On a fresh phone-width visit (no hash, so not returning to a specific
+  // tab), land straight on today's workout instead of Overview — on a
+  // phone this page is a training-day lookup first, a reference book
+  // second. Desktop keeps Overview as the default landing view.
+  const WEEKDAY_ORDER = ['mon','tue','wed','thu','fri','sat','sun'];
+  const todayIdx = new Date().getDay(); // 0=Sun..6=Sat
+  const todayTab = WEEKDAY_ORDER[todayIdx === 0 ? 6 : todayIdx - 1];
+  const todayPlate = document.querySelector('[data-tab="' + todayTab + '"]');
+  if (todayPlate) todayPlate.click();
 }
 
 /* ---------------- DRILL INDEX ---------------- */
