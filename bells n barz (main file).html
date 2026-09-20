@@ -13,6 +13,21 @@
   } catch(e) { /* storage unavailable — default dark theme stands */ }
 })();
 </script>
+<style>
+  /* Anti-flash for deep-linked reloads: the static HTML always marks
+     site-home/the default tab active for a clean first paint on a plain
+     visit, but a reload carrying a hash (e.g. #coach:messages) needs
+     restoreInitialHash() to switch to the real page/tab first — that
+     switch happens after DOMContentLoaded and after the session-restore
+     promise resolves, both later than first paint, so without this the
+     Home page flashes visibly before the real one appears. Hidden here
+     the instant a hash is present (see the script right below), removed
+     once restoreInitialHash() finishes applying the correct state. */
+  html.bnb-restoring body { visibility: hidden; }
+</style>
+<script>
+  if (location.hash) document.documentElement.classList.add('bnb-restoring');
+</script>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
@@ -4724,25 +4739,40 @@ plates.forEach(p => {
 // clicking too early saw selfId still null and bounced straight to the
 // login prompt even though the session would have restored moments later.
 function restoreInitialHash(){
-  const [initial, initialSub] = location.hash.replace('#','').split(':');
-  if (initial && document.getElementById('tab-' + initial)) {
-    // Every tab-panel id restorable here belongs to the Gym app, which is
-    // one of several outer "site pages" (Home/Blog/Gallery/Shop/Gym) — and
-    // "site-home" is the one marked active in the static HTML. Without
-    // this, the tab click below still runs correctly, but stays hidden
-    // behind the Home page, which is exactly what was showing up as
-    // "reload always throws me back to Home."
-    if (typeof window.switchSite === 'function') window.switchSite('gym');
-    document.querySelector('[data-tab="' + initial + '"]').click();
-    if (initialSub){
-      const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
-                   || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
-      if (subBtn) subBtn.click();
+  // try/finally so a stale hash (an old bookmark whose tab-key element
+  // exists but whose button doesn't, say) can never leave the page stuck
+  // hidden behind bnb-restoring — the reveal at the bottom always runs.
+  try {
+    const [initial, initialSub] = location.hash.replace('#','').split(':');
+    if (initial && document.getElementById('tab-' + initial)) {
+      // Every tab-panel id restorable here belongs to the Gym app, which is
+      // one of several outer "site pages" (Home/Blog/Gallery/Shop/Gym) — and
+      // "site-home" is the one marked active in the static HTML. Without
+      // this, the tab click below still runs correctly, but stays hidden
+      // behind the Home page, which is exactly what was showing up as
+      // "reload always throws me back to Home."
+      if (typeof window.switchSite === 'function') window.switchSite('gym');
+      const tabBtn = document.querySelector('[data-tab="' + initial + '"]');
+      if (tabBtn) tabBtn.click();
+      if (initialSub){
+        const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
+                     || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
+        if (subBtn) subBtn.click();
+      }
     }
+  } finally {
+    // Reveal the page now that the correct state (or, for a stale/invalid
+    // hash, whatever default state) is in place — see the matching
+    // visibility:hidden rule in <head>.
+    document.documentElement.classList.remove('bnb-restoring');
   }
 }
 if (window.bnbSessionReady && typeof window.bnbSessionReady.then === 'function'){
-  window.bnbSessionReady.then(restoreInitialHash);
+  // Two-argument form (not .then().catch()) so exactly one branch fires,
+  // never both: if restoreSession() ever rejects (a network error mid-
+  // await, say), the page must not stay permanently hidden behind
+  // bnb-restoring — fall back to restoring the hash anyway.
+  window.bnbSessionReady.then(restoreInitialHash, restoreInitialHash);
 } else {
   restoreInitialHash();
 }
