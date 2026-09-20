@@ -604,6 +604,7 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 #usr-self-checkin-btn{
   font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:0.03em;
   padding:16px 28px;border-radius:8px;transition:opacity .15s ease, transform .08s ease;
+  margin-left:auto;
 }
 #usr-self-checkin-btn:active{transform:scale(0.97);}
 .weight-hint{font-size:11.5px;color:var(--muted-2);margin-top:10px;line-height:1.5;}
