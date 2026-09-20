@@ -2024,7 +2024,11 @@
   </div>
 
   <div class="coach-section" id="coach-section-program">
-    <div class="admin-notice" id="admin-notice">This editor runs entirely in your browser (this HTML file has no server/database) — changes save to this device's local storage. Export the Program JSON below to back up or move your edits to another device/browser.</div>
+    <div class="admin-notice" id="admin-notice">Changes save to Supabase for whoever you're editing — select a client below, or "Myself" to edit your own program. Export/Import JSON below works per-client too, for backup or bulk edits.</div>
+    <div class="field" style="max-width:320px;margin-bottom:20px;">
+      <label>Editing program for</label>
+      <select id="admin-client-picker"></select>
+    </div>
     <div class="side-layout">
     <div class="admin-day-select side-nav" id="admin-day-tabs"></div>
 
@@ -4336,6 +4340,7 @@ let previousLocation = null;
       const key = btn.getAttribute('data-coach-section');
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
     });
   });
 })();
@@ -5113,6 +5118,70 @@ createIntervalTimer(
   let programData = loadProgram();
   refreshProgramFromSupabase(); // async — replaces default start once Supabase responds
 
+  /* ---------------- PROGRAM BUILDER: PER-CLIENT EDITING ---------------- */
+  // A coach editing a specific client's program uses this SEPARATE state,
+  // not programData/programRowId above — those stay tied to whoever is
+  // actually logged in and drive the public Manual, the Overview preview,
+  // and Live Session Log. Without this split, a coach browsing to a
+  // different client mid-edit here would also temporarily hijack what
+  // the Manual shows in that same browser tab. The one exception: saving
+  // your OWN program through this picker (adminOwnerId === your own id)
+  // re-syncs programData too, so self-edits still show up immediately
+  // elsewhere in the app, same as before this feature existed.
+  let adminOwnerId = null;
+  let adminProgramData = clone(DEFAULT_PROGRAM); // never null — renderAdminBlocks() runs at init, before any real load
+  let adminProgramRowId = null;
+
+  function populateAdminClientPicker(){
+    const sel = document.getElementById('admin-client-picker');
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!sel || !me) return;
+    const members = window.BNB_USERS.getMembers().slice().sort((a,b)=>a.fullName.localeCompare(b.fullName));
+    sel.innerHTML = '<option value="' + me.id + '">Myself</option>' +
+      members.filter(u=>u.id!==me.id).map(u=>'<option value="'+u.id+'">'+esc(u.fullName)+'</option>').join('');
+    sel.value = adminOwnerId || me.id;
+    sel.onchange = () => loadAdminProgramFor(sel.value);
+    if (!adminOwnerId) loadAdminProgramFor(me.id);
+  }
+  // Exposed so the Coach sub-switcher (a separate <script> block/closure)
+  // can refresh the picker's member list each time Program Builder is
+  // opened — same cross-closure export pattern already used by
+  // mlsOnTabShown/schedOnTabShown/bnbAccountabilityOnTabShown.
+  window.bnbProgramBuilderOnShown = populateAdminClientPicker;
+
+  async function loadAdminProgramFor(ownerId){
+    adminOwnerId = ownerId;
+    const { data, error } = await bnbClient.from('programs').select('*').eq('owner_id', ownerId);
+    if (error) { console.error('Supabase load programs failed:', error); return; }
+    if (data && data.length){ adminProgramRowId = data[0].id; adminProgramData = data[0].data; }
+    else { adminProgramRowId = null; adminProgramData = clone(DEFAULT_PROGRAM); }
+    renderAdminDayTabs(); renderAdminBlocks();
+  }
+
+  function saveAdminProgram(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me || !adminOwnerId) return;
+    (async () => {
+      try {
+        const row = { owner_id: adminOwnerId, name: 'Default Program', data: adminProgramData, updated_at: new Date().toISOString() };
+        if (adminProgramRowId) row.id = adminProgramRowId;
+        if (adminOwnerId !== me.id){ row.assigned_by = me.id; row.assigned_at = new Date().toISOString(); }
+        const { data, error } = await bnbClient.from('programs').upsert([row], { onConflict: 'owner_id' }).select();
+        if (error) throw error;
+        if (data && data[0]) adminProgramRowId = data[0].id;
+        // Editing your own program through this picker is functionally
+        // the same program the Manual/Overview/Live Session Log render —
+        // keep them in sync immediately rather than waiting for a reload.
+        if (adminOwnerId === me.id){
+          programData = adminProgramData;
+          renderAllPerform(); renderTodayProgram();
+        }
+      } catch(e){
+        console.warn('Supabase save programs failed:', e);
+      }
+    })();
+  }
+
   function ytLink(name){
     const clean = name.split('(')[0].trim();
     return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(clean + ' exercise tutorial');
@@ -5254,7 +5323,7 @@ createIntervalTimer(
   function renderAdminBlocks(){
     const wrap = document.getElementById('admin-blocks');
     wrap.innerHTML = '';
-    const blocks = programData[adminDay] || [];
+    const blocks = adminProgramData[adminDay] || [];
 
     blocks.forEach((block, bIdx)=>{
       const bDiv = document.createElement('div');
@@ -5264,20 +5333,20 @@ createIntervalTimer(
       head.className = 'crud-block-head';
       const nameInput = document.createElement('input');
       nameInput.value = block.name;
-      nameInput.oninput = ()=>{ block.name = nameInput.value; saveProgram(); renderPerform(adminDay); };
+      nameInput.oninput = ()=>{ block.name = nameInput.value; saveAdminProgram(); };
       const headBtns = document.createElement('div');
       headBtns.style.cssText = 'display:flex;gap:6px;';
       const addExBtn = document.createElement('button');
       addExBtn.className = 'btn2'; addExBtn.textContent = '+ Exercise';
       addExBtn.onclick = ()=>{
         block.exercises.push({name:'New Exercise', sets:'3', reps:'10', rest:'', tempo:'', equipment:'', alternates:''});
-        saveProgram(); renderAdminBlocks(); renderPerform(adminDay);
+        saveAdminProgram(); renderAdminBlocks();
       };
       const delBlockBtn = document.createElement('button');
       delBlockBtn.className = 'crud-remove'; delBlockBtn.title = 'Delete block'; delBlockBtn.textContent = '✕';
       delBlockBtn.onclick = ()=>{
         if(!confirm('Delete "' + block.name + '" and all its exercises?')) return;
-        blocks.splice(bIdx,1); saveProgram(); renderAdminBlocks(); renderPerform(adminDay);
+        blocks.splice(bIdx,1); saveAdminProgram(); renderAdminBlocks();
       };
       headBtns.appendChild(addExBtn); headBtns.appendChild(delBlockBtn);
       head.appendChild(nameInput); head.appendChild(headBtns);
@@ -5297,10 +5366,10 @@ createIntervalTimer(
           <div class="crud-col"><label>&nbsp;</label><button class="crud-remove" title="Remove exercise">✕</button></div>
         `;
         row.querySelectorAll('input').forEach(inp=>{
-          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; saveProgram(); renderPerform(adminDay); };
+          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; saveAdminProgram(); };
         });
         row.querySelector('.crud-remove').onclick = ()=>{
-          block.exercises.splice(eIdx,1); saveProgram(); renderAdminBlocks(); renderPerform(adminDay);
+          block.exercises.splice(eIdx,1); saveAdminProgram(); renderAdminBlocks();
         };
         bDiv.appendChild(row);
       });
@@ -5314,16 +5383,16 @@ createIntervalTimer(
   }
 
   document.getElementById('admin-add-block').onclick = ()=>{
-    (programData[adminDay] = programData[adminDay] || []).push({name:'New Block', exercises:[]});
-    saveProgram(); renderAdminBlocks(); renderPerform(adminDay);
+    (adminProgramData[adminDay] = adminProgramData[adminDay] || []).push({name:'New Block', exercises:[]});
+    saveAdminProgram(); renderAdminBlocks();
   };
   document.getElementById('admin-reset-day').onclick = ()=>{
     if(!confirm('Reset ' + DAY_META[adminDay].title + ' back to the manual\u2019s original Perform blocks? This discards your edits for this day.')) return;
-    programData[adminDay] = clone(DEFAULT_PROGRAM[adminDay]);
-    saveProgram(); renderAdminBlocks(); renderPerform(adminDay);
+    adminProgramData[adminDay] = clone(DEFAULT_PROGRAM[adminDay]);
+    saveAdminProgram(); renderAdminBlocks();
   };
   document.getElementById('admin-export').onclick = ()=>{
-    const blob = new Blob([JSON.stringify(programData, null, 2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify(adminProgramData, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'bnb-program-export.json'; a.click();
@@ -5336,8 +5405,8 @@ createIntervalTimer(
     reader.onload = ()=>{
       try {
         const parsed = JSON.parse(reader.result);
-        programData = parsed; saveProgram();
-        renderAdminBlocks(); renderAllPerform(); renderTodayProgram(); renderMlsDay();
+        adminProgramData = parsed; saveAdminProgram();
+        renderAdminBlocks(); renderMlsDay();
         alert('Program imported.');
       } catch(err){ alert('That file could not be read as valid program JSON.'); }
     };
@@ -6825,6 +6894,7 @@ createIntervalTimer(
   /* -------------------------------- INIT ---------------------------------- */
   renderAllPerform();
   renderTodayProgram();
+  populateAdminClientPicker(); // no-op if not signed in yet; the Coach sub-switcher re-calls this (via window.bnbProgramBuilderOnShown) whenever Program Builder is actually opened
   renderAdminDayTabs();
   renderAdminBlocks();
   renderSlotSwitch();
