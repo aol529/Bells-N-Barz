@@ -48,8 +48,14 @@
    consecutive-days count) and extends `accountability_group_feed()` with
    a `streak` column. Run after `06-accountability-groups.sql`.
 
-9. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
-   Run any time to see what RLS state actually looks like.
+9. **09-notifications.sql** — an in-app notification bell: new
+   `notifications` table + RLS, plus updated `accountability_connect`/
+   `accountability_respond` that now insert a notification on invite and
+   on accept. Run after `06-accountability-groups.sql` (replaces those
+   two functions).
+
+10. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+    Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
 

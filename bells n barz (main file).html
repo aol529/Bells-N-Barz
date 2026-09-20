@@ -770,6 +770,18 @@
 <div class="site-tag">Complete Training Manual — Movement Preparation System, with Integrated Core Programming</div>
 </div>
 <div class="header-right">
+<div class="notif-bell" id="notif-bell" style="display:none;">
+  <button class="notif-bell-btn" id="notif-bell-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Notifications">
+    🔔<span class="notif-bell-count" id="notif-bell-count" style="display:none;"></span>
+  </button>
+  <div class="notif-bell-dropdown" id="notif-bell-dropdown">
+    <div class="notif-bell-header">
+      <span>Notifications</span>
+      <button type="button" id="notif-mark-all-btn">Mark all read</button>
+    </div>
+    <div id="notif-bell-list"></div>
+  </div>
+</div>
 <div class="account-menu" id="account-menu" style="display:none;">
   <button class="account-menu-btn" id="account-menu-btn" type="button" aria-haspopup="true" aria-expanded="false">
     <span id="account-menu-name">Account</span> <span class="account-menu-caret">▾</span>
@@ -4424,6 +4436,100 @@ function refreshNavAuthGate(){
     p.classList.toggle('locked', locked);
   });
   refreshAccountMenu(signedIn);
+  refreshNotificationBell(signedIn);
+}
+
+/* ---------------- NOTIFICATION BELL (top-right, signed-in only) ---------------- */
+// In-app only, not real push/email — this project has no service worker,
+// VAPID keys, email API, or Edge Functions, so that would be a separate,
+// bigger project. Follows the exact same show/hide-on-signedIn and
+// open/close-dropdown pattern as the Account Menu right below it.
+function escNotif(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+const notifBell = document.getElementById('notif-bell');
+const notifBellBtn = document.getElementById('notif-bell-btn');
+const notifBellCount = document.getElementById('notif-bell-count');
+const notifBellList = document.getElementById('notif-bell-list');
+let notifPollTimer = null;
+
+async function refreshUnreadCount(){
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  if (!me || !notifBellCount) return;
+  const { count, error } = await bnbClient.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', me.id).eq('read', false);
+  if (error) { console.warn('Supabase load notification count failed:', error); return; }
+  if (count > 0){ notifBellCount.textContent = count > 99 ? '99+' : String(count); notifBellCount.style.display = ''; }
+  else { notifBellCount.style.display = 'none'; }
+}
+
+async function loadNotificationList(){
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  if (!me || !notifBellList) return;
+  const { data, error } = await bnbClient.from('notifications').select('*').eq('user_id', me.id).order('created_at', { ascending: false }).limit(20);
+  if (error) { console.warn('Supabase load notifications failed:', error); return; }
+  const rows = data || [];
+  if (!rows.length){
+    notifBellList.innerHTML = '<div class="notif-bell-empty">No notifications yet.</div>';
+    return;
+  }
+  notifBellList.innerHTML = rows.map(n => `
+    <div class="notif-bell-item${n.read ? '' : ' unread'}" data-id="${n.id}" data-link="${escNotif(n.link_tab || '')}">
+      ${escNotif(n.message)}
+    </div>
+  `).join('');
+  notifBellList.querySelectorAll('.notif-bell-item').forEach(el => {
+    el.addEventListener('click', async () => {
+      const id = el.getAttribute('data-id');
+      const link = el.getAttribute('data-link');
+      await bnbClient.from('notifications').update({ read: true }).eq('id', id);
+      notifBell.classList.remove('open');
+      notifBellBtn.setAttribute('aria-expanded', 'false');
+      await refreshUnreadCount();
+      if (link && typeof window.switchSite === 'function' && typeof window.switchTab === 'function'){
+        window.switchSite('gym');
+        window.switchTab(link);
+      }
+    });
+  });
+}
+
+function refreshNotificationBell(signedIn){
+  if (!notifBell) return;
+  notifBell.style.display = signedIn ? '' : 'none';
+  if (!signedIn){
+    notifBell.classList.remove('open');
+    if (notifBellBtn) notifBellBtn.setAttribute('aria-expanded', 'false');
+    if (notifPollTimer){ clearInterval(notifPollTimer); notifPollTimer = null; }
+    return;
+  }
+  refreshUnreadCount();
+  // Only real polling loop in this codebase (confirmed none existed
+  // before) — justified because a notification feature that only
+  // updates on login/logout would feel broken while just sitting open.
+  // Opening the bell always does its own fresh fetch regardless.
+  if (!notifPollTimer) notifPollTimer = setInterval(refreshUnreadCount, 90000);
+}
+
+if (notifBellBtn){
+  notifBellBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = notifBell.classList.toggle('open');
+    notifBellBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) loadNotificationList();
+  });
+  document.addEventListener('click', (e) => {
+    if (notifBell.classList.contains('open') && !notifBell.contains(e.target)){
+      notifBell.classList.remove('open');
+      notifBellBtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  const markAllBtn = document.getElementById('notif-mark-all-btn');
+  if (markAllBtn) markAllBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    await bnbClient.from('notifications').update({ read: true }).eq('user_id', me.id).eq('read', false);
+    await refreshUnreadCount();
+    await loadNotificationList();
+  });
 }
 
 /* ---------------- ACCOUNT MENU (top-right, signed-in only) ---------------- */
@@ -5131,6 +5237,7 @@ createIntervalTimer(
   let adminOwnerId = null;
   let adminProgramData = clone(DEFAULT_PROGRAM); // never null — renderAdminBlocks() runs at init, before any real load
   let adminProgramRowId = null;
+  let adminNotifiedThisLoad = false; // saveAdminProgram() fires on every keystroke — only notify once per client selected, not once per edit
 
   function populateAdminClientPicker(){
     const sel = document.getElementById('admin-client-picker');
@@ -5155,6 +5262,7 @@ createIntervalTimer(
     if (error) { console.error('Supabase load programs failed:', error); return; }
     if (data && data.length){ adminProgramRowId = data[0].id; adminProgramData = data[0].data; }
     else { adminProgramRowId = null; adminProgramData = clone(DEFAULT_PROGRAM); }
+    adminNotifiedThisLoad = false;
     renderAdminDayTabs(); renderAdminBlocks();
   }
 
@@ -5175,6 +5283,14 @@ createIntervalTimer(
         if (adminOwnerId === me.id){
           programData = adminProgramData;
           renderAllPerform(); renderTodayProgram();
+        } else if (!adminNotifiedThisLoad){
+          // Once per client selected, not once per edit — saveAdminProgram()
+          // fires on every keystroke while editing.
+          adminNotifiedThisLoad = true;
+          bnbClient.from('notifications').insert([{
+            user_id: adminOwnerId, type: 'program_assigned',
+            message: 'Your coach updated your training program.', link_tab: 'overview'
+          }]).then(({ error: notifErr }) => { if (notifErr) console.warn('Supabase insert notification failed:', notifErr); });
         }
       } catch(e){
         console.warn('Supabase save programs failed:', e);
