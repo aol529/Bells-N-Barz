@@ -35,7 +35,14 @@
    declining, leaving, and reading a group's feed (today's workout +
    check-in stats). Run after gym.sql (needs `is_staff()`/`my_user_id()`).
 
-7. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+7. **07-program-assignment.sql** — adds `assigned_by`/`assigned_at` to
+   `programs`, so a coach-assigned program can be told apart from a
+   member's own self-edit. No new tables, no RLS changes — reuses the
+   existing owner-or-staff write policy and the existing coach-client
+   relationship (`pt_bookings`, via `activeClientIdsForTrainer()`).
+   Safe to run any time after `01-schema.sql`.
+
+8. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
    Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
