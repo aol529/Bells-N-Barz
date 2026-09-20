@@ -1230,6 +1230,7 @@
     <button class="plate active" data-tab="session">Live Session</button>
     <button class="plate" data-tab="time">Timers</button>
     <button class="plate" data-tab="me">Me</button>
+    <button class="plate" data-tab="accountability">My Teams</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1323,7 +1324,6 @@
   <button data-me-section="weight" class="active">Weight</button>
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
-  <button data-me-section="teams">My Teams</button>
 </div>
 
 <!-- ================= WEIGHT ================= -->
@@ -1555,8 +1555,9 @@
 </div>
 </section>
 
+</section>
 <!-- ================= MY TEAMS (accountability) ================= -->
-<section class="me-section" id="tab-accountability">
+<section class="member-section" id="tab-accountability">
 <div class="day-head"><h2>My Teams</h2></div>
 <div class="day-focus">An accountability partner in your pocket — see what your group is expected to do today, and whether they've shown up.</div>
 
@@ -1596,7 +1597,6 @@
   </div>
 </div>
 
-</section>
 <!-- ================= LIVE SESSION LOG (member) ================= -->
 <section class="member-section active" id="tab-session">
 <div class="day-head"><h2>Live Session Log</h2></div>
@@ -4168,7 +4168,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -4185,13 +4185,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me'];
+const memberSectionTabs = ['session','time','me','accountability'];
 const adminSectionTabs = ['billing', 'users', 'sessions'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -4230,7 +4230,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -4253,7 +4253,8 @@ function switchTab(rawTab, scrollTop){
   // a network fetch and every bit of head start helps. Modules already
   // loaded resolve instantly (see bnbLoadModule's cache check).
   const TAB_TO_MODULE = {
-    me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track/My Teams load lazily from the inner me-section-switch instead, once actually selected.
+    me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track load lazily from the inner me-section-switch instead, once actually selected.
+    accountability: 'accountability',
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
@@ -4301,6 +4302,10 @@ function switchTab(rawTab, scrollTop){
   // above — a member created elsewhere (Shop checkout, Sign Up) wouldn't
   // otherwise show up until a full reload.
   if (tab === 'users' && typeof window.usersOnTabShown === 'function') window.usersOnTabShown();
+  // My Teams' roster/feed can go stale if a group changed elsewhere (a
+  // pending invite responded to in another tab, a member signing up
+  // mid-session) — refresh on tab-open, same pattern as the others above.
+  if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
   // logged — refresh on tab-open so that line doesn't go stale.
@@ -4335,14 +4340,13 @@ let previousLocation = null;
   });
 })();
 
-/* ---------------- ME SUB-SWITCHER (Weight / Period / Track / My Teams) ---------------- */
-// Personal trackers plus My Teams, nested one level under the MEMBER
-// page's own "Me" tab — same pattern as the Coach sub-switcher above,
-// except each section also needs its module lazy-loaded (weight/period/
-// track/accountability used to be top-level MEMBER tabs, each with their
-// own TAB_TO_MODULE entry; now that they're inner sections instead, that
-// same lazy-load has to happen here on first click, and My Teams' own
-// stale-data refresh hook moves here too instead of switchTab()'s.
+/* ---------------- ME SUB-SWITCHER (Weight / Period / Track) ---------------- */
+// Personal trackers, nested one level under the MEMBER page's own "Me"
+// tab — same pattern as the Coach sub-switcher above, except each
+// section also needs its module lazy-loaded (weight/period/track used
+// to be top-level MEMBER tabs, each with their own TAB_TO_MODULE entry;
+// now that they're inner sections instead, that same lazy-load has to
+// happen here on first click).
 (function(){
   const switchEl = document.getElementById('me-section-switch');
   if (!switchEl) return;
@@ -4350,10 +4354,9 @@ let previousLocation = null;
   const sections = {
     weight: document.getElementById('tab-weight'),
     period: document.getElementById('tab-period'),
-    track: document.getElementById('tab-track'),
-    teams: document.getElementById('tab-accountability')
+    track: document.getElementById('tab-track')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', teams: 'accountability' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
@@ -4366,7 +4369,6 @@ let previousLocation = null;
       }
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
-      if (key === 'teams' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
     });
   });
 })();
