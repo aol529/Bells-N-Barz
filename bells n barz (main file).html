@@ -3400,7 +3400,7 @@
      cookie is what actually caps how long an idle login lasts: no cookie
      (missing or past its window) means we tear down any lingering
      Supabase session instead of restoring it. ---- */
-  (async function restoreSession(){
+  window.bnbSessionReady = (async function restoreSession(){
     if (checkForPasswordRecovery()) return; // reset view handles its own flow
     if (!hasValidSessionCookie()){
       try { await bnbClient.auth.signOut(); } catch(e){}
@@ -4716,14 +4716,28 @@ plates.forEach(p => {
 // sub-switchers (which aren't part of the generic switchTab()/.plate
 // system), a compound 'outerTab:subKey' ('#coach:messages', '#me:nutrition')
 // — see the sub-switcher IIFEs below, which write that second form.
-const [initial, initialSub] = location.hash.replace('#','').split(':');
-if (initial && document.getElementById('tab-' + initial)) {
-  document.querySelector('[data-tab="' + initial + '"]').click();
-  if (initialSub){
-    const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
-                 || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
-    if (subBtn) subBtn.click();
+//
+// Waits for restoreSession() (window.bnbSessionReady) before clicking,
+// rather than firing at parse time: a gated tab (member/coach/schedule/
+// admin) checks isSignedIn() inside its own click handler, and that
+// check was losing the race against the session actually restoring —
+// clicking too early saw selfId still null and bounced straight to the
+// login prompt even though the session would have restored moments later.
+function restoreInitialHash(){
+  const [initial, initialSub] = location.hash.replace('#','').split(':');
+  if (initial && document.getElementById('tab-' + initial)) {
+    document.querySelector('[data-tab="' + initial + '"]').click();
+    if (initialSub){
+      const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
+                   || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
+      if (subBtn) subBtn.click();
+    }
   }
+}
+if (window.bnbSessionReady && typeof window.bnbSessionReady.then === 'function'){
+  window.bnbSessionReady.then(restoreInitialHash);
+} else {
+  restoreInitialHash();
 }
 
 /* ---------------- DRILL INDEX ---------------- */
