@@ -1625,6 +1625,35 @@ header.site{
   color:var(--accent);
   font-weight:600;
 }
+
+/* ---- TABLET/POS-STYLE PROTOTYPE (Member nav only, for now) ----
+   Icon-above-label tiles with a lifted, tactile shadow — the natural
+   next step on top of the big-button work above (Square/Toast-style
+   self-order kiosk, not stark ATM). ::before content per data-tab keeps
+   this pure-CSS, no HTML changes, matching the rest of this experiment.
+   Revert: git checkout pre-atm-ui-experiment -- css/bells-n-barz.css */
+#member-section-switch .plate{
+  flex-direction:column;
+  gap:6px;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+  transition:transform .08s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+#member-section-switch .plate::before{
+  font-size:26px;
+  line-height:1;
+}
+#member-section-switch [data-tab="session"]::before{content:"🏋️";}
+#member-section-switch [data-tab="time"]::before{content:"⏱️";}
+#member-section-switch [data-tab="me"]::before{content:"👤";}
+#member-section-switch [data-tab="accountability"]::before{content:"👥";}
+#member-section-switch [data-tab="messages"]::before{content:"💬";}
+#member-section-switch .plate:hover{
+  box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+#member-section-switch .plate:active{
+  box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+
 .sched-scope .chip-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}
 .sched-scope .chip-filter button{padding:6px 13px; border-radius:20px; border:1px solid var(--line); background:var(--surface-2); color:var(--muted); cursor:pointer; font-size:11.5px; font-family:'IBM Plex Mono',monospace;}
 .sched-scope .chip-filter button.active{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;}
