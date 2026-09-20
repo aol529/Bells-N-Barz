@@ -1588,7 +1588,7 @@ header.site{
   margin-bottom:22px;
 }
 #member-section-switch .plate,
-#me-section-switch .plate,
+#me-section-switch button,
 #coach-section-switch button{
   min-height:84px;
   padding:16px 10px;
@@ -1606,19 +1606,19 @@ header.site{
   transition:transform .08s ease, border-color .15s ease, background .15s ease;
 }
 #member-section-switch .plate:hover,
-#me-section-switch .plate:hover,
+#me-section-switch button:hover,
 #coach-section-switch button:hover{
   border-color:var(--accent-dim);
   background:var(--surface-2);
   color:var(--text);
 }
 #member-section-switch .plate:active,
-#me-section-switch .plate:active,
+#me-section-switch button:active,
 #coach-section-switch button:active{
   transform:scale(0.96);
 }
 #member-section-switch .plate.active,
-#me-section-switch .plate.active,
+#me-section-switch button.active,
 #coach-section-switch button.active{
   border-color:var(--accent);
   background:rgba(var(--accent-rgb),.14);
@@ -1626,19 +1626,24 @@ header.site{
   font-weight:600;
 }
 
-/* ---- TABLET/POS-STYLE PROTOTYPE (Member nav only, for now) ----
+/* ---- TABLET/POS-STYLE PROTOTYPE (Member/Me/Coach nav) ----
    Icon-above-label tiles with a lifted, tactile shadow — the natural
    next step on top of the big-button work above (Square/Toast-style
-   self-order kiosk, not stark ATM). ::before content per data-tab keeps
-   this pure-CSS, no HTML changes, matching the rest of this experiment.
-   Revert: git checkout pre-atm-ui-experiment -- css/bells-n-barz.css */
-#member-section-switch .plate{
+   self-order kiosk, not stark ATM). ::before content per data attribute
+   keeps this pure-CSS, no HTML changes, matching the rest of this
+   experiment. Revert: git checkout pre-atm-ui-experiment --
+   css/bells-n-barz.css */
+#member-section-switch .plate,
+#me-section-switch button,
+#coach-section-switch button{
   flex-direction:column;
   gap:6px;
   box-shadow:0 2px 6px rgba(0,0,0,.25);
   transition:transform .08s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
-#member-section-switch .plate::before{
+#member-section-switch .plate::before,
+#me-section-switch button::before,
+#coach-section-switch button::before{
   font-size:26px;
   line-height:1;
 }
@@ -1647,10 +1652,23 @@ header.site{
 #member-section-switch [data-tab="me"]::before{content:"👤";}
 #member-section-switch [data-tab="accountability"]::before{content:"👥";}
 #member-section-switch [data-tab="messages"]::before{content:"💬";}
-#member-section-switch .plate:hover{
+#me-section-switch [data-me-section="weight"]::before{content:"⚖️";}
+#me-section-switch [data-me-section="period"]::before{content:"🩸";}
+#me-section-switch [data-me-section="track"]::before{content:"📈";}
+#me-section-switch [data-me-section="nutrition"]::before{content:"🍎";}
+#coach-section-switch [data-coach-section="dashboard"]::before{content:"📊";}
+#coach-section-switch [data-coach-section="program"]::before{content:"📋";}
+#coach-section-switch [data-coach-section="roster"]::before{content:"🗓️";}
+#coach-section-switch [data-coach-section="session"]::before{content:"🏋️";}
+#coach-section-switch [data-coach-section="messages"]::before{content:"💬";}
+#member-section-switch .plate:hover,
+#me-section-switch button:hover,
+#coach-section-switch button:hover{
   box-shadow:0 4px 12px rgba(0,0,0,.3);
 }
-#member-section-switch .plate:active{
+#member-section-switch .plate:active,
+#me-section-switch button:active,
+#coach-section-switch button:active{
   box-shadow:0 1px 3px rgba(0,0,0,.2);
 }
 
