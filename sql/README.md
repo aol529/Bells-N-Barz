@@ -60,7 +60,18 @@
     in `gym.sql` (member manages own rows, staff full access), no new
     RPCs. Run after `gym.sql` (needs `is_staff()`/`my_user_id()`).
 
-11. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+11. **11-messages.sql** — Messaging: one thread per member, "Staff"
+    collectively as the other party (any coach/admin can see and reply —
+    there's no reliable way to resolve a member's specific trainer to a
+    real staff `user_id`, so this isn't 1:1 with a named trainer). Two
+    new tables (`message_threads`, `messages`), SELECT-only RLS, a
+    `my_thread_id()` helper, and a `send_message()` RPC that does all
+    writes (same "RPC-only writes" shape as `06-accountability-groups.sql`)
+    plus inserts `notifications` rows. Run after `06-accountability-groups.sql`
+    and `09-notifications.sql` (needs `is_staff()`/`my_user_id()` and the
+    `notifications` table).
+
+12. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

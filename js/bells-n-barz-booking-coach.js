@@ -490,6 +490,11 @@
         else if (action === 'unblock-slot') unblockSlot(id);
         else if (action === 'delete-slot') deleteSlot(id);
         else if (action === 'cancel-pt-trainer') cancelPtTrainer(id);
+        else if (action === 'message-client'){
+          window.BNB_MESSAGES_PENDING_MEMBER = id;
+          const messagesBtn = document.querySelector('#coach-section-switch [data-coach-section="messages"]');
+          if (messagesBtn) messagesBtn.click();
+        }
       });
     });
     const addSlotBtn = body.querySelector('#sched-add-slot-btn');
@@ -665,12 +670,13 @@
       return memberName(a.uid) < memberName(b.uid) ? -1 : 1;
     });
 
-    html += '<table class="admin-table"><tr><th>Client</th><th>Next Session</th><th>Last Session</th><th>Total Sessions</th></tr>';
+    html += '<table class="admin-table"><tr><th>Client</th><th>Next Session</th><th>Last Session</th><th>Total Sessions</th><th></th></tr>';
     rows.forEach(r=>{
       html += '<tr><td>'+memberName(r.uid)+'</td>' +
         '<td>'+(r.next ? fmtDate(r.next.sl.date)+' '+fmtTime(r.next.sl.startTime) : '—')+'</td>' +
         '<td>'+(r.last ? fmtDate(r.last.sl.date) : '—')+'</td>' +
-        '<td>'+r.total+'</td></tr>';
+        '<td>'+r.total+'</td>' +
+        '<td><button class="btn2" data-action="message-client" data-id="'+r.uid+'">Message</button></td></tr>';
     });
     html += '</table>';
     return html;

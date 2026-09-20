@@ -80,7 +80,8 @@
     bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing'] },
     billing:      { file: 'js/bells-n-barz-billing.js' },
     migrate:      { file: 'js/bells-n-barz-migrate.js' },
-    accountability: { file: 'js/bells-n-barz-accountability.js' }
+    accountability: { file: 'js/bells-n-barz-accountability.js' },
+    messages:     { file: 'js/bells-n-barz-messages.js' }
   };
   const BNB_MODULE_PROMISES = {};
   function bnbLoadModule(key){
@@ -1244,6 +1245,7 @@
     <button class="plate" data-tab="time">Timers</button>
     <button class="plate" data-tab="me">Me</button>
     <button class="plate" data-tab="accountability">My Teams</button>
+    <button class="plate" data-tab="messages">Messages</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1664,6 +1666,11 @@
   </div>
 </div>
 
+<!-- ================= MESSAGES ================= -->
+<section class="member-section" id="tab-messages">
+<div id="messages-body"></div>
+</section>
+
 <!-- ================= LIVE SESSION LOG (member) ================= -->
 <section class="member-section active" id="tab-session">
 <div class="day-head"><h2>Live Session Log</h2></div>
@@ -2083,6 +2090,7 @@
     <button data-coach-section="program">Program Builder</button>
     <button data-coach-section="roster">Roster &amp; Availability</button>
     <button data-coach-section="session">Live Session</button>
+    <button data-coach-section="messages">Messages</button>
   </div>
 
   <div class="coach-section active" id="coach-section-dashboard">
@@ -2166,6 +2174,11 @@
       </div>
     </div>
     </div>
+  </div>
+
+  <div class="coach-section" id="coach-section-messages">
+    <div class="admin-notice">Every message here is visible to all coaches/admins — this is a shared inbox, not a private line to one specific trainer.</div>
+    <div id="coach-messages-body"></div>
   </div>
   </div>
 </section>
@@ -4251,7 +4264,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams', messages:'Messages'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -4268,13 +4281,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability'];
+const memberSectionTabs = ['session','time','me','accountability','messages'];
 const adminSectionTabs = ['billing', 'users', 'sessions'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -4313,7 +4326,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -4338,6 +4351,7 @@ function switchTab(rawTab, scrollTop){
   const TAB_TO_MODULE = {
     me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track load lazily from the inner me-section-switch instead, once actually selected.
     accountability: 'accountability',
+    messages: 'messages',
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
@@ -4389,6 +4403,9 @@ function switchTab(rawTab, scrollTop){
   // pending invite responded to in another tab, a member signing up
   // mid-session) — refresh on tab-open, same pattern as the others above.
   if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
+  // Messages: same reasoning as My Teams above — refresh on tab-open so a
+  // reply sent from elsewhere (or by staff) doesn't sit stale in the DOM.
+  if (tab === 'messages' && typeof window.bnbMessagesOnTabShown === 'function') window.bnbMessagesOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
   // logged — refresh on tab-open so that line doesn't go stale.
@@ -4412,7 +4429,8 @@ let previousLocation = null;
     dashboard: document.getElementById('coach-section-dashboard'),
     program: document.getElementById('coach-section-program'),
     roster: document.getElementById('coach-section-roster'),
-    session: document.getElementById('coach-section-session')
+    session: document.getElementById('coach-section-session'),
+    messages: document.getElementById('coach-section-messages')
   };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -4420,6 +4438,17 @@ let previousLocation = null;
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
       if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
+      if (key === 'messages'){
+        if (typeof bnbLoadModule === 'function'){
+          bnbLoadModule('messages').then(() => {
+            if (typeof window.bnbMessagesStaffOnTabShown === 'function') window.bnbMessagesStaffOnTabShown();
+          }).catch(err => {
+            console.error(err);
+            const t = document.getElementById('t-toast');
+            if (t){ t.textContent = 'Failed to load this section — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+          });
+        }
+      }
     });
   });
 })();
@@ -5178,6 +5207,10 @@ createIntervalTimer(
 <script>
 /* ---------------- NUTRITION TRACKER ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-nutrition.js (loaded on demand — see bnbLoadModule) -->
+</script>
+<script>
+/* ---------------- MESSAGES (Member <-> Staff) ---------------- */
+<!-- LAZY-LOADED MODULE: bells-n-barz-messages.js (loaded on demand — see bnbLoadModule) -->
 </script>
 <script>
 /* ---- Exercise Glance: search + jump-nav wiring (scoped to .glance-scope) ---- */

@@ -637,6 +637,37 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 }
 .weight-clear-btn:hover{border-color:var(--accent-2);color:var(--accent-2);}
 
+/* ---------- MESSAGES ---------- */
+.sched-scope .msg-thread{
+  max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;
+  padding:16px;background:var(--surface);border:1px solid var(--line-soft);margin-top:16px;
+}
+.sched-scope .msg-bubble{max-width:75%;padding:10px 12px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line-soft);}
+.sched-scope .msg-bubble.mine{align-self:flex-end;background:rgba(var(--accent-rgb),0.12);border-color:var(--accent-dim);}
+.sched-scope .msg-meta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted-2);margin-bottom:4px;}
+.sched-scope .msg-body{font-size:14px;color:var(--text);white-space:pre-wrap;word-break:break-word;}
+.sched-scope .msg-compose{display:flex;gap:10px;margin-top:12px;align-items:flex-end;flex-wrap:wrap;}
+.sched-scope .msg-input{
+  flex:1;min-width:200px;min-height:44px;max-height:140px;resize:vertical;padding:10px 12px;
+  background:var(--surface);border:1px solid var(--line-soft);color:var(--text);font-size:14px;border-radius:2px;
+}
+.sched-scope .msg-staff-layout{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-top:16px;}
+.sched-scope .msg-thread-list{display:flex;flex-direction:column;gap:4px;}
+.sched-scope .msg-thread-row{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;
+  background:var(--surface);border:1px solid var(--line-soft);border-radius:2px;cursor:pointer;font-size:13.5px;
+}
+.sched-scope .msg-thread-row:hover{border-color:var(--accent-dim);}
+.sched-scope .msg-thread-row.active{border-color:var(--accent);background:var(--surface-2);}
+.sched-scope .msg-thread-name{color:var(--text);}
+.sched-scope .msg-needs-reply{
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.05em;text-transform:uppercase;
+  color:var(--accent-2);border:1px solid var(--accent-2);border-radius:2px;padding:2px 6px;white-space:nowrap;
+}
+@media (max-width:700px){
+  .sched-scope .msg-staff-layout{grid-template-columns:1fr;}
+}
+
 /* ---------- PERIOD TAB ---------- */
 .period-flow-switch{display:flex;flex-wrap:wrap;border-radius:0;}
 .period-flow-switch button{flex:1;white-space:nowrap;}
