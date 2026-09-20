@@ -4726,6 +4726,13 @@ plates.forEach(p => {
 function restoreInitialHash(){
   const [initial, initialSub] = location.hash.replace('#','').split(':');
   if (initial && document.getElementById('tab-' + initial)) {
+    // Every tab-panel id restorable here belongs to the Gym app, which is
+    // one of several outer "site pages" (Home/Blog/Gallery/Shop/Gym) — and
+    // "site-home" is the one marked active in the static HTML. Without
+    // this, the tab click below still runs correctly, but stays hidden
+    // behind the Home page, which is exactly what was showing up as
+    // "reload always throws me back to Home."
+    if (typeof window.switchSite === 'function') window.switchSite('gym');
     document.querySelector('[data-tab="' + initial + '"]').click();
     if (initialSub){
       const subBtn = document.querySelector('#coach-section-switch [data-coach-section="' + initialSub + '"]')
