@@ -1553,22 +1553,25 @@ header.site{
 .sched-scope .sched-sub .plate:hover{border-color:var(--muted); color:var(--text); background:transparent;}
 .sched-scope .sched-sub .plate.active{border-color:var(--accent-dim); color:var(--accent); background:rgba(var(--accent-rgb),.08); font-weight:600;}
 
-/* ---- BIG-BUTTON MEMBER/ME NAV (experiment) ----
-   The two clearly member-facing, likely-on-a-phone-mid-workout sub-navs
-   — Member's own switch and the Me tracker switch nested under it.
-   Coach's sub-nav (mixed mobile/desk use) and Admin's (desk/data-dense)
-   are untouched for now. Overrides the flat-tab look above via ID
-   specificity. Revert: git checkout pre-atm-ui-experiment --
-   css/bells-n-barz.css "bells n barz (main file).html" */
+/* ---- BIG-BUTTON MEMBER/ME/COACH NAV (experiment) ----
+   Member's own switch, the Me tracker switch nested under it, and now
+   Coach's sub-nav too (trainers use Live Session/Roster from the gym
+   floor on a phone as often as at a desk). Admin's sub-nav (desk/
+   data-dense: Billing/Users/Sessions/Reports) is still untouched.
+   Overrides the flat-tab look above via ID specificity. Revert:
+   git checkout pre-atm-ui-experiment -- css/bells-n-barz.css
+   "bells n barz (main file).html" */
 #member-section-switch,
-#me-section-switch{
+#me-section-switch,
+#coach-section-switch{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));
   gap:12px;
   margin-bottom:22px;
 }
 #member-section-switch .plate,
-#me-section-switch .plate{
+#me-section-switch .plate,
+#coach-section-switch button{
   min-height:84px;
   padding:16px 10px;
   border-radius:8px;
@@ -1585,17 +1588,20 @@ header.site{
   transition:transform .08s ease, border-color .15s ease, background .15s ease;
 }
 #member-section-switch .plate:hover,
-#me-section-switch .plate:hover{
+#me-section-switch .plate:hover,
+#coach-section-switch button:hover{
   border-color:var(--accent-dim);
   background:var(--surface-2);
   color:var(--text);
 }
 #member-section-switch .plate:active,
-#me-section-switch .plate:active{
+#me-section-switch .plate:active,
+#coach-section-switch button:active{
   transform:scale(0.96);
 }
 #member-section-switch .plate.active,
-#me-section-switch .plate.active{
+#me-section-switch .plate.active,
+#coach-section-switch button.active{
   border-color:var(--accent);
   background:rgba(var(--accent-rgb),.14);
   color:var(--accent);
