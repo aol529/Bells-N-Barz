@@ -6888,6 +6888,16 @@ createIntervalTimer(
         });
       });
       return points;
+    },
+    // Read-only — used by the Coach Dashboard's "Today's Program" marker
+    // to compare a member's assigned exercises for a given date against
+    // what they actually logged. Returns null if nothing was logged that
+    // day; otherwise the session's mode ('program' or 'freeform') plus
+    // its exercises, so the caller can tell a real name-match apart from
+    // a freeform entry that was never tied to the assigned program.
+    getLoggedExercisesForDate: function(memberId, dateIso){
+      const row = loadMlsHistory().find(h => h.memberId === memberId && h.dateIso === dateIso);
+      return row ? { mode: row.mode, exercises: row.exercises || [] } : null;
     }
   };
 

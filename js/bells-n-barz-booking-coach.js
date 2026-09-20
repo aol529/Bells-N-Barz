@@ -404,9 +404,14 @@
   // rather than rebuilt from scratch each render, so the selected client/
   // marker survive a dashboard refresh (e.g. after booking a slot).
   let progressClientId = null;
-  let progressMarker = 'assessment'; // 'assessment' | 'exercise' | 'attendance'
+  let progressMarker = 'assessment'; // 'assessment' | 'exercise' | 'attendance' | 'compliance'
   let progressAssessmentField = 'weight'; // 'weight' | 'bodyfat'
   let progressExercise = null;
+  // "Today's Program" marker: programs isn't preloaded in this file's
+  // closure (Program Builder's data lives in the main file's own separate
+  // script), so each selected client's today's-program blob is fetched
+  // once on demand and cached here, keyed by client id.
+  let complianceProgramCache = {};
 
   /* ---------------- IDENTITY ROW ---------------- */
   // Booking is member-only now — the old Admin view (class/session
@@ -865,7 +870,69 @@
       const labels = counts.map((_,i)=> i===counts.length-1 ? 'This wk' : (counts.length-1-i) + 'wk ago');
       return svgBarChart(counts, labels) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Visits per rolling 7-day window</span></div>';
     }
+    if (progressMarker === 'compliance'){
+      return complianceHtml(clientId);
+    }
     return '';
+  }
+
+  // Same Mon..Sun resolution used elsewhere in this app (main file lines
+  // 5340/5956, js/bells-n-barz-accountability.js) so "today" means the
+  // same local-time day everywhere, not recomputed differently here.
+  const DAY_ORDER = ['mon','tue','wed','thu','fri','sat','sun'];
+  function todayDayKey(){
+    const idx = new Date().getDay(); // 0=Sun..6=Sat
+    return DAY_ORDER[idx === 0 ? 6 : idx - 1];
+  }
+
+  // "Today's Program" marker: compares a client's assigned exercises for
+  // today against what they actually logged (window.BNB_MLS.getLoggedExercisesForDate,
+  // in the main file — same closure that owns mls_history). programs isn't
+  // preloaded here, so it's fetched once per client and cached in
+  // complianceProgramCache; a cache miss kicks off the fetch and re-renders
+  // the dashboard once it resolves, same fetch-then-rerender pattern used
+  // elsewhere in this file (e.g. refreshPtBookingsFromSupabase -> renderCoachDashboard).
+  function complianceHtml(clientId){
+    if (!(clientId in complianceProgramCache)){
+      complianceProgramCache[clientId] = 'loading';
+      bnbClient.from('programs').select('data').eq('owner_id', clientId).then(({ data, error })=>{
+        complianceProgramCache[clientId] = (!error && data && data.length) ? data[0].data : null;
+        if (progressClientId === clientId && progressMarker === 'compliance') renderCoachDashboard();
+      });
+      return '<div class="weight-chart-empty">Loading today’s program…</div>';
+    }
+    const program = complianceProgramCache[clientId];
+    if (program === 'loading') return '<div class="weight-chart-empty">Loading today’s program…</div>';
+
+    const dayKey = todayDayKey();
+    const blocks = (program && program[dayKey]) || [];
+    if (!blocks.length){
+      return '<div class="weight-chart-empty">Rest day — nothing assigned today.</div>';
+    }
+
+    const logged = (window.BNB_MLS && window.BNB_MLS.getLoggedExercisesForDate) ? window.BNB_MLS.getLoggedExercisesForDate(clientId, TODAY) : null;
+    const isFreeform = logged && logged.mode === 'freeform';
+    const loggedNames = (logged && !isFreeform) ? (logged.exercises||[])
+      .filter(ex => (ex.sets||[]).some(s=>s.done))
+      .map(ex => (ex.name||'').trim().toLowerCase()) : [];
+
+    let html = '';
+    if (!logged){
+      html += '<div class="admin-notice">Nothing logged yet today.</div>';
+    } else if (isFreeform){
+      html += '<div class="admin-notice">Logged freeform today — not matched against the assigned list below.</div>';
+    }
+
+    html += '<table class="admin-table"><tr><th></th><th>Exercise</th><th>Prescribed</th></tr>';
+    blocks.forEach(block=>{
+      (block.exercises||[]).forEach(ex=>{
+        const done = !isFreeform && loggedNames.indexOf((ex.name||'').trim().toLowerCase()) !== -1;
+        const presc = [ex.sets, ex.reps].filter(Boolean).join(' × ');
+        html += '<tr><td>' + (done ? '✓' : '○') + '</td><td>' + esc(ex.name) + '</td><td class="mono">' + esc(presc) + '</td></tr>';
+      });
+    });
+    html += '</table>';
+    return html;
   }
 
   function clientProgressHtml(){
@@ -893,6 +960,7 @@
     html += '<button type="button" class="subtab-btn'+(progressMarker==='assessment'?' active':'')+'" data-marker="assessment">Body Weight &amp; Fat %</button>';
     html += '<button type="button" class="subtab-btn'+(progressMarker==='exercise'?' active':'')+'" data-marker="exercise">Exercise Load</button>';
     html += '<button type="button" class="subtab-btn'+(progressMarker==='attendance'?' active':'')+'" data-marker="attendance">Attendance</button>';
+    html += '<button type="button" class="subtab-btn'+(progressMarker==='compliance'?' active':'')+'" data-marker="compliance">Today\'s Program</button>';
     html += '</div>';
 
     if (progressMarker === 'assessment'){
