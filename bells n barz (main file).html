@@ -1901,11 +1901,6 @@
 <div class="users-scope">
   <div class="day-head"><h2>Members — Admin</h2><span class="day-sub">Account, role, membership/billing, and internal notes</span></div>
   <div class="wrap">
-    <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — member records save to this device's local storage. This is the <b>staff-facing</b> Admin CRUD: account, role, membership/billing, and internal notes. Export JSON regularly to back up.</div>
-    <div class="admin-notice" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
-      <div><b>One-time seed data migration.</b> Pushes the built-in demo data (members, sessions, invoices, products, gallery, blog posts, and more) into Supabase as real rows. Safe to re-run — it skips anything already migrated.</div>
-      <button class="btn2 primary" id="run-migration-btn">Migrate Seed Data →</button>
-    </div>
     <div class="admin-toolbar">
       <button class="btn2 primary" id="usr-new-user-btn">+ Add Member</button>
       <button class="btn2" id="usr-export-btn">Export Members JSON</button>
@@ -1936,6 +1931,12 @@
     </div>
 
     <div class="empty-msg" id="usr-admin-empty" style="display:none;">No members match that search/filter.</div>
+
+    <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — member records save to this device's local storage. This is the <b>staff-facing</b> Admin CRUD: account, role, membership/billing, and internal notes. Export JSON regularly to back up.</div>
+    <div class="admin-notice" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+      <div><b>One-time seed data migration.</b> Pushes the built-in demo data (members, sessions, invoices, products, gallery, blog posts, and more) into Supabase as real rows. Safe to re-run — it skips anything already migrated.</div>
+      <button class="btn2 primary" id="run-migration-btn">Migrate Seed Data →</button>
+    </div>
   </div>
 </div>
 </section>
