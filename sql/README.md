@@ -42,7 +42,13 @@
    relationship (`pt_bookings`, via `activeClientIdsForTrainer()`).
    Safe to run any time after `01-schema.sql`.
 
-8. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+8. **08-accountability-streaks.sql** — adds `checkin_streak(uid)` (a
+   plpgsql port of the existing client-side `currentStreak()` on a
+   member's own Profile page — same rest-gap rule, not a plain
+   consecutive-days count) and extends `accountability_group_feed()` with
+   a `streak` column. Run after `06-accountability-groups.sql`.
+
+9. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
    Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

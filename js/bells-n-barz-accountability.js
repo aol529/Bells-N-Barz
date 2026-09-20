@@ -114,6 +114,7 @@
         <div class="acc-card-head">
           <img class="acc-avatar" src="${escAttr(r.avatar || '')}" alt="">
           <span class="acc-card-name">${esc(r.full_name)}${r.is_me ? ' (You)' : ''}</span>
+          ${r.streak > 0 ? '<span class="acc-streak">\u{1F525} ' + r.streak + '</span>' : ''}
         </div>
         ${r.is_rest_day
           ? '<div class="acc-rest-day">Rest day</div>'
