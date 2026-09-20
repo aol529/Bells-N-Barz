@@ -117,16 +117,21 @@
 
     let detailHtml = '<div class="empty-msg">Select a member to view their thread.</div>';
     let messages = [];
-    const selectedThread = (threads || []).find(t => t.member_id === selectedMemberId);
-    if (selectedThread){
-      const { data, error } = await bnbClient
-        .from('messages').select('*').eq('thread_id', selectedThread.id).order('created_at', { ascending: true });
-      if (error) { console.error('Supabase load messages failed:', error); return; }
-      messages = data || [];
+    if (selectedMemberId){
+      const selectedThread = (threads || []).find(t => t.member_id === selectedMemberId);
+      if (selectedThread){
+        const { data, error } = await bnbClient
+          .from('messages').select('*').eq('thread_id', selectedThread.id).order('created_at', { ascending: true });
+        if (error) { console.error('Supabase load messages failed:', error); return; }
+        messages = data || [];
+      }
+      // Compose box shows even with no existing thread yet — lets staff
+      // proactively start a conversation (e.g. via the Roster "Message"
+      // button) rather than only replying to members who already wrote in.
       detailHtml = `
         <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true)}</div>
         <div class="msg-compose">
-          <textarea class="msg-input" id="msg-staff-input" placeholder="Reply to ${escAttr(nameFor(selectedMemberId))}..."></textarea>
+          <textarea class="msg-input" id="msg-staff-input" placeholder="Message ${escAttr(nameFor(selectedMemberId))}..."></textarea>
           <button class="weight-submit" id="msg-staff-send" type="button">Send</button>
         </div>
       `;
