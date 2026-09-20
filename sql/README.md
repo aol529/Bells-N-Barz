@@ -29,7 +29,13 @@
    `trainer`, `last_checkin`, etc. on their own `users` row. Run after
    gym.sql (needs `is_staff()` to already exist).
 
-6. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+6. **06-accountability-groups.sql** — the Accountability Groups feature:
+   two new tables (`accountability_groups`, `accountability_group_members`)
+   plus RPCs for searching members, connecting/inviting, accepting or
+   declining, leaving, and reading a group's feed (today's workout +
+   check-in stats). Run after gym.sql (needs `is_staff()`/`my_user_id()`).
+
+7. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
    Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

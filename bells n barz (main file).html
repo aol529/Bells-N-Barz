@@ -78,7 +78,8 @@
     // the common case of a staff member using both together anyway.
     bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing'] },
     billing:      { file: 'js/bells-n-barz-billing.js' },
-    migrate:      { file: 'js/bells-n-barz-migrate.js' }
+    migrate:      { file: 'js/bells-n-barz-migrate.js' },
+    accountability: { file: 'js/bells-n-barz-accountability.js' }
   };
   const BNB_MODULE_PROMISES = {};
   function bnbLoadModule(key){
@@ -1226,6 +1227,7 @@
     <button class="plate" data-tab="weight">Weight</button>
     <button class="plate" data-tab="period">Period</button>
     <button class="plate" data-tab="track">Track</button>
+    <button class="plate" data-tab="accountability">Accountability</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1601,6 +1603,47 @@
 <div class="weight-chart-empty" id="mls-graph-empty">Save a couple of sessions logging the same exercise to see a trend here.</div>
 </div>
 </section>
+
+<!-- ================= ACCOUNTABILITY ================= -->
+<section class="member-section" id="tab-accountability">
+<div class="day-head"><h2>Accountability</h2></div>
+<div class="day-focus">An accountability partner in your pocket — see what your group is expected to do today, and whether they've shown up.</div>
+
+<div id="acc-pending-invites"></div>
+
+<div class="sched-sub" id="acc-groups-nav" style="display:none;"></div>
+
+<div class="empty-msg" id="acc-feed-empty">You're not in an accountability group yet — connect with someone below to start one.</div>
+<div id="acc-feed-grid" style="display:none;"></div>
+
+<div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+  <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+    <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Connect</span>
+  </div>
+  <p class="field-hint">Search for a member to invite into an existing group, or start a new one.</p>
+  <input type="text" id="acc-search-input" placeholder="Search members by name…">
+  <div id="acc-search-results"></div>
+</div>
+</section>
+
+<!-- ================= ACCOUNTABILITY: CONNECT PANEL ================= -->
+<div class="panel-backdrop" id="acc-connect-panel-backdrop">
+  <div class="panel">
+    <h2 id="acc-connect-panel-title">Connect</h2>
+    <div class="field" id="acc-connect-group-field" style="display:none;">
+      <label>Add to group</label>
+      <select id="acc-connect-group-select"></select>
+    </div>
+    <div class="field" id="acc-connect-name-field">
+      <label>Group name</label>
+      <input type="text" id="acc-connect-name-input" placeholder="e.g. Morning Crew">
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="acc-connect-cancel">Cancel</button>
+      <button class="btn2 primary" id="acc-connect-save">Send Invite</button>
+    </div>
+  </div>
+</div>
 
 </div>
 </section>
@@ -4112,7 +4155,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Time', weight:'Weight', track:'Track', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Time', weight:'Weight', track:'Track', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', accountability:'Accountability'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -4129,13 +4172,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','weight','period','track'];
+const memberSectionTabs = ['session','time','weight','period','track','accountability'];
 const adminSectionTabs = ['billing', 'users', 'sessions'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', weight: 'tab-member', period: 'tab-member', track: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', weight: 'tab-member', period: 'tab-member', track: 'tab-member', accountability: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -4174,7 +4217,8 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin',
-  session: 'Live Session Log', time: 'Time', weight: 'Weight Log', period: 'Period Tracker', track: 'Track'
+  session: 'Live Session Log', time: 'Time', weight: 'Weight Log', period: 'Period Tracker', track: 'Track',
+  accountability: 'Accountability'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -4204,7 +4248,8 @@ function switchTab(rawTab, scrollTop){
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
     billing: 'billing',
-    users: 'migrate'
+    users: 'migrate',
+    accountability: 'accountability'
   };
   if (TAB_TO_MODULE[tab] && typeof bnbLoadModule === 'function'){
     bnbLoadModule(TAB_TO_MODULE[tab]).catch(err => {
@@ -4247,6 +4292,11 @@ function switchTab(rawTab, scrollTop){
   // above — a member created elsewhere (Shop checkout, Sign Up) wouldn't
   // otherwise show up until a full reload.
   if (tab === 'users' && typeof window.usersOnTabShown === 'function') window.usersOnTabShown();
+  // Accountability's roster/feed can go stale if a group changed
+  // elsewhere (a pending invite responded to in another tab, a member
+  // signing up mid-session) — refresh on tab-open, same pattern as
+  // Live Session/Schedule/Members above.
+  if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
   // logged — refresh on tab-open so that line doesn't go stale.
