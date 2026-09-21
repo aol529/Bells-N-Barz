@@ -681,7 +681,15 @@
     <div class="profile-card" id="usr-login-card">
       <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Log In</div>
       <div class="field"><label>Email</label><input type="email" id="usr-li-email" placeholder="you@example.com"></div>
-      <div class="field"><label>Password</label><input type="password" id="usr-li-password" placeholder="Your password"></div>
+      <div class="field"><label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="usr-li-password" class="pw-input" placeholder="Your password">
+          <button type="button" class="pw-toggle" data-target="usr-li-password" aria-label="Show password">
+            <svg class="pw-eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="pw-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="field-hint" id="usr-li-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-login-btn">Log In</button>
@@ -717,8 +725,24 @@
     <div class="admin-notice">You followed a password reset link — choose a new password below.</div>
     <div class="profile-card" id="usr-reset-card">
       <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Set New Password</div>
-      <div class="field"><label>New Password</label><input type="password" id="usr-rs-password" placeholder="At least 6 characters"></div>
-      <div class="field"><label>Confirm New Password</label><input type="password" id="usr-rs-password2" placeholder="Retype password"></div>
+      <div class="field"><label>New Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="usr-rs-password" class="pw-input" placeholder="At least 6 characters">
+          <button type="button" class="pw-toggle" data-target="usr-rs-password" aria-label="Show password">
+            <svg class="pw-eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="pw-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="field"><label>Confirm New Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="usr-rs-password2" class="pw-input" placeholder="Retype password" onpaste="return false" ondrop="return false">
+          <button type="button" class="pw-toggle" data-target="usr-rs-password2" aria-label="Show password">
+            <svg class="pw-eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg class="pw-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
       <div class="field-hint" id="usr-rs-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-rs-save-btn">Save New Password</button>
@@ -743,11 +767,31 @@
       <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Create Your Account</div>
       <div class="field-row2">
         <div class="field"><label>Full Name</label><input type="text" id="usr-su-fullname" placeholder="e.g. Achol Deng"></div>
-        <div class="field"><label>Email</label><input type="email" id="usr-su-email" placeholder="you@example.com"></div>
+        <div class="field"><label>Phone</label><input type="tel" id="usr-su-phone" placeholder="+254…"></div>
       </div>
       <div class="field-row2">
-        <div class="field"><label>Password</label><input type="password" id="usr-su-password" placeholder="Choose a password"></div>
-        <div class="field"><label>Phone</label><input type="tel" id="usr-su-phone" placeholder="+254…"></div>
+        <div class="field"><label>Email</label><input type="email" id="usr-su-email" placeholder="you@example.com"></div>
+        <div class="field"><label>Confirm Email</label><input type="email" id="usr-su-email2" placeholder="Retype your email" onpaste="return false" ondrop="return false" autocomplete="off"></div>
+      </div>
+      <div class="field-row2">
+        <div class="field"><label>Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="usr-su-password" class="pw-input" placeholder="Choose a password">
+            <button type="button" class="pw-toggle" data-target="usr-su-password" aria-label="Show password">
+              <svg class="pw-eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="field"><label>Confirm Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="usr-su-password2" class="pw-input" placeholder="Retype password" onpaste="return false" ondrop="return false" autocomplete="off">
+            <button type="button" class="pw-toggle" data-target="usr-su-password2" aria-label="Show password">
+              <svg class="pw-eye-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="pw-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a21.7 21.7 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="field-hint" id="usr-su-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
@@ -3005,6 +3049,19 @@
     toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
   }
 
+  /* ---------------- PASSWORD SHOW/HIDE TOGGLES ---------------- */
+  document.querySelectorAll('#site-users .pw-toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const input = document.getElementById(btn.getAttribute('data-target'));
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.querySelector('.pw-eye-on').hidden = !showing;
+      btn.querySelector('.pw-eye-off').hidden = showing;
+      btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+  });
+
   /* ---------------- VIEW SWITCH ---------------- */
   function switchView(view){
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -3063,18 +3120,24 @@
   document.getElementById('usr-signup-btn').addEventListener('click', async ()=>{
     const fullName = document.getElementById('usr-su-fullname').value.trim();
     const email = document.getElementById('usr-su-email').value.trim();
+    const email2 = document.getElementById('usr-su-email2').value.trim();
     const password = document.getElementById('usr-su-password').value;
+    const password2 = document.getElementById('usr-su-password2').value;
     const phone = document.getElementById('usr-su-phone').value.trim();
     document.getElementById('usr-su-error').style.display = 'none';
 
     if (!fullName){ showSignupError('Give your account a name first.'); return; }
     if (!email){ showSignupError('An email is required to sign up.'); return; }
+    if (!email2){ showSignupError('Retype your email to confirm it.'); return; }
+    if (email.toLowerCase() !== email2.toLowerCase()){ showSignupError('Emails do not match.'); return; }
     if (users.some(u=>u.email.toLowerCase() === email.toLowerCase())){
       showSignupError('An account with that email already exists.');
       return;
     }
     if (!password){ showSignupError('Choose a password first.'); return; }
     if (password.length < 6){ showSignupError('Password must be at least 6 characters.'); return; }
+    if (!password2){ showSignupError('Retype your password to confirm it.'); return; }
+    if (password !== password2){ showSignupError('Passwords do not match.'); return; }
 
     const btn = document.getElementById('usr-signup-btn');
     btn.disabled = true; btn.textContent = 'Creating account…';
@@ -3116,7 +3179,9 @@
 
     document.getElementById('usr-su-fullname').value = '';
     document.getElementById('usr-su-email').value = '';
+    document.getElementById('usr-su-email2').value = '';
     document.getElementById('usr-su-password').value = '';
+    document.getElementById('usr-su-password2').value = '';
     document.getElementById('usr-su-phone').value = '';
 
     showToast('Account created — welcome!');
