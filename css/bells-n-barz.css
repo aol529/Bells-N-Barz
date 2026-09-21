@@ -1577,17 +1577,18 @@ header.site{
 .sched-scope .sched-sub .plate:hover{border-color:var(--muted); color:var(--text); background:transparent;}
 .sched-scope .sched-sub .plate.active{border-color:var(--accent-dim); color:var(--accent); background:rgba(var(--accent-rgb),.08); font-weight:600;}
 
-/* ---- BIG-BUTTON MEMBER/ME/COACH NAV (experiment) ----
-   Member's own switch, the Me tracker switch nested under it, and now
-   Coach's sub-nav too (trainers use Live Session/Roster from the gym
-   floor on a phone as often as at a desk). Admin's sub-nav (desk/
-   data-dense: Billing/Users/Sessions/Reports) is still untouched.
+/* ---- BIG-BUTTON MEMBER/ME/COACH/ADMIN NAV (experiment) ----
+   Member's own switch, the Me tracker switch nested under it, Coach's
+   sub-nav (trainers use Live Session/Roster from the gym floor on a
+   phone as often as at a desk), and now Admin's sub-nav too — Billing/
+   Users/Sessions/Reports land as tiles on mobile the same way.
    Overrides the flat-tab look above via ID specificity. Revert:
    git checkout pre-atm-ui-experiment -- css/bells-n-barz.css
    "bells n barz (main file).html" */
 #member-section-switch,
 #me-section-switch,
-#coach-section-switch{
+#coach-section-switch,
+#admin-section-switch{
   display:grid;
   grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));
   gap:12px;
@@ -1595,7 +1596,8 @@ header.site{
 }
 #member-section-switch .plate,
 #me-section-switch button,
-#coach-section-switch button{
+#coach-section-switch button,
+#admin-section-switch .plate{
   min-height:84px;
   padding:16px 10px;
   border-radius:8px;
@@ -1613,26 +1615,29 @@ header.site{
 }
 #member-section-switch .plate:hover,
 #me-section-switch button:hover,
-#coach-section-switch button:hover{
+#coach-section-switch button:hover,
+#admin-section-switch .plate:hover{
   border-color:var(--accent-dim);
   background:var(--surface-2);
   color:var(--text);
 }
 #member-section-switch .plate:active,
 #me-section-switch button:active,
-#coach-section-switch button:active{
+#coach-section-switch button:active,
+#admin-section-switch .plate:active{
   transform:scale(0.96);
 }
 #member-section-switch .plate.active,
 #me-section-switch button.active,
-#coach-section-switch button.active{
+#coach-section-switch button.active,
+#admin-section-switch .plate.active{
   border-color:var(--accent);
   background:rgba(var(--accent-rgb),.14);
   color:var(--accent);
   font-weight:600;
 }
 
-/* ---- TABLET/POS-STYLE PROTOTYPE (Member/Me/Coach nav) ----
+/* ---- TABLET/POS-STYLE PROTOTYPE (Member/Me/Coach/Admin nav) ----
    Icon-above-label tiles with a lifted, tactile shadow — the natural
    next step on top of the big-button work above (Square/Toast-style
    self-order kiosk, not stark ATM). ::before content per data attribute
@@ -1641,7 +1646,8 @@ header.site{
    css/bells-n-barz.css */
 #member-section-switch .plate,
 #me-section-switch button,
-#coach-section-switch button{
+#coach-section-switch button,
+#admin-section-switch .plate{
   flex-direction:column;
   gap:6px;
   box-shadow:0 2px 6px rgba(0,0,0,.25);
@@ -1649,7 +1655,8 @@ header.site{
 }
 #member-section-switch .plate::before,
 #me-section-switch button::before,
-#coach-section-switch button::before{
+#coach-section-switch button::before,
+#admin-section-switch .plate::before{
   font-size:26px;
   line-height:1;
 }
@@ -1668,14 +1675,20 @@ header.site{
 #coach-section-switch [data-coach-section="roster"]::before{content:"🗓️";}
 #coach-section-switch [data-coach-section="session"]::before{content:"🏋️";}
 #coach-section-switch [data-coach-section="messages"]::before{content:"💬";}
+#admin-section-switch [data-tab="billing"]::before{content:"💳";}
+#admin-section-switch [data-tab="users"]::before{content:"👥";}
+#admin-section-switch [data-tab="sessions"]::before{content:"🗓️";}
+#admin-section-switch [data-tab="reports"]::before{content:"📊";}
 #member-section-switch .plate:hover,
 #me-section-switch button:hover,
-#coach-section-switch button:hover{
+#coach-section-switch button:hover,
+#admin-section-switch .plate:hover{
   box-shadow:0 4px 12px rgba(0,0,0,.3);
 }
 #member-section-switch .plate:active,
 #me-section-switch button:active,
-#coach-section-switch button:active{
+#coach-section-switch button:active,
+#admin-section-switch .plate:active{
   box-shadow:0 1px 3px rgba(0,0,0,.2);
 }
 
@@ -1720,6 +1733,26 @@ header.site{
   #tab-coach:not(.coach-content-mode) .coach-section{display:none !important;}
   #tab-coach.coach-content-mode #coach-section-switch{display:none;}
   #tab-coach.coach-content-mode .coach-back-btn{display:block;}
+}
+
+/* ---- MOBILE: Admin tab lands on the tile screen too ----
+   Same pattern as Member above — Billing/Users/Sessions/Reports land as
+   a tile grid instead of jumping straight into Billing. Admin uses the
+   generic switchTab()/NESTED_TAB_PARENT mechanism (like Member), so the
+   JS side is the `nestedParent === 'tab-admin'` branch in switchTab()
+   plus #admin-back-btn's click handler, not a separate IIFE like Coach's. */
+.admin-back-btn{display:none;}
+@media (max-width:640px){
+  .admin-back-btn{
+    width:100%; margin-bottom:14px; padding:14px;
+    border-radius:8px; border:2px solid var(--line); background:var(--surface);
+    color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
+    text-align:left; cursor:pointer;
+  }
+  .admin-back-btn:active{transform:scale(0.98);}
+  #tab-admin:not(.admin-content-mode) .admin-section{display:none !important;}
+  #tab-admin.admin-content-mode #admin-section-switch{display:none;}
+  #tab-admin.admin-content-mode .admin-back-btn{display:block;}
 }
 
 .sched-scope .chip-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}

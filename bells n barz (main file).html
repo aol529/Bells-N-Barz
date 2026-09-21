@@ -2009,6 +2009,7 @@
 
 <section class="tab-panel" id="tab-admin">
   <div class="sched-scope">
+  <button class="admin-back-btn" id="admin-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="admin-section-switch">
     <button class="plate active" data-tab="billing">Billing</button>
     <button class="plate" data-tab="users">Users</button>
@@ -4493,6 +4494,15 @@ function switchTab(rawTab, scrollTop){
       document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     }
   }
+  // Same tile-home-screen treatment for Admin — landing via the top-nav
+  // ADMIN pill (or a restored #admin hash) shows the Billing/Users/
+  // Sessions/Reports tile grid instead of jumping straight into Billing.
+  if (nestedParent === 'tab-admin'){
+    panel.classList.toggle('admin-content-mode', rawTab !== 'admin');
+    if (rawTab === 'admin'){
+      document.querySelectorAll('#admin-section-switch .plate').forEach(b => b.classList.remove('active'));
+    }
+  }
   // Same tile-home-screen treatment for Coach — landing via the top-nav
   // COACH pill always resets to the tile screen, even if a section was
   // previously open. Entering a specific section (tile tap, or a
@@ -4539,11 +4549,11 @@ function switchTab(rawTab, scrollTop){
   const glanceInlineSearch = document.getElementById('glance-inline-search');
   if (glanceInlineSearch) glanceInlineSearch.classList.toggle('show', tab === 'glance');
   if (scrollTop !== false) window.scrollTo({top: 0, behavior:'smooth'});
-  // Landing via the generic 'member' pill (mobile tile screen, no section
-  // pre-selected) writes '#member' instead of the resolved sub-tab — a
-  // refresh must restore the tile screen, not jump straight into
-  // whichever section the alias happens to resolve to.
-  history.replaceState(null, '', '#' + (rawTab === 'member' ? 'member' : tab));
+  // Landing via the generic 'member'/'admin' pill (mobile tile screen, no
+  // section pre-selected) writes '#member'/'#admin' instead of the resolved
+  // sub-tab — a refresh must restore the tile screen, not jump straight
+  // into whichever section the alias happens to resolve to.
+  history.replaceState(null, '', '#' + (rawTab === 'member' || rawTab === 'admin' ? rawTab : tab));
 }
 
 const backPill = document.getElementById('back-pill');
@@ -4852,6 +4862,15 @@ if (coachBackBtn){
     document.getElementById('tab-coach').classList.remove('coach-content-mode');
     document.querySelectorAll('#coach-section-switch button').forEach(b => b.classList.remove('active'));
     history.replaceState(null, '', '#coach');
+  });
+}
+// Admin's mobile tile screen's Back button — same pattern as Member's.
+const adminBackBtn = document.getElementById('admin-back-btn');
+if (adminBackBtn){
+  adminBackBtn.addEventListener('click', () => {
+    document.getElementById('tab-admin').classList.remove('admin-content-mode');
+    document.querySelectorAll('#admin-section-switch .plate').forEach(b => b.classList.remove('active'));
+    history.replaceState(null, '', '#admin');
   });
 }
 // Hash is either a plain tab key ('#reports') or, for the Coach/Me
