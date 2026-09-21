@@ -1263,6 +1263,7 @@
     <button class="plate" data-tab="me">Me</button>
     <button class="plate" data-tab="accountability">My Teams</button>
     <button class="plate" data-tab="messages">Messages</button>
+    <button class="plate" data-tab="schedule">Booking</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1688,6 +1689,16 @@
 <div id="messages-body"></div>
 </section>
 
+<!-- ================= BOOKING (moved under Member) ================= -->
+<section class="member-section" id="tab-schedule">
+  <div class="day-head"><h2>Booking — Classes &amp; 1-on-1 Sessions</h2><span class="day-sub">Book classes and trainer slots</span></div>
+  <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage.</div>
+  <div class="sched-scope">
+    <div class="identity-row" id="sched-identity-row"></div>
+    <div id="sched-view-body"></div>
+  </div>
+</section>
+
 <!-- ================= LIVE SESSION LOG (member) ================= -->
 <section class="member-section active" id="tab-session">
 <div class="day-head"><h2>Live Session Log</h2></div>
@@ -1950,16 +1961,6 @@
 </footer>
 
 
-  </div>
-</section>
-
-<!-- ================= LOGSHEET ================= -->
-<section class="tab-panel" id="tab-schedule">
-  <div class="day-head"><h2>Booking — Classes &amp; 1-on-1 Sessions</h2><span class="day-sub">Book classes and trainer slots</span></div>
-  <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage.</div>
-  <div class="sched-scope">
-    <div class="identity-row" id="sched-identity-row"></div>
-    <div id="sched-view-body"></div>
   </div>
 </section>
 
@@ -4304,13 +4305,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability','messages'];
+const memberSectionTabs = ['session','time','me','accountability','messages','schedule'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');

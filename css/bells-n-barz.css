@@ -1652,6 +1652,7 @@ header.site{
 #member-section-switch [data-tab="me"]::before{content:"👤";}
 #member-section-switch [data-tab="accountability"]::before{content:"👥";}
 #member-section-switch [data-tab="messages"]::before{content:"💬";}
+#member-section-switch [data-tab="schedule"]::before{content:"📅";}
 #me-section-switch [data-me-section="weight"]::before{content:"⚖️";}
 #me-section-switch [data-me-section="period"]::before{content:"🩸";}
 #me-section-switch [data-me-section="track"]::before{content:"📈";}
@@ -1682,9 +1683,10 @@ header.site{
    entire block only exists inside the media query. Revert:
    git checkout pre-atm-ui-experiment -- css/bells-n-barz.css
    "bells n barz (main file).html" */
+.member-back-btn{display:none;}
 @media (max-width:640px){
   .member-back-btn{
-    display:none; width:100%; margin-bottom:14px; padding:14px;
+    width:100%; margin-bottom:14px; padding:14px;
     border-radius:8px; border:2px solid var(--line); background:var(--surface);
     color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
     text-align:left; cursor:pointer;
