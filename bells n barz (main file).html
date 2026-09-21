@@ -2535,15 +2535,6 @@
 </div>
 </div>
 </div>
-<div class="bottom-strip">
-<div class="wrap">
-<div class="ticker-inline"><strong>Latest —</strong> v2.9 five-day split restructure: Monday (Rows &amp; Bench Presses), Tuesday (Quads, Adductors &amp; Hip Flexors), Wednesday (Rest), Thursday (Vertical Push &amp; Pull — merged former Wednesday + Friday), Friday (Glutes, Hamstrings &amp; Low Back — relocated from former Thursday), Saturday (Chest &amp; Arms). Adds a genuine mid-week rest day with zero weekly volume lost.</div>
-<div class="bottom-strip-meta">
-<div class="version-badge">v2.2 · Aug 14 2026</div>
-<button class="theme-toggle" id="changelog-btn" title="View revision history" type="button">Changelog</button>
-</div>
-</div>
-</div>
 <footer class="site">
 <div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a></div>
 </footer>
@@ -4319,12 +4310,6 @@ const weekdayTabs = ['mon','tue','wed','thu','fri','sat','sun'];
 if (weekdayDropdown){
   weekdayDropdown.addEventListener('change', () => { hideBackPill(); switchTab(weekdayDropdown.value); });
 }
-
-/* ---------------- CHANGELOG SHORTCUT ---------------- */
-document.getElementById('changelog-btn').addEventListener('click', () => {
-  hideBackPill();
-  switchTab('log');
-});
 
 /* ---------------- PROGRAM AUDIT (footer link) ---------------- */
 // Both audit tables (Current Program Audit, Program Design Audit) are
