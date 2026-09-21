@@ -1256,6 +1256,7 @@
 <section class="tab-panel" id="tab-member">
   <div class="day-head"><h2>Member — Training Tools</h2><span class="day-sub">Live session logging, interval timers, weight tracking, and progress</span></div>
   <div class="sched-scope">
+  <button class="member-back-btn" id="member-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="member-section-switch">
     <button class="plate active" data-tab="session">Live Session</button>
     <button class="plate" data-tab="time">Timers</button>
@@ -4407,6 +4408,21 @@ function switchTab(rawTab, scrollTop){
       sec.classList.toggle('active', sec.id === 'tab-' + tab);
     });
   }
+  // Mobile-only: Member lands on the 6-tile screen instead of defaulting
+  // into Live Session — rawTab === 'member' means the top-nav pill (or a
+  // restored #member hash) was used, as opposed to a specific tile/deep
+  // link, which should still open straight into its content as normal.
+  // Desktop is untouched — the CSS side of this only exists inside the
+  // max-width:640px media query, so this class does nothing there.
+  if (nestedParent === 'tab-member'){
+    panel.classList.toggle('member-content-mode', rawTab !== 'member');
+    // Landing on the tile screen itself: no tile should look pre-selected
+    // (the resolved sub-tab, e.g. Live Session, is still the .active
+    // .member-section underneath — only its tile's highlight is cleared).
+    if (rawTab === 'member'){
+      document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
+    }
+  }
   if (weekdayDropdown && weekdayTabs.includes(tab)) weekdayDropdown.value = tab;
   // Live Session Log's guest/signed-in state can change elsewhere (e.g. the
   // "Booking as" member picker) without this tab re-rendering on its own —
@@ -4440,7 +4456,11 @@ function switchTab(rawTab, scrollTop){
   const glanceInlineSearch = document.getElementById('glance-inline-search');
   if (glanceInlineSearch) glanceInlineSearch.classList.toggle('show', tab === 'glance');
   if (scrollTop !== false) window.scrollTo({top: 0, behavior:'smooth'});
-  history.replaceState(null, '', '#' + tab);
+  // Landing via the generic 'member' pill (mobile tile screen, no section
+  // pre-selected) writes '#member' instead of the resolved sub-tab — a
+  // refresh must restore the tile screen, not jump straight into
+  // whichever section the alias happens to resolve to.
+  history.replaceState(null, '', '#' + (rawTab === 'member' ? 'member' : tab));
 }
 
 const backPill = document.getElementById('back-pill');
@@ -4727,6 +4747,17 @@ plates.forEach(p => {
     switchTab(tab);
   });
 });
+// Mobile Member tile screen's Back button — returns from a section's
+// content to the tile grid without changing which section is marked
+// .active internally (so tapping the same tile again just re-shows it).
+const memberBackBtn = document.getElementById('member-back-btn');
+if (memberBackBtn){
+  memberBackBtn.addEventListener('click', () => {
+    document.getElementById('tab-member').classList.remove('member-content-mode');
+    document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
+    history.replaceState(null, '', '#member');
+  });
+}
 // Hash is either a plain tab key ('#reports') or, for the Coach/Me
 // sub-switchers (which aren't part of the generic switchTab()/.plate
 // system), a compound 'outerTab:subKey' ('#coach:messages', '#me:nutrition')
