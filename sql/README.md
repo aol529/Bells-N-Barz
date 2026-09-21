@@ -78,7 +78,14 @@
     silently denies any command with no matching policy). Run any time
     after `09-notifications.sql`.
 
-13. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+13. **13-trainer-assignment.sql** — adds a real `trainer_id` link from a
+    member to their assigned coach (organizational only — no RLS
+    changes, every staff role keeps full access everywhere, same as
+    before). Also updates `protect_staff_only_user_columns` (from
+    `03-fix-users-self-escalation.sql`) so a member still can't
+    self-assign their own coach. Run after `03-fix-users-self-escalation.sql`.
+
+14. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

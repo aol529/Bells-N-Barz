@@ -392,7 +392,16 @@
     try { return localStorage.getItem('bnb-sched-self-member') || (getSchedMembers()[0]||{}).id; }
     catch(e){ return (getSchedMembers()[0]||{}).id; }
   })();
-  let selfTrainerId = (function(){ try { return localStorage.getItem('bnb-sched-self-trainer') || (getSchedTrainers()[0]||{}).id; } catch(e){ return (getSchedTrainers()[0]||{}).id; } })();
+  // Same pattern as selfMemberId above: a real logged-in trainer is always
+  // themselves, never something to "view as" — the localStorage/first-
+  // trainer fallback below only applies to admin/staff accounts without
+  // the trainer role, who legitimately need to pick whose roster to view.
+  let selfTrainerId = (function(){
+    var real = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (real && real.roles && real.roles.indexOf('trainer') !== -1) return real.id;
+    try { return localStorage.getItem('bnb-sched-self-trainer') || (getSchedTrainers()[0]||{}).id; }
+    catch(e){ return (getSchedTrainers()[0]||{}).id; }
+  })();
   let memberSubTab = 'browse';
   let trainerSubTab = 'roster';
   let adminSubTab = 'classes';
@@ -436,6 +445,17 @@
   function renderCoachIdentityRow(){
     const row = document.getElementById('coach-identity-row');
     if (!row) return;
+    // A logged-in trainer always sees their own roster — no "viewing as"
+    // switch, so they can't casually browse another trainer's clients.
+    // Admin/staff accounts without the trainer role keep the switcher,
+    // a legitimate oversight/coverage convenience.
+    const real = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const isTrainer = !!(real && real.roles && real.roles.indexOf('trainer') !== -1);
+    if (isTrainer){
+      selfTrainerId = real.id;
+      row.innerHTML = '<label>Viewing</label><span class="status-pill">' + esc(real.fullName) + ' (you)</span>';
+      return;
+    }
     if (!ensureValidSelfTrainer()){
       row.innerHTML = '<label>Viewing as</label><span class="status-pill blocked">No trainer accounts</span>';
       return;
@@ -637,17 +657,24 @@
   }
 
   function trainerRosterHtml(){
-    // Roster = distinct members with at least one confirmed 1-on-1 booking with
-    // this trainer (bnb-sched-ptbookings-v1), each resolved against their slot
-    // for date/time. Paired with a quick load summary (upcoming 1-on-1s + upcoming
-    // class sessions) so a trainer can see "who's mine" and "how full is my week"
-    // in one place, instead of digging through the raw slot list.
+    // Roster = the union of (a) members formally assigned to this trainer
+    // (users.trainer_id) and (b) members with at least one confirmed 1-on-1
+    // booking with them (bnb-sched-ptbookings-v1), each resolved against
+    // their slot for date/time. (a) means an assigned client shows up
+    // immediately, before their first session; (b) keeps a one-off/drop-in
+    // PT client visible even without a formal assignment. Paired with a
+    // quick load summary (upcoming 1-on-1s + upcoming class sessions) so a
+    // trainer can see "who's mine" and "how full is my week" in one place,
+    // instead of digging through the raw slot list.
     const mine = ptSessionsForTrainer(selfTrainerId);
     const clientMap = {};
     mine.forEach(x=>{
       (clientMap[x.p.userId] = clientMap[x.p.userId] || []).push(x);
     });
-    const clientIds = Object.keys(clientMap);
+    const assignedIds = (window.BNB_USERS ? window.BNB_USERS.getMembers() : [])
+      .filter(u => u.trainerId === selfTrainerId)
+      .map(u => u.id);
+    const clientIds = Array.from(new Set([...Object.keys(clientMap), ...assignedIds]));
     const upcomingPt = mine.filter(x=> x.sl.date >= TODAY).length;
     const upcomingClasses = sessions.filter(s=>s.instructorId===selfTrainerId && s.status==='scheduled' && s.date >= TODAY).length;
 
@@ -656,10 +683,10 @@
       upcomingPt + ' upcoming 1-on-1 session' + (upcomingPt===1?'':'s') + ' · ' +
       upcomingClasses + ' upcoming class session' + (upcomingClasses===1?'':'s') + '</div>';
 
-    if (!clientIds.length) return html + '<div class="empty-msg">No 1-on-1 clients yet — booked sessions will show up here.</div>';
+    if (!clientIds.length) return html + '<div class="empty-msg">No clients yet — assign one in Admin &gt; Users, or a booked session will show up here.</div>';
 
     const rows = clientIds.map(uid=>{
-      const entries = clientMap[uid].slice().sort((a,b)=> (a.sl.date+a.sl.startTime) < (b.sl.date+b.sl.startTime) ? -1 : 1);
+      const entries = (clientMap[uid] || []).slice().sort((a,b)=> (a.sl.date+a.sl.startTime) < (b.sl.date+b.sl.startTime) ? -1 : 1);
       const upcoming = entries.filter(x=> x.sl.date >= TODAY);
       const past = entries.filter(x=> x.sl.date < TODAY);
       return { uid, total: entries.length, next: upcoming[0] || null, last: past.length ? past[past.length-1] : null };
@@ -727,9 +754,15 @@
     const a = new Date(TODAY + 'T00:00:00'), b = new Date(dateStr + 'T00:00:00');
     return Math.round((a - b) / 86400000);
   }
+  // Same union as trainerRosterHtml() above: formally assigned (trainer_id)
+  // plus anyone with a confirmed 1-on-1 booking, so the Dashboard's "Active
+  // Clients" count matches what the Roster tab actually shows.
   function activeClientIdsForTrainer(trainerId){
     const seen = {};
     ptSessionsForTrainer(trainerId).forEach(x=> seen[x.p.userId] = true);
+    (window.BNB_USERS ? window.BNB_USERS.getMembers() : [])
+      .filter(u => u.trainerId === trainerId)
+      .forEach(u => seen[u.id] = true);
     return Object.keys(seen);
   }
   function todaysAgendaForTrainer(trainerId){

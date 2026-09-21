@@ -2347,7 +2347,7 @@
       </div>
       <div class="field-row2">
         <div class="field"><label>Preferred Workout Time</label><input type="text" id="usr-f-preftime" placeholder="e.g. Weekday mornings"></div>
-        <div class="field"><label>Assigned Trainer</label><input type="text" id="usr-f-trainer" placeholder="e.g. Coach KA"></div>
+        <div class="field"><label>Assigned Trainer</label><select id="usr-f-trainer-id"></select></div>
       </div>
     </div>
 
@@ -2726,7 +2726,7 @@
       avatar: u.avatar, dob: u.dob || null, phone: u.phone, address: u.address,
       height: u.height || null, weight: u.weight || null, experience: u.experience,
       goals: u.goals, injury: u.injury, ec_name: u.ecName, ec_phone: u.ecPhone,
-      pref_time: u.prefTime, trainer: u.trainer, plan: u.plan, mstatus: u.mstatus,
+      pref_time: u.prefTime, trainer: u.trainer, trainer_id: u.trainerId || null, plan: u.plan, mstatus: u.mstatus,
       contract_end: u.contractEnd || null, balance: u.balance || 0, comp: u.comp,
       last_checkin: u.lastCheckin || null, auto_renew: !!u.autoRenew, flag: u.flag,
       lead_source: u.leadSource, internal_notes: u.internalNotes, credits: u.credits || 0
@@ -2739,7 +2739,7 @@
       dob: r.dob||'', phone: r.phone||'', address: r.address||'',
       height: r.height, weight: r.weight, experience: r.experience,
       goals: r.goals, injury: r.injury, ecName: r.ec_name, ecPhone: r.ec_phone,
-      prefTime: r.pref_time, trainer: r.trainer, plan: r.plan, mstatus: r.mstatus,
+      prefTime: r.pref_time, trainer: r.trainer, trainerId: r.trainer_id || '', plan: r.plan, mstatus: r.mstatus,
       contractEnd: r.contract_end||'', balance: r.balance||0, comp: r.comp,
       lastCheckin: r.last_checkin||'', autoRenew: r.auto_renew, flag: r.flag,
       leadSource: r.lead_source, internalNotes: r.internal_notes, credits: r.credits||0
@@ -3447,7 +3447,7 @@
       <div class="readonly-strip">
         <span class="ro-pill">Plan: <b>${esc(u.plan||'—')}</b></span>
         <span class="ro-pill">Status: <span class="status-pill ${esc(u.mstatus)}">${esc(u.mstatus)}</span></span>
-        <span class="ro-pill">Trainer: <b>${esc(u.trainer||'Unassigned')}</b></span>
+        <span class="ro-pill">Trainer: <b>${esc((u.trainerId && window.BNB_USERS && window.BNB_USERS.getName(u.trainerId)) || 'Unassigned')}</b></span>
         <span class="ro-pill">Member since: <b>${fmtDate(u.createdAt)}</b></span>
       </div>
       <div class="field-hint" style="margin-bottom:18px;">Plan, status, and billing are managed by staff and shown here read-only. Everything below is yours to edit.</div>
@@ -3759,7 +3759,13 @@
     document.getElementById('usr-f-ec-name').value = u ? u.ecName : '';
     document.getElementById('usr-f-ec-phone').value = u ? u.ecPhone : '';
     document.getElementById('usr-f-preftime').value = u ? u.prefTime : '';
-    document.getElementById('usr-f-trainer').value = u ? u.trainer : '';
+    (function(){
+      const sel = document.getElementById('usr-f-trainer-id');
+      const trainers = window.BNB_USERS ? window.BNB_USERS.getTrainers() : [];
+      sel.innerHTML = '<option value="">Unassigned</option>' +
+        trainers.map(t => '<option value="'+t.id+'">'+esc(t.fullName)+'</option>').join('');
+      sel.value = (u && u.trainerId) || '';
+    })();
 
     document.getElementById('usr-f-plan').value = u ? u.plan : '';
     document.getElementById('usr-f-mstatus').value = u ? (u.mstatus||'active') : 'active';
@@ -3940,7 +3946,7 @@
       ecName: document.getElementById('usr-f-ec-name').value.trim(),
       ecPhone: document.getElementById('usr-f-ec-phone').value.trim(),
       prefTime: document.getElementById('usr-f-preftime').value.trim(),
-      trainer: document.getElementById('usr-f-trainer').value.trim(),
+      trainerId: document.getElementById('usr-f-trainer-id').value || null,
       plan: document.getElementById('usr-f-plan').value.trim(),
       mstatus: document.getElementById('usr-f-mstatus').value,
       contractEnd: document.getElementById('usr-f-contract-end').value,
