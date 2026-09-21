@@ -2536,7 +2536,7 @@
 </div>
 </div>
 <footer class="site">
-<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a></div>
+<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a> &nbsp;·&nbsp; <a href="#" id="log-footer-link" style="color:var(--muted); text-decoration:underline;">Revision Log</a></div>
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->
@@ -4327,6 +4327,19 @@ if (auditFooterLink){
     if (coverage) coverage.style.display = '';
     if (design) design.style.display = '';
     if (coverage) { try { coverage.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e){} }
+  });
+}
+
+/* ---------------- REVISION LOG (footer link) ---------------- */
+// Small, tucked-into-the-footer entry point, replacing the old
+// prominent bottom-strip ticker/badge/Changelog button — the page
+// itself (#tab-log) is real, substantial content, just no longer
+// surfaced front-and-center.
+const logFooterLink = document.getElementById('log-footer-link');
+if (logFooterLink){
+  logFooterLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('log');
   });
 }
 
