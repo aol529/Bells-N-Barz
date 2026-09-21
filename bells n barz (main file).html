@@ -822,7 +822,6 @@
     <div class="plate util" data-tab="overview" id="nav-manual-btn">MANUAL</div>
     <div class="plate util" data-tab="member" id="nav-member-btn">MEMBER</div>
     <div class="plate util" data-tab="coach">COACH</div>
-    <div class="plate util" data-tab="schedule">BOOKING</div>
     <div class="plate util" data-tab="admin" id="nav-admin-btn">ADMIN</div>
     </div>
     <div class="glance-inline-search" id="glance-inline-search">
@@ -2109,6 +2108,7 @@
 <section class="tab-panel" id="tab-coach">
   <div class="day-head"><h2>Coach — Program &amp; Roster</h2><span class="day-sub">Perform block builder, class roster, and 1-on-1 availability</span></div>
   <div class="sched-scope">
+  <button class="coach-back-btn" id="coach-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="coach-section-switch">
     <button data-coach-section="dashboard" class="active">Dashboard</button>
     <button data-coach-section="program">Program Builder</button>
@@ -4424,6 +4424,19 @@ function switchTab(rawTab, scrollTop){
       document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     }
   }
+  // Same tile-home-screen treatment for Coach — landing via the top-nav
+  // COACH pill always resets to the tile screen, even if a section was
+  // previously open. Entering a specific section (tile tap, or a
+  // restored #coach:key hash) is handled separately in the COACH
+  // SUB-SWITCHER IIFE below, since Coach's inner navigation never goes
+  // through switchTab() at all.
+  if (tab === 'coach'){
+    const coachPanel = document.getElementById('tab-coach');
+    if (coachPanel){
+      coachPanel.classList.remove('coach-content-mode');
+      document.querySelectorAll('#coach-section-switch button').forEach(b => b.classList.remove('active'));
+    }
+  }
   if (weekdayDropdown && weekdayTabs.includes(tab)) weekdayDropdown.value = tab;
   // Live Session Log's guest/signed-in state can change elsewhere (e.g. the
   // "Booking as" member picker) without this tab re-rendering on its own —
@@ -4485,6 +4498,10 @@ let previousLocation = null;
       const key = btn.getAttribute('data-coach-section');
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      // Mobile tile-home-screen: selecting any section here (tile tap, or
+      // a restored #coach:key hash) enters content mode — hides the tiles,
+      // shows the Back button. No-op on desktop (see the media query).
+      document.getElementById('tab-coach').classList.add('coach-content-mode');
       // Encode which sub-section is active in the hash too (as coach:<key>),
       // so a refresh restores it — switchTab() only ever wrote the outer
       // 'coach' tab, leaving every reload stuck back on Dashboard.
@@ -4757,6 +4774,15 @@ if (memberBackBtn){
     document.getElementById('tab-member').classList.remove('member-content-mode');
     document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     history.replaceState(null, '', '#member');
+  });
+}
+// Coach's mobile tile screen's Back button — same pattern as Member's.
+const coachBackBtn = document.getElementById('coach-back-btn');
+if (coachBackBtn){
+  coachBackBtn.addEventListener('click', () => {
+    document.getElementById('tab-coach').classList.remove('coach-content-mode');
+    document.querySelectorAll('#coach-section-switch button').forEach(b => b.classList.remove('active'));
+    history.replaceState(null, '', '#coach');
   });
 }
 // Hash is either a plain tab key ('#reports') or, for the Coach/Me

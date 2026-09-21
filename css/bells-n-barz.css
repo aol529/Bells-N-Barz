@@ -1697,6 +1697,25 @@ header.site{
   #tab-member.member-content-mode .member-back-btn{display:block;}
 }
 
+/* ---- MOBILE: Coach tab lands on the tile screen too ----
+   Same pattern as Member above, adapted for Coach's sub-switcher (its
+   own data-coach-section IIFE, not switchTab()/NESTED_TAB_PARENT) — see
+   the "COACH SUB-SWITCHER" IIFE and the generic plates click handler's
+   `tab === 'coach'` branch for the JS side. */
+.coach-back-btn{display:none;}
+@media (max-width:640px){
+  .coach-back-btn{
+    width:100%; margin-bottom:14px; padding:14px;
+    border-radius:8px; border:2px solid var(--line); background:var(--surface);
+    color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
+    text-align:left; cursor:pointer;
+  }
+  .coach-back-btn:active{transform:scale(0.98);}
+  #tab-coach:not(.coach-content-mode) .coach-section{display:none !important;}
+  #tab-coach.coach-content-mode #coach-section-switch{display:none;}
+  #tab-coach.coach-content-mode .coach-back-btn{display:block;}
+}
+
 .sched-scope .chip-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}
 .sched-scope .chip-filter button{padding:6px 13px; border-radius:20px; border:1px solid var(--line); background:var(--surface-2); color:var(--muted); cursor:pointer; font-size:11.5px; font-family:'IBM Plex Mono',monospace;}
 .sched-scope .chip-filter button.active{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600;}
