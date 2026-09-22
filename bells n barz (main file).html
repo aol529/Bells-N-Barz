@@ -2433,13 +2433,8 @@
       <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
         <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Preset Programs</span>
       </div>
-      <div class="field" style="max-width:420px;">
-        <select id="admin-preset-picker"></select>
-        <p class="field-hint" id="admin-preset-desc" style="margin-top:8px;"></p>
-      </div>
-      <div class="crud-actions" style="padding-left:0;">
-        <button class="btn2 primary" id="admin-preset-load">Load Preset for Selected Client</button>
-      </div>
+      <p class="field-hint" style="margin:0 0 14px;">Pick a tile, then load it onto the client selected above.</p>
+      <div class="format-grid preset-tile-grid" id="admin-preset-grid"></div>
     </div>
 
     <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
@@ -7133,24 +7128,28 @@ createIntervalTimer(
     saveAdminProgram(); renderAdminBlocks();
   };
   (function(){
-    const picker = document.getElementById('admin-preset-picker');
-    const desc = document.getElementById('admin-preset-desc');
-    if (!picker) return;
-    picker.innerHTML = PROGRAM_PRESETS.map(p => '<option value="' + p.id + '">' + esc(p.name) + '</option>').join('');
-    function updateDesc(){
-      const preset = PROGRAM_PRESETS.find(p => p.id === picker.value);
-      desc.textContent = preset ? preset.description : '';
-    }
-    picker.addEventListener('change', updateDesc);
-    updateDesc();
-    document.getElementById('admin-preset-load').onclick = ()=>{
-      const preset = PROGRAM_PRESETS.find(p => p.id === picker.value);
-      if (!preset) return;
-      if (!confirm('Load "' + preset.name + '" for the client currently selected above? This replaces every day of their current program.')) return;
-      adminProgramData = clone(preset.data);
-      saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
-      alert('Preset loaded.');
-    };
+    const grid = document.getElementById('admin-preset-grid');
+    if (!grid) return;
+    grid.innerHTML = PROGRAM_PRESETS.map(p =>
+      '<div class="format-card" data-preset-id="' + esc(p.id) + '">' +
+        '<div class="format-tag">PRESET</div>' +
+        '<h4>' + esc(p.name) + '</h4>' +
+        '<p>' + esc(p.description) + '</p>' +
+        '<div class="format-setup">' +
+          '<button class="format-load-btn" type="button">Load for Client</button>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+    grid.querySelectorAll('.format-card').forEach(card => {
+      card.querySelector('.format-load-btn').onclick = ()=>{
+        const preset = PROGRAM_PRESETS.find(p => p.id === card.dataset.presetId);
+        if (!preset) return;
+        if (!confirm('Load "' + preset.name + '" for the client currently selected above? This replaces every day of their current program.')) return;
+        adminProgramData = clone(preset.data);
+        saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
+        alert('Preset loaded.');
+      };
+    });
   })();
   document.getElementById('admin-export').onclick = ()=>{
     const blob = new Blob([JSON.stringify(adminProgramData, null, 2)], {type:'application/json'});
