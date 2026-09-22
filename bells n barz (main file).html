@@ -6266,6 +6266,106 @@ createIntervalTimer(
       sun: []
     };
   })();
+  const SERGE_NUBRET_DAYS = (function(){
+    const quadsChest = [
+      {name:'Quads', exercises:[
+        {name:'Squats', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'12'},
+        {name:'Leg Press', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'6', reps:'12'},
+        {name:'Leg Extension', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'6', reps:'12'}
+      ]},
+      {name:'Chest', exercises:[
+        {name:'Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'12'},
+        {name:'Flat Bench Flyes', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Incline Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Incline Flyes', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Dumbbell Pullovers', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'6', reps:'12'}
+      ]}
+    ];
+    const backHams = [
+      {name:'Back', exercises:[
+        {name:'Chin-ups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'6', reps:'12'},
+        {name:'Behind the Neck Lat Pulldowns', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'8', reps:'12'},
+        {name:'Lat Pulldowns to the Front', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'6', reps:'12'},
+        {name:'Barbell Bent-over Rows', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps:'12'}
+      ]},
+      {name:'Hamstrings', exercises:[
+        {name:'Lying Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'15'},
+        {name:'Standing Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'15'}
+      ]}
+    ];
+    const shouldersArmsCalves = [
+      {name:'Shoulders', exercises:[
+        {name:'Behind the Neck Barbell Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Alternate Dumbbell Front Raise', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Barbell Upright Row', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps:'12'},
+        {name:'Cable Lateral Raise', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'6', reps:'12'}
+      ]},
+      {name:'Arms', exercises:[
+        {name:'Barbell Curl superset with Triceps Pushdowns', rest:'1 min', tempo:'', equipment:'Barbell/Cable', alternates:'', sets:'8', reps:'12'},
+        {name:'Dumbbell Curl superset with Triceps Dips', rest:'1 min', tempo:'', equipment:'Dumbbell/Bodyweight', alternates:'', sets:'8', reps:'12'}
+      ]},
+      {name:'Calves', exercises:[
+        {name:'Standing Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'12'},
+        {name:'Seated Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'12'}
+      ]}
+    ];
+    return {
+      mon: clone(quadsChest), tue: clone(backHams), wed: clone(shouldersArmsCalves),
+      thu: clone(quadsChest), fri: clone(backHams), sat: clone(shouldersArmsCalves),
+      sun: []
+    };
+  })();
+  const LEE_HANEY_DAYS = (function(){
+    const chestArms = [
+      {name:'Chest & Arms', exercises:[
+        {name:'Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'6–8'},
+        {name:'Dumbbell Bench Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8–10'},
+        {name:'Incline Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'6–8'},
+        {name:'Incline Dumbbell Bench Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8–10'},
+        {name:'Barbell Curl', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Preacher Curl', rest:'1 min', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Cable Tricep Extensions', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'10–12'},
+        {name:'Skullcrushers', rest:'1 min', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'4', reps:'6–8'}
+      ]}
+    ];
+    const legs = [
+      {name:'Legs', exercises:[
+        {name:'Leg Extension', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'12–15'},
+        {name:'Leg Press', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'10–12, one workout in three'},
+        {name:'Squats', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4–5', reps:'8–10'},
+        {name:'Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Stiff Leg Deadlift', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3–4', reps:'8–10, one workout in three'}
+      ]}
+    ];
+    const backShoulders = [
+      {name:'Back & Shoulders', exercises:[
+        {name:'Front Lat Pull Down', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Barbell or T-Bar Row', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'6–8'},
+        {name:'Cable Rows', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Military Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4–5', reps:'6–8'},
+        {name:'Side Lateral', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'8–10'},
+        {name:'Upright Row', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'6–8'}
+      ]}
+    ];
+    const absCalves = [
+      {name:'Abs & Calves', exercises:[
+        {name:'Standing Calf Raise', rest:'1 min', tempo:'', equipment:'Machine', alternates:'Donkey Calf Raise', sets:'6', reps:'15–20'},
+        {name:'Seated Calf Raise', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3–4', reps:'15–20'},
+        {name:'Vertical Leg Raise', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'4', reps:'15–20'},
+        {name:'Incline Sit Ups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'4', reps:'15–20'},
+        {name:'Seated Leg Raise', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'4', reps:'15–20'}
+      ]}
+    ];
+    return {
+      mon: clone(chestArms).concat(clone(absCalves)),
+      tue: clone(legs).concat(clone(absCalves)),
+      wed: clone(backShoulders).concat(clone(absCalves)),
+      thu: [],
+      fri: clone(chestArms).concat(clone(absCalves)),
+      sat: clone(legs).concat(clone(absCalves)),
+      sun: clone(backShoulders).concat(clone(absCalves))
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'old-school-70s',
@@ -6278,6 +6378,18 @@ createIntervalTimer(
       name: "Old School 70’s Routine (Iron & Grit)",
       description: "A second take on the same golden-era split, order swapped to Chest/Back → Legs → Shoulders/Arms (each repeated twice a week, Sunday off). 5 sets per exercise, ~1 minute rest, built for high volume and training to failure — pair with forced reps, drop sets, rest-pause, and other techniques described in the companion blog post. Source: Jordan, “The Old School 70’s Bodybuilding Routine,” Iron & Grit (see Sources & Credits).",
       data: OLD_SCHOOL_IRON_GRIT_DAYS
+    },
+    {
+      id: 'serge-nubret-high-volume',
+      name: "Serge Nubret’s High-Volume Routine",
+      description: "Extreme-volume 3-day split (Chest/Quads → Back/Hamstrings → Shoulders/Arms/Calves, each repeated twice a week, Sunday full rest) built around Serge Nubret's \"pump\" training — moderate weight, 6–8 sets of 12+ reps per exercise, short (30–60s) rest, no true 1-rep-max attempts. A very different volume-and-load profile than the other Old School presets — read the companion blog post before assigning it. Source: “Serge Nubret’s Old School Workout Routine,” Cast Iron Strength (see Sources & Credits).",
+      data: SERGE_NUBRET_DAYS
+    },
+    {
+      id: 'lee-haney-3-on-1-off',
+      name: "Lee Haney’s 3-On-1-Off Split",
+      description: "8-time Mr. Olympia Lee Haney's rotating split: Chest/Arms → Legs → Back/Shoulders → Rest, repeating continuously every 4 days rather than locking to specific weekdays (calves/abs trained on every training day). This preset fits one pass of that cycle into a calendar week for convenience — see the companion blog post for how the true rest day drifts if you keep the exact 4-day rotation going. Moderate 4–5 sets of 6–15 reps per exercise. Source: “Old School Workout: Lee Haney,” Generation Iron (see Sources & Credits).",
+      data: LEE_HANEY_DAYS
     }
   ];
 
