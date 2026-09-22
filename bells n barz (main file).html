@@ -1298,6 +1298,23 @@
 </div>
 </div>
 </section>
+<!-- ================= SOURCES & CREDITS ================= -->
+<section class="tab-panel" id="tab-credits">
+<div class="day-head"><h2>Sources &amp; Credits</h2></div>
+<div class="day-focus">This app draws on other people's research, named methods, and prior work — this page is where that gets its due.</div>
+<div class="section-block">
+<p class="lede">Not everything here is original. Where a feature is built on a specific published method or a named originator, it's credited below rather than presented as invented from scratch.</p>
+<table class="ref-table">
+<tr><th>Used For</th><th>Source</th><th>Notes</th></tr>
+<tr><td>Moon Phase &amp; Ekadashi tithi timing</td><td>Jean Meeus, <i>Astronomical Algorithms</i> (2nd ed., 1998)</td><td>Low-precision solar position (ch. 25) and the abridged ~20-term lunar longitude series (ch. 47) — accurate to roughly arcminute level, not full-precision ephemeris. See the Ekadashi card's own note on sunrise/Panchang limitations.</td></tr>
+<tr><td>5:2 Intermittent Fasting</td><td>Dr. Michael Mosley, <i>The FastDiet</i> (2012)</td><td>The book that popularized the 5:2 method (eat normally 5 days, cap calories around 500–600 on 2 non-consecutive days) this app's 5:2 mode is modeled on.</td></tr>
+<tr><td>Time-Restricted Eating (16:8 / 18:6 / 20:4)</td><td>General time-restricted eating / circadian-eating research</td><td>Not attributed to a single originator — these ratios are common convention across contemporary TRE research and fasting apps, not one paper or person.</td></tr>
+<tr><td>Hepburn-style double-progression (Training Manual, v2.0+)</td><td>Doug Hepburn</td><td>Submaximal start, add one rep per session until the rep-range top is hit across all sets, then add load and restart at the bottom — applied to the week's Block A "drives the week" lifts.</td></tr>
+<tr><td>CARs (Controlled Articular Rotations)</td><td>Functional Range Conditioning (FRC), Dr. Andreo Spina</td><td>Term and technique used throughout Movement Prep and the Glossary of Terms.</td></tr>
+</table>
+<p class="field-hint" style="margin-top:16px;max-width:75ch;">The broader training program — the exercise selections, splits, and periodization choices in the Manual itself — reflects this gym's own curation and judgment. If specific programming decisions were adapted from a named source, coach, or course, add it here too; this list only covers what's independently verifiable from the outside.</p>
+</div>
+</section>
 <!-- ================= MEMBER ================= -->
 <section class="tab-panel" id="tab-member">
   <div class="day-head"><h2>Member — Training Tools</h2><span class="day-sub">Live session logging, interval timers, weight tracking, and progress</span></div>
@@ -2681,7 +2698,7 @@
 </div>
 </div>
 <footer class="site">
-<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a> &nbsp;·&nbsp; <a href="#" id="log-footer-link" style="color:var(--muted); text-decoration:underline;">Revision Log</a></div>
+<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a> &nbsp;·&nbsp; <a href="#" id="log-footer-link" style="color:var(--muted); text-decoration:underline;">Revision Log</a> &nbsp;·&nbsp; <a href="#" id="credits-footer-link" style="color:var(--muted); text-decoration:underline;">Sources &amp; Credits</a></div>
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->
@@ -4512,6 +4529,16 @@ if (logFooterLink){
   logFooterLink.addEventListener('click', (e) => {
     e.preventDefault();
     switchTab('log');
+  });
+}
+
+/* ---------------- SOURCES & CREDITS (footer link) ---------------- */
+// Same small-footer-link pattern as Revision Log above.
+const creditsFooterLink = document.getElementById('credits-footer-link');
+if (creditsFooterLink){
+  creditsFooterLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('credits');
   });
 }
 
