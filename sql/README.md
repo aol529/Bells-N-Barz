@@ -138,7 +138,13 @@
     `js/bells-n-barz-blog.js`'s `SEED_POSTS` (what a from-scratch install
     gets); this is what an already-live project gets. Run any time.
 
-20. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+20. **20-blog-old-school-70s.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The Old School 70's Bodybuilding Split"
+    post (Health & Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+21. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
