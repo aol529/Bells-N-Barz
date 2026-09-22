@@ -704,6 +704,7 @@
           </button>
         </div>
       </div>
+      <label class="role-check" style="margin-bottom:14px;"><input type="checkbox" id="usr-li-remember"><span>Keep me signed in</span></label>
       <div class="field-hint" id="usr-li-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-login-btn">Log In</button>
@@ -2861,12 +2862,35 @@
      ignored/torn down once this cookie is gone or stale. Any tracked user
      activity pushes the expiry back out another 30 minutes (see
      wireActivityTracking below), so it's a rolling window, not a fixed
-     one-and-done hour from login. ---- */
+     one-and-done hour from login.
+
+     "Keep me signed in" (the login form checkbox) swaps that 30-minute
+     window for a 14-day one instead — same rolling-window cookie
+     mechanism, just a far longer lifetime, remembered via REMEMBER_KEY in
+     localStorage so it survives a browser restart. It's a per-login
+     opt-in, not a permanent setting: performLogout() clears it, so the
+     next login defaults back to the short 30-minute window unless the
+     box is checked again. ---- */
   const SESSION_COOKIE = 'bnb-session-exp';
   const SESSION_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes since last activity
+  const REMEMBER_KEY = 'bnb-remember-me';
+  const REMEMBER_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000; // 14 days, when "Keep me signed in" is checked
   const ACTIVITY_THROTTLE_MS = 60 * 1000; // don't rewrite the cookie more than once/minute
   let sessionExpiryTimer = null;
   let lastActivityRefresh = 0;
+
+  function isRememberMe(){
+    try { return localStorage.getItem(REMEMBER_KEY) === '1'; } catch(e){ return false; }
+  }
+  function setRememberMe(on){
+    try {
+      if (on) localStorage.setItem(REMEMBER_KEY, '1');
+      else localStorage.removeItem(REMEMBER_KEY);
+    } catch(e){}
+  }
+  function currentSessionLifetimeMs(){
+    return isRememberMe() ? REMEMBER_LIFETIME_MS : SESSION_LIFETIME_MS;
+  }
 
   function setCookie(name, value, maxAgeSeconds){
     try {
@@ -2889,9 +2913,10 @@
   // further activity before it lapses. Call this on every successful
   // sign-in, and again on each throttled activity tick while signed in.
   function startSessionClock(){
-    const expiresAt = Date.now() + SESSION_LIFETIME_MS;
-    setCookie(SESSION_COOKIE, String(expiresAt), SESSION_LIFETIME_MS / 1000);
-    armSessionExpiryTimer(SESSION_LIFETIME_MS);
+    const lifetimeMs = currentSessionLifetimeMs();
+    const expiresAt = Date.now() + lifetimeMs;
+    setCookie(SESSION_COOKIE, String(expiresAt), lifetimeMs / 1000);
+    armSessionExpiryTimer(lifetimeMs);
   }
   function armSessionExpiryTimer(ms){
     if (sessionExpiryTimer) clearTimeout(sessionExpiryTimer);
@@ -3570,6 +3595,7 @@
     }
 
     clearLoginAttempts();
+    setRememberMe(document.getElementById('usr-li-remember').checked);
     document.getElementById('usr-li-email').value = '';
     document.getElementById('usr-li-password').value = '';
     startSessionClock();
@@ -3587,6 +3613,7 @@
     await bnbClient.auth.signOut();
     selfId = null;
     saveSelfId('');
+    setRememberMe(false);
     clearCookie(SESSION_COOKIE);
     if (sessionExpiryTimer) { clearTimeout(sessionExpiryTimer); sessionExpiryTimer = null; }
     showToast('Logged out.');
