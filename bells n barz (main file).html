@@ -4699,6 +4699,59 @@ const notifBellCount = document.getElementById('notif-bell-count');
 const notifBellList = document.getElementById('notif-bell-list');
 let notifPollTimer = null;
 
+/* ---- Birthday notifications (staff, computed on open) ----
+   Not a real scheduled push — same limitation as the bell generally
+   (no service worker/Edge Functions here): this only fires for a staff
+   member whose app happens to be open, or who opens it, on the day
+   itself. Runs through refreshNotificationBell() below, which already
+   fires on every real auth transition (login, signup, session restore)
+   — so it's checked at least once per staff session without polling.
+   Scoped to getMembers() (anyone with the 'member' role) since that's
+   the roster Admin > Users/Billing already manage. Inserts one combined
+   notification per staff member per day (deduped by checking for an
+   existing 'birthday_today' row from today before inserting) rather
+   than one row per birthday, so reloading/re-logging-in same-day never
+   spams the bell. */
+async function checkBirthdaysAndNotify(){
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  if (!me || !isStaff()) return;
+  const members = (window.BNB_USERS.getMembers && window.BNB_USERS.getMembers()) || [];
+  const now = new Date();
+  const todayMD = String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  const birthdays = members.filter(u => u.dob && u.dob.length >= 10 && u.dob.slice(5,10) === todayMD);
+  if (!birthdays.length) return;
+
+  // Compares the existing row's created_at against local "today" in JS
+  // (new Date() converts the timestamptz to the browser's own timezone)
+  // rather than sending a naive local time string for Postgres to filter
+  // on — that would get interpreted in the DB's timezone, not the
+  // browser's, silently shifting the "today" boundary by the UTC offset
+  // (the same class of bug the Coach Dashboard's weekRange() comment
+  // calls out for date math like this).
+  const { data: existing, error: existErr } = await bnbClient
+    .from('notifications').select('id, created_at')
+    .eq('user_id', me.id).eq('type', 'birthday_today')
+    .order('created_at', { ascending: false }).limit(1);
+  if (existErr) { console.warn('Supabase check birthday notifications failed:', existErr); return; }
+  if (existing && existing.length){
+    const last = new Date(existing[0].created_at);
+    if (last.getFullYear() === now.getFullYear() && last.getMonth() === now.getMonth() && last.getDate() === now.getDate()){
+      return; // already notified this staff member today
+    }
+  }
+
+  const names = birthdays.map(u => u.fullName);
+  const who = names.length === 1 ? names[0]
+    : names.slice(0, -1).join(', ') + ' & ' + names[names.length - 1];
+  const message = "It's " + who + (names.length === 1 ? "'s birthday today!" : "'s birthdays today!");
+
+  const { error: insertErr } = await bnbClient.from('notifications').insert([{
+    user_id: me.id, type: 'birthday_today', message: message, link_tab: 'users'
+  }]);
+  if (insertErr) { console.warn('Supabase insert birthday notification failed:', insertErr); return; }
+  refreshUnreadCount();
+}
+
 async function refreshUnreadCount(){
   const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
   if (!me || !notifBellCount) return;
@@ -4749,6 +4802,7 @@ function refreshNotificationBell(signedIn){
     return;
   }
   refreshUnreadCount();
+  checkBirthdaysAndNotify();
   // Only real polling loop in this codebase (confirmed none existed
   // before) — justified because a notification feature that only
   // updates on login/logout would feel broken while just sitting open.
