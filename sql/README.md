@@ -204,7 +204,63 @@
     `on conflict (slug) do nothing`. Mirrors the matching entry in
     `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
 
-31. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+31. **31-blog-tom-platz.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The Tom Platz Leg Workout" (Health &
+    Appearance category) to `blog_posts`, idempotent via `on conflict
+    (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. No Program Builder preset
+    accompanies this one (a single leg-only day doesn't fit the "replace
+    the whole week" preset loader) — the post explains why. Run any time.
+
+32. **32-blog-ed-coan.sql** — a one-off content insert, not a schema/RLS
+    change: adds "Ed Coan's 10-Week Deadlift Program" (Health &
+    Appearance category) to `blog_posts`, idempotent via `on conflict
+    (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. No Program Builder preset
+    (same reasoning as Tom Platz above). Run any time.
+
+33. **33-blog-john-grimek.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The John Grimek Breathing Squat" (Health &
+    Appearance category) to `blog_posts`, idempotent via `on conflict
+    (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. No Program Builder preset
+    (a finisher technique, not a training day). Run any time.
+
+34. **34-blog-weider-principles.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The Weider Training Principles" (Health &
+    Appearance category) to `blog_posts`, idempotent via `on conflict
+    (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. No Program Builder preset
+    (a training philosophy/vocabulary piece, not a routine). Run any
+    time.
+
+35. **35-blog-contrast-training.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Contrast Training" (Health & Appearance
+    category) to `blog_posts`, idempotent via `on conflict (slug) do
+    nothing`. Mirrors the matching entry in `js/bells-n-barz-blog.js`'s
+    `SEED_POSTS`. No Program Builder preset (an exercise-pairing
+    technique, not a weekly split). Run any time.
+
+36. **36-blog-bulgarian-method.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The Bulgarian Method" (Health & Appearance
+    category) to `blog_posts`, idempotent via `on conflict (slug) do
+    nothing`. Mirrors the matching entry in `js/bells-n-barz-blog.js`'s
+    `SEED_POSTS`. Deliberately has no Program Builder preset — the
+    source method requires daily near-max attempts under constant expert
+    supervision and is explicitly unsuitable for self-selection by a
+    general member; the post explains the safety reasoning. Run any
+    time.
+
+37. **37-blog-arnold-8-principles.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Arnold Schwarzenegger's 8 Training
+    Principles" (Health & Appearance category) to `blog_posts`,
+    idempotent via `on conflict (slug) do nothing`. Mirrors the matching
+    entry in `js/bells-n-barz-blog.js`'s `SEED_POSTS`. No Program
+    Builder preset (mindset/philosophy guidance, not a routine — Arnold's
+    actual splits are already represented by the earlier Old School
+    presets). Run any time.
+
+38. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
