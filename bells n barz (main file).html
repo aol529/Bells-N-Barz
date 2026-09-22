@@ -1669,6 +1669,15 @@
 <section class="me-section" id="tab-nutrition">
 <div class="day-head"><h2>Nutrition — Daily Log</h2></div>
 <div class="day-focus">Log a daily calorie/macro summary and watch the trend, not any single day</div>
+
+<div class="weight-stats" id="nutrition-goal-summary" style="display:none;margin-bottom:20px;">
+  <div class="weight-stat"><span class="lbl">Calories Today</span><span class="val" id="ngs-calories">—</span></div>
+  <div class="weight-stat"><span class="lbl">Protein Today</span><span class="val" id="ngs-protein">—</span></div>
+  <div class="weight-stat"><span class="lbl">Carbs Today</span><span class="val" id="ngs-carbs">—</span></div>
+  <div class="weight-stat"><span class="lbl">Fat Today</span><span class="val" id="ngs-fat">—</span></div>
+</div>
+<div class="field-hint" id="nutrition-goal-empty" style="margin-bottom:20px;">Set your calorie &amp; macro goals in the calculator below to see today's progress here.</div>
+
 <div class="weight-grid">
 <div class="weight-card">
 <h3>Log a Day</h3>
@@ -1715,6 +1724,43 @@
 <div class="weight-chart-empty" id="nutrition-history-empty" style="display:none;">Nothing logged yet.</div>
 <div class="weight-clear-row">
 <button class="weight-clear-btn" id="nutrition-clear-btn" type="button">Clear all entries</button>
+</div>
+</div>
+
+<!-- ---- Calorie & Macro Calculator: set-once goals feeding the summary above ---- -->
+<div class="weight-chart-card" id="calorie-counter-card" style="margin-top:22px;">
+<h3>Calorie &amp; Macro Calculator</h3>
+<p class="weight-hint" style="margin-top:0;">Mifflin-St Jeor formula: sets a daily calorie and macro target from your stats, goal, and activity level — feeds the summary at the top of this page.</p>
+<div class="weight-form" id="cc-form">
+<div class="weight-form-row">
+<div><label for="cc-sex">Sex</label><select id="cc-sex"><option value="male">Male</option><option value="female">Female</option></select></div>
+<div><label for="cc-age">Age</label><input id="cc-age" type="number" min="10" max="100" value="30"/></div>
+</div>
+<div class="weight-form-row">
+<div><label for="cc-height">Height (cm)</label><input id="cc-height" type="number" min="100" max="250" value="170"/></div>
+<div><label for="cc-weight">Weight (<span id="cc-weight-unit-label">lb</span>)</label><input id="cc-weight" type="number" min="30" max="700" step="0.1" placeholder="e.g. 150"/></div>
+</div>
+<label for="cc-activity">Activity Level</label>
+<select id="cc-activity">
+<option value="1.2">Sedentary (little/no exercise)</option>
+<option value="1.375" selected="selected">Lightly active (1–3 days/wk)</option>
+<option value="1.55">Moderately active (3–5 days/wk)</option>
+<option value="1.725">Very active (6–7 days/wk)</option>
+<option value="1.9">Extra active (physical job + training)</option>
+</select>
+<label for="cc-goal">Goal</label>
+<select id="cc-goal">
+<option value="lose">Lose Weight</option>
+<option value="maintain" selected="selected">Maintain</option>
+<option value="gain">Gain Muscle</option>
+</select>
+<button class="weight-submit" id="cc-calculate" type="button">Calculate &amp; Save Goals</button>
+</div>
+<div class="weight-stats" id="cc-results" style="display:none;margin-top:18px;">
+<div class="weight-stat"><span class="lbl">Daily Calories</span><span class="val" id="cc-result-calories">—</span></div>
+<div class="weight-stat"><span class="lbl">Protein</span><span class="val" id="cc-result-protein">—</span></div>
+<div class="weight-stat"><span class="lbl">Carbs</span><span class="val" id="cc-result-carbs">—</span></div>
+<div class="weight-stat"><span class="lbl">Fat</span><span class="val" id="cc-result-fat">—</span></div>
 </div>
 </div>
 </section>

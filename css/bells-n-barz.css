@@ -576,11 +576,13 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 
 .weight-form label{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-family:'IBM Plex Mono',monospace;margin-bottom:5px;margin-top:14px;}
 .weight-form label:first-of-type{margin-top:0;}
-.weight-form input{
+.weight-form input,
+.weight-form select{
   width:100%;background:var(--surface-2);border:1px solid var(--line-soft);color:var(--text);
   font-family:'IBM Plex Mono',monospace;font-size:15px;padding:9px 10px;border-radius:2px;
 }
-.weight-form input:focus{outline:none;border-color:var(--accent-dim);}
+.weight-form input:focus,
+.weight-form select:focus{outline:none;border-color:var(--accent-dim);}
 .weight-form-row{display:flex;gap:10px;}
 .weight-form-row > div{flex:1;}
 .weight-submit{

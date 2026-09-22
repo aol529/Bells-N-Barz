@@ -124,7 +124,14 @@
     chosen weekdays checked against that day's already-logged calories.
     Run after `16-fasting.sql`.
 
-18. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+18. **18-nutrition-goals.sql** — the Calorie & Macro Calculator on the
+    Nutrition tab: a new `nutrition_goals` table (one row per member —
+    their stats, activity level, goal, and the computed daily
+    calorie/protein/carb/fat targets). Same owner-or-staff RLS shape as
+    `nutrition_log`, no RPCs. Run after `gym.sql` (needs
+    `is_staff()`/`my_user_id()`).
+
+19. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

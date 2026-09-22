@@ -19,11 +19,150 @@
   const historyBody = document.getElementById('nutrition-history-body');
   const historyEmpty = document.getElementById('nutrition-history-empty');
   const clearBtn = document.getElementById('nutrition-clear-btn');
+  const goalSummaryBox = document.getElementById('nutrition-goal-summary');
+  const goalEmptyHint = document.getElementById('nutrition-goal-empty');
+  const ngsCalories = document.getElementById('ngs-calories');
+  const ngsProtein = document.getElementById('ngs-protein');
+  const ngsCarbs = document.getElementById('ngs-carbs');
+  const ngsFat = document.getElementById('ngs-fat');
+  const ccSexSelect = document.getElementById('cc-sex');
+  const ccAgeInput = document.getElementById('cc-age');
+  const ccHeightInput = document.getElementById('cc-height');
+  const ccWeightInput = document.getElementById('cc-weight');
+  const ccWeightUnitLabel = document.getElementById('cc-weight-unit-label');
+  const ccActivitySelect = document.getElementById('cc-activity');
+  const ccGoalSelect = document.getElementById('cc-goal');
+  const ccCalculateBtn = document.getElementById('cc-calculate');
+  const ccResultsBox = document.getElementById('cc-results');
+  const ccResultCalories = document.getElementById('cc-result-calories');
+  const ccResultProtein = document.getElementById('cc-result-protein');
+  const ccResultCarbs = document.getElementById('cc-result-carbs');
+  const ccResultFat = document.getElementById('cc-result-fat');
 
   if (!dateInput) return; // Nutrition tab not present on this page
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
+
+  /* ---------------- CALORIE & MACRO CALCULATOR ----------------
+     Mifflin-St Jeor BMR -> TDEE (activity multiplier) -> calorie
+     target (+/- for goal) -> protein by bodyweight -> fat by % of
+     calories -> carbs fill whatever's left. Reuses the Weight
+     tracker's own kg/lb preference (bnb-weight-unit) so this doesn't
+     need a second unit toggle, and — via window.BNB_WEIGHT, exposed
+     by js/bells-n-barz-weight.js, already loaded before this module
+     since "Me" defaults to Weight/BMI — pre-fills weight from the
+     member's most recent logged entry when they haven't set goals yet. */
+  const KG_PER_LB = 0.45359237;
+  function getWeightUnit(){
+    try { return localStorage.getItem('bnb-weight-unit') || 'lb'; } catch(e){ return 'lb'; }
+  }
+  function displayWeightToKg(v){ return getWeightUnit() === 'kg' ? v : v * KG_PER_LB; }
+  function kgToDisplayWeight(kg){ return getWeightUnit() === 'kg' ? kg : kg / KG_PER_LB; }
+
+  function calcBMR(sex, weightKg, heightCm, age){
+    const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+    return sex === 'male' ? base + 5 : base - 161;
+  }
+  function calcGoals(sex, weightKg, heightCm, age, activityMultiplier, goal){
+    const bmr = calcBMR(sex, weightKg, heightCm, age);
+    const tdee = bmr * activityMultiplier;
+    let calories = tdee;
+    if (goal === 'lose') calories -= 500;
+    else if (goal === 'gain') calories += 400;
+    calories = Math.max(1200, calories); // sane floor regardless of inputs
+    const weightLb = weightKg / KG_PER_LB;
+    const proteinG = Math.round(weightLb * 0.85); // midpoint of the 0.7-1g/lb range
+    const fatCalories = calories * 0.28; // midpoint of the 20-35% range
+    const fatG = Math.round(fatCalories / 9);
+    const proteinCalories = proteinG * 4;
+    const carbsCalories = Math.max(0, calories - proteinCalories - fatCalories);
+    const carbsG = Math.round(carbsCalories / 4);
+    return { calories: Math.round(calories), proteinG: proteinG, fatG: fatG, carbsG: carbsG };
+  }
+
+  let goalsCache = null; // populated by refreshGoalsFromSupabase; null until goals are set
+
+  function showResults(cal, protein, carbs, fat){
+    ccResultsBox.style.display = 'grid';
+    ccResultCalories.textContent = cal + ' kcal';
+    ccResultProtein.textContent = protein + 'g';
+    ccResultCarbs.textContent = carbs + 'g';
+    ccResultFat.textContent = fat + 'g';
+  }
+  function populateCalculatorForm(g){
+    ccSexSelect.value = g.sex;
+    ccAgeInput.value = g.age;
+    ccHeightInput.value = g.height_cm;
+    ccWeightInput.value = kgToDisplayWeight(g.weight_kg).toFixed(1);
+    ccActivitySelect.value = String(g.activity_multiplier);
+    ccGoalSelect.value = g.goal;
+    showResults(g.target_calories, g.target_protein_g, g.target_carbs_g, g.target_fat_g);
+  }
+  function prefillWeightFromTracker(){
+    // Only a convenience default before any goals are saved — never
+    // overwrites a value the member already typed or already saved.
+    if (goalsCache || ccWeightInput.value) return;
+    const entries = window.BNB_WEIGHT && window.BNB_WEIGHT.getEntries ? window.BNB_WEIGHT.getEntries() : [];
+    if (entries.length){
+      ccWeightInput.value = kgToDisplayWeight(entries[entries.length - 1].kg).toFixed(1);
+    }
+  }
+  async function refreshGoalsFromSupabase(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    const { data, error } = await bnbClient.from('nutrition_goals').select('*').eq('user_id', me.id).maybeSingle();
+    if (error) { console.error('Supabase load nutrition_goals failed:', error); return; }
+    goalsCache = data || null;
+    if (goalsCache) populateCalculatorForm(goalsCache);
+    else prefillWeightFromTracker();
+    renderGoalSummary();
+  }
+  async function saveGoals(row){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    const payload = Object.assign({ user_id: me.id, updated_at: new Date().toISOString() }, row);
+    const { error } = await bnbClient.from('nutrition_goals').upsert([payload], { onConflict: 'user_id' });
+    if (error) { console.error('Supabase save nutrition_goals failed:', error); return; }
+    goalsCache = payload;
+    renderGoalSummary();
+  }
+  function renderGoalSummary(){
+    if (!goalsCache){
+      goalSummaryBox.style.display = 'none';
+      goalEmptyHint.style.display = '';
+      return;
+    }
+    goalSummaryBox.style.display = 'grid';
+    goalEmptyHint.style.display = 'none';
+    const today = loadEntries().find(e => e.date === todayIso());
+    ngsCalories.textContent = (today && today.calories != null ? today.calories : 0) + ' / ' + goalsCache.target_calories + ' kcal';
+    ngsProtein.textContent = (today && today.proteinG != null ? today.proteinG : 0) + ' / ' + goalsCache.target_protein_g + 'g';
+    ngsCarbs.textContent = (today && today.carbsG != null ? today.carbsG : 0) + ' / ' + goalsCache.target_carbs_g + 'g';
+    ngsFat.textContent = (today && today.fatG != null ? today.fatG : 0) + ' / ' + goalsCache.target_fat_g + 'g';
+  }
+  ccWeightUnitLabel.textContent = getWeightUnit();
+  ccCalculateBtn.addEventListener('click', () => {
+    const weightDisplay = Number(ccWeightInput.value);
+    if (!ccWeightInput.value || !(weightDisplay > 0)){
+      const t = document.getElementById('t-toast');
+      if (t){ t.textContent = 'Enter your weight first.'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+      ccWeightInput.focus();
+      return;
+    }
+    const sex = ccSexSelect.value;
+    const age = Math.max(10, Math.min(100, Math.round(Number(ccAgeInput.value)) || 30));
+    const heightCm = Math.max(100, Math.min(250, Number(ccHeightInput.value) || 170));
+    const weightKg = displayWeightToKg(weightDisplay);
+    const activityMultiplier = Number(ccActivitySelect.value);
+    const goal = ccGoalSelect.value;
+    const targets = calcGoals(sex, weightKg, heightCm, age, activityMultiplier, goal);
+    showResults(targets.calories, targets.proteinG, targets.carbsG, targets.fatG);
+    saveGoals({
+      sex: sex, age: age, height_cm: heightCm, weight_kg: weightKg, activity_multiplier: activityMultiplier, goal: goal,
+      target_calories: targets.calories, target_protein_g: targets.proteinG, target_carbs_g: targets.carbsG, target_fat_g: targets.fatG
+    });
+  });
 
   let entriesCache = null; // populated by refreshEntriesFromSupabase
 
@@ -207,6 +346,8 @@
         });
       });
     }
+
+    renderGoalSummary();
   }
 
   submitBtn.addEventListener('click', () => {
@@ -242,4 +383,5 @@
   dateInput.max = todayIso();
   render();
   refreshEntriesFromSupabase(); // async — replaces empty start once Supabase responds
+  refreshGoalsFromSupabase();
 })();
