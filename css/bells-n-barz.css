@@ -1741,6 +1741,7 @@ header.site{
 #member-section-switch [data-tab="accountability"]::before{content:"👥";}
 #member-section-switch [data-tab="messages"]::before{content:"💬";}
 #member-section-switch [data-tab="schedule"]::before{content:"📅";}
+#member-section-switch [data-tab="challenges"]::before{content:"🏆";}
 #me-section-switch [data-me-section="weight"]::before{content:"⚖️";}
 #me-section-switch [data-me-section="period"]::before{content:"🩸";}
 #me-section-switch [data-me-section="track"]::before{content:"📈";}

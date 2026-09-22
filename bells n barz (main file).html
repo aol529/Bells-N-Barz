@@ -1339,6 +1339,7 @@
     <button class="plate" data-tab="accountability">My Teams</button>
     <button class="plate" data-tab="messages">Messages</button>
     <button class="plate" data-tab="schedule">Booking</button>
+    <button class="plate" data-tab="challenges">Challenges</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -1425,6 +1426,30 @@
 </div>
 </div>
 </div>
+</section>
+<!-- ================= CHALLENGES ================= -->
+<section class="member-section" id="tab-challenges">
+<div class="day-head"><h2>Challenges</h2></div>
+<div class="day-focus">Themed workouts built around a beat, not a stopwatch</div>
+<div class="timer-grid">
+<div class="timer-card" data-phase="idle" id="sally-card">
+<div class="timer-meta">
+<span class="timer-name">Bring Sally Up</span>
+<span class="timer-total mono" id="sally-total">3:35 total</span>
+</div>
+<div class="timer-phase" id="sally-phase">GET READY</div>
+<div class="timer-clock mono" id="sally-clock">0:05</div>
+<div class="timer-round mono" id="sally-round">Round 0 / 30</div>
+<div class="timer-progress"><div class="timer-progress-bar" id="sally-progress"></div></div>
+<div class="timer-controls">
+<button class="primary" id="sally-start" type="button">Start</button>
+<button disabled="" id="sally-pause" type="button">Pause</button>
+<button id="sally-reset" type="button">Reset</button>
+</div>
+<div class="timer-spec mono">5s prep · UP 2s / DOWN 5s · ×30 reps</div>
+</div>
+</div>
+<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:22px;">Based on the "Bring Sally Up" push-up challenge, built around Moby's song "Flower" — every "up" cue is a push-up, every "down" cue is a hold with your chest hovering just off the floor, until the track ends. This pacer approximates that same up/down/hold cadence (it doesn't play the actual song — cue up your own copy alongside it if you want the real thing). Works for squats or pull-ups too, not just push-ups. Not a beginner drill: if you can't hold a strict plank for 60+ seconds or do 15+ unbroken push-ups, build that base first — bad form under fatigue here is how shoulders get hurt.</p>
 </section>
 <!-- ================= ME ================= -->
 <section class="member-section" id="tab-me">
@@ -4596,13 +4621,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability','messages','schedule'];
+const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -4658,7 +4683,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -5779,7 +5804,11 @@ function createIntervalTimer(ids, getConfig, opts){
   opts = opts || {};
   const els = {};
   for (const key in ids) els[key] = document.getElementById(ids[key]);
-  const labelMap = {prep:'GET READY', work:'WORK', rest:'REST', restSet:'REST BETWEEN SETS', cooldown:'COOL DOWN', done:'DONE'};
+  // opts.labelMap lets a themed timer (e.g. Bring Sally Up) relabel
+  // phases as "UP"/"DOWN" instead of "WORK"/"REST" — purely cosmetic,
+  // the underlying phase.type driving data-phase (and its CSS) is
+  // unchanged, so Tabata/Custom's own styling keeps working untouched.
+  const labelMap = Object.assign({prep:'GET READY', work:'WORK', rest:'REST', restSet:'REST BETWEEN SETS', cooldown:'COOL DOWN', done:'DONE'}, opts.labelMap || {});
 
   let sequence = [];
   let seqIndex = 0;
@@ -5931,6 +5960,17 @@ function createIntervalTimer(ids, getConfig, opts){
 createIntervalTimer(
   {card:'tabata-card', phase:'tabata-phase', clock:'tabata-clock', round:'tabata-round', progress:'tabata-progress', total:'tabata-total', start:'tabata-start', pause:'tabata-pause', reset:'tabata-reset'},
   () => ({prep:7, work:20, rest:10, cycles:8, sets:1, restBetweenSets:0, cooldown:0})
+);
+
+// Bring Sally Up — 5s prep + 30 × (2s UP / 5s DOWN-hold), no sets/cooldown =
+// 3:35 total, approximating the real song's ~3:32 runtime and ~30-rep
+// count (see the Challenges tab's own note on why this is a pacer, not a
+// reproduction of the actual track). "work"/"rest" relabeled to "UP"/
+// "DOWN" via opts.labelMap; data-phase (and its CSS) is untouched.
+createIntervalTimer(
+  {card:'sally-card', phase:'sally-phase', clock:'sally-clock', round:'sally-round', progress:'sally-progress', total:'sally-total', start:'sally-start', pause:'sally-pause', reset:'sally-reset'},
+  () => ({prep:5, work:2, rest:5, cycles:30, sets:1, restBetweenSets:0, cooldown:0}),
+  {labelMap: {work:'UP', rest:'DOWN'}}
 );
 
 // Custom — every field editable, live total, locks while running
