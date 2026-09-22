@@ -95,8 +95,46 @@
       });
     } catch(e){ console.warn('Alarm sound failed:', e); }
   }
+  // iOS Safari only exposes the Notifications API at all to a site
+  // that's been added to the Home Screen and is currently running
+  // standalone from there (not a normal Safari tab) — calling
+  // Notification.requestPermission() outside that context just does
+  // nothing, with no error to explain why. Detected up front so the
+  // button can be replaced with real instructions instead of silently
+  // failing.
+  function isIOS(){
+    return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS reports as Mac
+  }
+  function isStandalone(){
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  // Registered eagerly (not just on click) so it's ready before an
+  // alarm ever needs to fire — cheap and idempotent to call more than
+  // once. Also required on iOS: even a local, non-push notification
+  // there only works through reg.showNotification(), never the bare
+  // `new Notification()` constructor.
+  let swRegPromise = null;
+  function ensureServiceWorker(){
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    if (!swRegPromise) swRegPromise = navigator.serviceWorker.register('/sw.js').catch(() => null);
+    return swRegPromise;
+  }
+  ensureServiceWorker();
+
   function renderNotifButton(){
-    if (!('Notification' in window)){ notifBtn.style.display = 'none'; notifNote.style.display = 'none'; return; }
+    if (!('Notification' in window)){
+      notifBtn.style.display = 'none';
+      notifNote.style.display = '';
+      notifNote.textContent = 'Alerts aren’t supported on this browser.';
+      return;
+    }
+    if (isIOS() && !isStandalone()){
+      notifBtn.style.display = 'none';
+      notifNote.style.display = '';
+      notifNote.textContent = 'On iPhone: tap Share → Add to Home Screen, then open the app from there to enable alerts.';
+      return;
+    }
     if (Notification.permission === 'granted'){
       notifBtn.style.display = 'none';
       notifNote.style.display = '';
@@ -112,7 +150,15 @@
   }
   function maybeNotify(title, body){
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    try { new Notification(title, { body: body }); } catch(e){ console.warn('Notification failed:', e); }
+    ensureServiceWorker().then(reg => {
+      if (reg && reg.showNotification){
+        reg.showNotification(title, { body: body, icon: '/icon.svg' }).catch(() => {
+          try { new Notification(title, { body: body }); } catch(e){}
+        });
+      } else {
+        try { new Notification(title, { body: body }); } catch(e){ console.warn('Notification failed:', e); }
+      }
+    });
   }
   function toast(msg){
     const t = document.getElementById('t-toast');
@@ -141,6 +187,7 @@
   notifBtn.addEventListener('click', () => {
     ensureAudioCtx();
     if (!('Notification' in window)) return;
+    ensureServiceWorker();
     Notification.requestPermission().then(renderNotifButton);
   });
   renderNotifButton();

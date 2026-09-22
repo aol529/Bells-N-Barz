@@ -1,0 +1,11 @@
+{
+  "name": "Bell(e)s n' Barz",
+  "short_name": "Bell(e)s n' Barz",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "192x192 512x512", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

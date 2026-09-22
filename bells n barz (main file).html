@@ -4,6 +4,18 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Installable-app metadata — the Fasting tracker's "Enable Browser
+     Alerts" needs this on iPhone specifically: iOS Safari only exposes
+     the Notifications API to a site added to the Home Screen and
+     opened standalone from there (see isIOS()/isStandalone() in
+     js/bells-n-barz-fasting.js), and apple-mobile-web-app-capable is
+     what makes that Home Screen icon open standalone rather than as a
+     normal Safari tab. -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Bell(e)s n' Barz"/>
+<link rel="apple-touch-icon" href="/icon.svg"/>
 <title>Bell(e)s n' Barz — Training Manual</title>
 <script>
 (function(){
