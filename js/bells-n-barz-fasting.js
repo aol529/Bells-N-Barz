@@ -27,13 +27,24 @@
   const soundToggleBtn = document.getElementById('fasting-sound-toggle');
   const notifBtn = document.getElementById('fasting-notif-btn');
   const notifNote = document.getElementById('fasting-notif-note');
+  const modeSwitchBtns = document.querySelectorAll('#fasting-mode-switch button');
+  const dailyPanel = document.getElementById('fasting-daily-panel');
+  const panel522 = document.getElementById('fasting-522-panel');
+  const days522Buttons = document.querySelectorAll('#fasting-522-days button');
+  const warning522 = document.getElementById('fasting-522-warning');
+  const cap522Input = document.getElementById('fasting-522-cap');
+  const save522Btn = document.getElementById('fasting-522-save');
+  const statusPhase522 = document.getElementById('fasting-522-status-phase');
+  const statusMeta522 = document.getElementById('fasting-522-status-meta');
+  const history522Body = document.getElementById('fasting-522-history-body');
+  const history522Empty = document.getElementById('fasting-522-history-empty');
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
   if (ringProgress) ringProgress.style.strokeDasharray = String(RING_CIRCUMFERENCE);
 
-  let settings = { fastHours: 16, eatHours: 8, protocol: '16:8' };
+  let settings = { fastHours: 16, eatHours: 8, protocol: '16:8', mode: 'daily', weeklyFastDays: [], weeklyCalorieCap: 500 };
   let logCache = [];
   let activeFast = null; // most recent row with fast_end still null, or null
   let tickTimer = null;
@@ -155,14 +166,21 @@
     const { data, error } = await bnbClient.from('fasting_settings').select('*').eq('user_id', me.id).maybeSingle();
     if (error) { console.error('Supabase load fasting_settings failed:', error); return; }
     if (data){
-      settings = { fastHours: data.fast_hours, eatHours: data.eat_hours, protocol: protocolFor(data.fast_hours, data.eat_hours) };
+      settings = {
+        fastHours: data.fast_hours, eatHours: data.eat_hours, protocol: protocolFor(data.fast_hours, data.eat_hours),
+        mode: data.mode || 'daily',
+        weeklyFastDays: data.weekly_fast_days ? data.weekly_fast_days.split(',').filter(Boolean).map(Number) : [],
+        weeklyCalorieCap: data.weekly_calorie_cap || 500
+      };
     }
   }
   async function saveSettings(){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return;
     const { error } = await bnbClient.from('fasting_settings').upsert([{
-      user_id: me.id, fast_hours: settings.fastHours, eat_hours: settings.eatHours, updated_at: new Date().toISOString()
+      user_id: me.id, fast_hours: settings.fastHours, eat_hours: settings.eatHours,
+      mode: settings.mode, weekly_fast_days: settings.weeklyFastDays.join(','), weekly_calorie_cap: settings.weeklyCalorieCap,
+      updated_at: new Date().toISOString()
     }], { onConflict: 'user_id' });
     if (error) console.error('Supabase save fasting_settings failed:', error);
   }
@@ -211,6 +229,139 @@
     render();
     saveSettings();
   });
+
+  /* ---------------- 5:2 WEEKLY MODE ----------------
+     A different shape from the daily ring timer: eat normally 5 days a
+     week, cap calories on 2 chosen days. There's no "hours until X" to
+     count down to, so this reuses nutrition_log's calories/date instead
+     of a live timer — a "fasting day" is just one of the two chosen
+     weekdays, checked against that date's logged calories. */
+  function renderModeSwitch(){
+    const isFiveTwo = settings.mode === '5:2';
+    modeSwitchBtns.forEach(btn => {
+      btn.classList.toggle('active', (btn.getAttribute('data-fasting-mode') === '522') === isFiveTwo);
+    });
+    dailyPanel.style.display = isFiveTwo ? 'none' : '';
+    panel522.style.display = isFiveTwo ? '' : 'none';
+  }
+  modeSwitchBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      settings.mode = btn.getAttribute('data-fasting-mode') === '522' ? '5:2' : 'daily';
+      renderModeSwitch();
+      if (settings.mode === '5:2') render522(); else render();
+      saveSettings();
+    });
+  });
+
+  days522Buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wd = Number(btn.getAttribute('data-weekday'));
+      const idx = settings.weeklyFastDays.indexOf(wd);
+      if (idx >= 0) settings.weeklyFastDays.splice(idx, 1);
+      else settings.weeklyFastDays.push(wd);
+      warning522.style.display = 'none';
+      render522(); // live preview against the in-progress (not yet saved) selection
+    });
+  });
+
+  function isConsecutiveDays(days){
+    if (days.length !== 2) return false;
+    const sorted = days.slice().sort((a,b) => a-b);
+    return (sorted[1] - sorted[0] === 1) || (sorted[0] === 0 && sorted[1] === 6); // adjacent, or Sat/Sun wraparound
+  }
+
+  save522Btn.addEventListener('click', () => {
+    if (settings.weeklyFastDays.length !== 2){
+      warning522.textContent = 'Pick exactly 2 fasting days.';
+      warning522.style.display = '';
+      return;
+    }
+    if (isConsecutiveDays(settings.weeklyFastDays)){
+      warning522.textContent = 'Heads up: those two days are back-to-back — the 5:2 method calls for non-consecutive fasting days. Saved anyway.';
+      warning522.style.display = '';
+    } else {
+      warning522.style.display = 'none';
+    }
+    settings.weeklyCalorieCap = Math.max(200, Math.min(1000, Math.round(Number(cap522Input.value)) || 500));
+    saveSettings();
+    render522();
+  });
+
+  function fmtDateLocal(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  // The last `count` calendar dates (going backward from today) whose
+  // weekday is one of the chosen fasting days — walks back at most 60
+  // days as a safety cap, though 2 fasting days/week means `count`
+  // dates are found well within the first couple of weeks.
+  function recentFastingDates(fastDays, count){
+    const dates = [];
+    const base = new Date();
+    base.setHours(0,0,0,0);
+    for (let i = 0; dates.length < count && i < 60; i++){
+      const cur = new Date(base);
+      cur.setDate(cur.getDate() - i);
+      if (fastDays.includes(cur.getDay())) dates.push(fmtDateLocal(cur));
+    }
+    return dates;
+  }
+
+  async function render522(){
+    renderModeSwitch();
+    days522Buttons.forEach(btn => {
+      btn.classList.toggle('active', settings.weeklyFastDays.includes(Number(btn.getAttribute('data-weekday'))));
+    });
+    cap522Input.value = settings.weeklyCalorieCap;
+
+    if (settings.weeklyFastDays.length !== 2){
+      statusPhase522.textContent = 'Choose 2 Fasting Days';
+      statusMeta522.textContent = 'Pick two days above, then Save.';
+      history522Body.innerHTML = '';
+      history522Empty.style.display = '';
+      return;
+    }
+
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const sortedDays = settings.weeklyFastDays.slice().sort((a,b) => a-b);
+    const todayWd = new Date().getDay();
+
+    if (settings.weeklyFastDays.includes(todayWd) && me){
+      const todayStr = fmtDateLocal(new Date());
+      const { data, error } = await bnbClient.from('nutrition_log').select('calories').eq('user_id', me.id).eq('date', todayStr).maybeSingle();
+      if (error) console.error('Supabase load today’s nutrition_log failed:', error);
+      const cal = data && data.calories != null ? data.calories : null;
+      statusPhase522.textContent = 'Today Is a Fasting Day';
+      if (cal == null){
+        statusMeta522.textContent = 'No calories logged yet today — cap is ' + settings.weeklyCalorieCap + ' cal. Log it in the Nutrition tab.';
+      } else if (cal <= settings.weeklyCalorieCap){
+        statusMeta522.textContent = cal + ' cal logged — under your ' + settings.weeklyCalorieCap + ' cal cap.';
+      } else {
+        statusMeta522.textContent = cal + ' cal logged — over your ' + settings.weeklyCalorieCap + ' cal cap by ' + (cal - settings.weeklyCalorieCap) + '.';
+      }
+    } else {
+      statusPhase522.textContent = 'Today Is a Normal Eating Day';
+      statusMeta522.textContent = 'Your fasting days are ' + sortedDays.map(d => dayNames[d]).join(' & ') + '.';
+    }
+
+    if (!me){ history522Body.innerHTML = ''; history522Empty.style.display = ''; return; }
+    const dates = recentFastingDates(settings.weeklyFastDays, 8);
+    if (!dates.length){ history522Body.innerHTML = ''; history522Empty.style.display = ''; return; }
+    const { data: rows, error: histErr } = await bnbClient.from('nutrition_log').select('date, calories').eq('user_id', me.id).in('date', dates);
+    if (histErr) { console.error('Supabase load 5:2 history failed:', histErr); return; }
+    const byDate = {};
+    (rows || []).forEach(r => { byDate[r.date] = r.calories; });
+    history522Empty.style.display = 'none';
+    history522Body.innerHTML = dates.map(dt => {
+      const cal = byDate[dt];
+      const label = new Date(dt + 'T00:00:00').toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+      let result;
+      if (cal == null) result = '<span style="color:var(--muted-2);">Not logged</span>';
+      else if (cal <= settings.weeklyCalorieCap) result = '<span style="color:var(--accent-3);">Under cap</span>';
+      else result = '<span style="color:#e0736a;">Over cap</span>';
+      return '<tr><td>' + esc(label) + '</td><td>' + (cal != null ? cal : '—') + '</td><td>' + settings.weeklyCalorieCap + '</td><td>' + result + '</td></tr>';
+    }).join('');
+  }
 
   // Where "now" sits relative to the active fast's planned fast-end and
   // (fast-end + current eat_hours) — eat_hours uses the LIVE setting,
@@ -360,7 +511,12 @@
   async function init(){
     await loadSettings();
     await loadLog();
+    renderModeSwitch();
     render();
+    render522();
+    // Only the daily ring/countdown needs a per-second tick — render522()
+    // makes a Supabase read, so it's only re-run on explicit user action
+    // (switching into 5:2, picking a day, saving), never on a timer.
     if (!tickTimer) tickTimer = setInterval(render, 1000);
   }
   init();

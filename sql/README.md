@@ -116,7 +116,15 @@
     owner-or-staff RLS shape as `weight_log`/`nutrition_log`, no RPCs. Run
     after `gym.sql` (needs `is_staff()`/`my_user_id()`).
 
-17. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+17. **17-fasting-522.sql** — adds the 5:2 mode to the Fasting tracker:
+    three new columns on `fasting_settings` (`mode`, `weekly_fast_days`,
+    `weekly_calorie_cap`). No new tables or RLS — 5:2 "logs" reuse
+    `nutrition_log`'s existing `calories`/`date` columns instead of a
+    dedicated log table, since a 5:2 fasting day is just one of two
+    chosen weekdays checked against that day's already-logged calories.
+    Run after `16-fasting.sql`.
+
+18. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

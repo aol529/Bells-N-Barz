@@ -1742,7 +1742,15 @@
 <!-- ================= INTERMITTENT FASTING ================= -->
 <section class="me-section" id="tab-fasting">
 <div class="day-head"><h2>Intermittent Fasting</h2></div>
-<div class="day-focus">Pick a protocol — or set your own — then start your fast</div>
+<div class="day-focus">A daily eating window, or the 5:2 weekly method — your choice</div>
+
+<div class="fasting-mode-switch" id="fasting-mode-switch">
+  <button data-fasting-mode="daily" class="active">Daily Window</button>
+  <button data-fasting-mode="522">5:2 Weekly</button>
+</div>
+
+<!-- ---- Daily mode: 16:8 / 18:6 / 20:4 / custom, ring timer ---- -->
+<div id="fasting-daily-panel">
 
 <div class="fasting-protocol-switch" id="fasting-protocol-switch">
   <button data-protocol="16:8" data-fast="16" data-eat="8" class="active">16:8</button>
@@ -1791,6 +1799,45 @@
 <tbody id="fasting-history-body"></tbody>
 </table>
 <div class="weight-chart-empty" id="fasting-history-empty" style="display:none;">Nothing logged yet.</div>
+</div>
+
+</div>
+
+<!-- ---- 5:2 mode: pick 2 fasting days/week, cap calories on those days ---- -->
+<div id="fasting-522-panel" style="display:none;">
+
+<p class="field-hint">Eat normally 5 days a week; on 2 non-consecutive days, cap intake around 500–600 calories (the classic FastDiet split). Calories are logged through the Nutrition tab — this just tracks which days count and whether you stayed under your cap.</p>
+
+<div class="fasting-522-days" id="fasting-522-days">
+  <button data-weekday="0">Sun</button>
+  <button data-weekday="1">Mon</button>
+  <button data-weekday="2">Tue</button>
+  <button data-weekday="3">Wed</button>
+  <button data-weekday="4">Thu</button>
+  <button data-weekday="5">Fri</button>
+  <button data-weekday="6">Sat</button>
+</div>
+<div class="field-hint" id="fasting-522-warning" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
+
+<div class="fasting-custom-row">
+  <div><label for="fasting-522-cap">Calorie cap on fasting days</label><input type="number" id="fasting-522-cap" min="200" max="1000" step="50" value="500"></div>
+  <button class="btn2 primary" id="fasting-522-save" type="button">Save</button>
+</div>
+
+<div class="fasting-timer-card">
+  <div class="fasting-phase" id="fasting-522-status-phase">—</div>
+  <div class="fasting-meta" id="fasting-522-status-meta" style="margin-top:8px;">—</div>
+</div>
+
+<div class="weight-history" style="margin-top:22px;">
+<h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Recent Fasting Days</h3>
+<table class="weight-history-table" id="fasting-522-history-table">
+<thead><tr><th>Date</th><th>Calories Logged</th><th>Cap</th><th>Result</th></tr></thead>
+<tbody id="fasting-522-history-body"></tbody>
+</table>
+<div class="weight-chart-empty" id="fasting-522-history-empty" style="display:none;">Set your 2 fasting days above to start tracking.</div>
+</div>
+
 </div>
 </section>
 
