@@ -144,7 +144,13 @@
     `on conflict (slug) do nothing`. Mirrors the matching entry in
     `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
 
-21. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+21. **21-blog-old-school-intensity-techniques.sql** — a one-off content
+    insert, not a schema/RLS change: adds "Old School Intensity
+    Techniques" (Health & Appearance category) to `blog_posts`,
+    idempotent via `on conflict (slug) do nothing`. Mirrors the matching
+    entry in `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+22. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
