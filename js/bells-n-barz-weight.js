@@ -1,12 +1,14 @@
 (function(){
   const STORE_KEY = 'bnb-weight-log';
   const UNIT_KEY = 'bnb-weight-unit';
+  const TARGET_KEY = 'bnb-weight-target-kg';
   const KG_PER_LB = 0.45359237;
 
   const dateInput = document.getElementById('weight-date');
   const valueInput = document.getElementById('weight-value');
   const submitBtn = document.getElementById('weight-submit');
   const unitSwitch = document.getElementById('weight-unit-switch');
+  const targetInput = document.getElementById('weight-target');
   const statsBox = document.getElementById('weight-stats');
   const statStart = document.getElementById('stat-start');
   const statCurrent = document.getElementById('stat-current');
@@ -15,6 +17,7 @@
   const chartEmpty = document.getElementById('weight-chart-empty');
   const chartSvg = document.getElementById('weight-chart-svg');
   const chartLegend = document.getElementById('weight-chart-legend');
+  const chartLegendTarget = document.getElementById('weight-chart-legend-target');
   const historyBody = document.getElementById('weight-history-body');
   const historyTable = document.getElementById('weight-history-table');
   const historyEmpty = document.getElementById('weight-history-empty');
@@ -22,6 +25,15 @@
 
   let unit = 'lb';
   try { unit = localStorage.getItem(UNIT_KEY) || 'lb'; } catch(e) {}
+
+  // Same "saved on this device only" tier as the BMI height field right
+  // below this tab — a standing personal preference, not shared/synced
+  // data, so no Supabase table for it.
+  let targetKg = null;
+  try {
+    const v = parseFloat(localStorage.getItem(TARGET_KEY));
+    if (!isNaN(v) && v > 0) targetKg = v;
+  } catch(e){}
 
   function weightRowToEntry(r){ return { date: r.date, kg: r.weight }; }
   function entryToWeightRow(e, userId){
@@ -101,6 +113,14 @@
     let minD = Math.min(...dates), maxD = Math.max(...dates);
     if (minD === maxD) { minD -= 86400000; maxD += 86400000; }
     let minV = Math.min(...values), maxV = Math.max(...values);
+    // Folded into the raw min/max BEFORE padding, not after — so the
+    // target line gets the same breathing room as the real data instead
+    // of landing flush against the chart edge.
+    const targetDisplay = targetKg != null ? kgToDisplay(targetKg) : null;
+    if (targetDisplay != null){
+      minV = Math.min(minV, targetDisplay);
+      maxV = Math.max(maxV, targetDisplay);
+    }
     if (minV === maxV) { minV -= 2; maxV += 2; }
     const pad = (maxV - minV) * 0.12 || 2;
     minV -= pad; maxV += pad;
@@ -158,6 +178,14 @@
       svg += `<circle class="data-dot" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.5"><title>${fmtDate(e.date)}: ${values[i].toFixed(1)} ${unit}</title></circle>`;
     });
 
+    // target line — drawn last, on top of everything else, so it's never
+    // hidden behind the data/trend lines
+    if (targetDisplay != null){
+      const yy = y(targetDisplay);
+      svg += `<line class="target-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
+      svg += `<text class="target-label" x="${W-padR}" y="${(yy-6).toFixed(1)}" text-anchor="end">Target: ${targetDisplay.toFixed(1)} ${unit}</text>`;
+    }
+
     chartSvg.innerHTML = svg;
   }
 
@@ -167,6 +195,12 @@
     // unit switch UI
     unitSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-unit') === unit));
     valueInput.placeholder = unit === 'kg' ? 'e.g. 78.2' : 'e.g. 172.4';
+    targetInput.placeholder = unit === 'kg' ? 'e.g. 75' : 'e.g. 165';
+    // Only refreshed here, not on every keystroke — the field commits via
+    // its own 'change' listener below, which is what updates targetKg.
+    if (document.activeElement !== targetInput){
+      targetInput.value = targetKg != null ? kgToDisplay(targetKg).toFixed(1) : '';
+    }
 
     // stats
     if (entries.length === 0){
@@ -190,7 +224,8 @@
     } else {
       chartEmpty.style.display = 'none';
       chartSvg.style.display = 'block';
-      chartLegend.style.display = entries.length > 1 ? 'flex' : 'none';
+      chartLegend.style.display = (entries.length > 1 || targetKg != null) ? 'flex' : 'none';
+      chartLegendTarget.style.display = targetKg != null ? '' : 'none';
       buildChart(entries);
     }
 
@@ -235,6 +270,17 @@
       render();
     });
   });
+
+  targetInput.addEventListener('change', () => {
+    const raw = parseFloat(targetInput.value);
+    targetKg = (!isNaN(raw) && raw > 0) ? displayToKg(raw) : null;
+    try {
+      if (targetKg != null) localStorage.setItem(TARGET_KEY, String(targetKg));
+      else localStorage.removeItem(TARGET_KEY);
+    } catch(e){}
+    render();
+  });
+  targetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') targetInput.blur(); });
 
   submitBtn.addEventListener('click', () => {
     const date = dateInput.value || todayIso();

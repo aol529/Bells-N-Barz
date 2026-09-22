@@ -628,10 +628,13 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 .weight-chart-svg .data-line{fill:none;stroke:var(--accent);stroke-width:2.2;}
 .weight-chart-svg .data-dot{fill:var(--accent);stroke:var(--surface);stroke-width:1.5;}
 .weight-chart-svg .data-dot:hover{fill:var(--accent-hover);}
+.weight-chart-svg .target-line{fill:none;stroke:var(--accent-3);stroke-width:1.6;stroke-dasharray:2 4;}
+.weight-chart-svg .target-label{fill:var(--accent-3);font-family:'IBM Plex Mono',monospace;font-size:10px;}
 .weight-chart-legend{display:flex;gap:18px;margin-top:12px;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
 .weight-chart-legend span{display:inline-flex;align-items:center;gap:6px;}
 .weight-chart-legend .swatch{width:14px;height:2px;display:inline-block;}
 .weight-chart-legend .swatch.solid{background:var(--accent);}
+.weight-chart-legend .swatch.target{background:repeating-linear-gradient(90deg, var(--accent-3) 0 2px, transparent 2px 6px);}
 .weight-chart-legend .swatch.dash{background:repeating-linear-gradient(90deg, var(--accent-dim) 0 4px, transparent 4px 7px);}
 
 .weight-history{margin-top:22px;}

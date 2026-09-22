@@ -1441,6 +1441,16 @@
 <section class="me-section active" id="tab-weight">
 <div class="day-head"><h2>Weight — Daily Log</h2></div>
 <div class="day-focus">Track bodyweight day to day and watch the trend, not the noise</div>
+<div class="weight-chart-card" style="margin-bottom:22px;">
+<h3>Progress</h3>
+<div class="weight-chart-empty" id="weight-chart-empty">No entries yet — log a weight to start the chart.</div>
+<svg class="weight-chart-svg" id="weight-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<div class="weight-chart-legend" id="weight-chart-legend" style="display:none;">
+<span><i class="swatch solid"></i>Daily entry</span>
+<span><i class="swatch dash"></i>7-day trend</span>
+<span id="weight-chart-legend-target" style="display:none;"><i class="swatch target"></i>Target</span>
+</div>
+</div>
 <div class="weight-grid">
 <div class="weight-card">
 <h3>Log an Entry</h3>
@@ -1456,6 +1466,11 @@
 <button class="weight-submit" id="weight-submit" type="button">Add Entry</button>
 </div>
 <p class="weight-hint">Logging the same date again overwrites that day's entry. Everything here is saved in your browser only — it stays on this device.</p>
+<div class="weight-form" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);">
+<label for="weight-target">Target Weight (optional)</label>
+<input id="weight-target" min="0" placeholder="e.g. 165" step="0.1" type="number"/>
+</div>
+<p class="weight-hint">Shows as a line on the Progress chart above. Leave blank to hide it.</p>
 </div>
 <div>
 <div class="weight-stats" id="weight-stats" style="display:none;">
@@ -1463,15 +1478,6 @@
 <div class="weight-stat"><span class="lbl">Current</span><span class="val" id="stat-current">—</span></div>
 <div class="weight-stat"><span class="lbl">Change</span><span class="val" id="stat-change">—</span></div>
 <div class="weight-stat"><span class="lbl">Entries</span><span class="val" id="stat-count">—</span></div>
-</div>
-<div class="weight-chart-card">
-<h3>Progress</h3>
-<div class="weight-chart-empty" id="weight-chart-empty">No entries yet — log a weight to start the chart.</div>
-<svg class="weight-chart-svg" id="weight-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
-<div class="weight-chart-legend" id="weight-chart-legend" style="display:none;">
-<span><i class="swatch solid"></i>Daily entry</span>
-<span><i class="swatch dash"></i>7-day trend</span>
-</div>
 </div>
 </div>
 </div>
