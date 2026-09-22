@@ -6366,6 +6366,338 @@ createIntervalTimer(
       sun: clone(backShoulders).concat(clone(absCalves))
     };
   })();
+  const KAZMAIER_DAYS = (function(){
+    const chestShouldersTricepsHeavy = [
+      {name:'Chest (Heavy Day)', exercises:[
+        {name:'Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Wide-Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Narrow-Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'}
+      ]},
+      {name:'Shoulders', exercises:[
+        {name:'Front Deltoid Dumbbell Raise', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Dumbbell Seated Shoulder Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Dumbbell Side Deltoid Raise', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'10'}
+      ]},
+      {name:'Triceps', exercises:[
+        {name:'Lying Triceps Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps:'10'},
+        {name:'Triceps Cable Pressdown', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'10'}
+      ]}
+    ];
+    const legsBackBiceps = [
+      {name:'Legs', exercises:[
+        {name:'Squats (Heavy Day)', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Deadlifts (Light Day)', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Leg Extensions', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'10'},
+        {name:'Leg Curls', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'10'},
+        {name:'Standing Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'15–25'}
+      ]},
+      {name:'Back & Traps', exercises:[
+        {name:'Barbell Shrugs', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10–40'},
+        {name:'Close-Grip Chin-Ups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'3', reps:'to failure'},
+        {name:'Seated Cable Rows', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'10'}
+      ]},
+      {name:'Biceps', exercises:[
+        {name:'Seated Hammer Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'12'},
+        {name:'Standing Barbell Curls', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'}
+      ]}
+    ];
+    const chestShouldersTricepsLight = [
+      {name:'Chest (Light Day)', exercises:[
+        {name:'Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Wide-Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Narrow-Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'}
+      ]},
+      {name:'Shoulders (Heavy Day)', exercises:[
+        {name:'Dumbbell Seated Shoulder Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Front Deltoid Raise', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Rear Deltoid Cable Extensions', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'10'}
+      ]},
+      {name:'Triceps', exercises:[
+        {name:'Lying Triceps Barbell Extension', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'}
+      ]}
+    ];
+    const legsBackArmsHeavyDeadlift = [
+      {name:'Legs', exercises:[
+        {name:'Deadlifts (Heavy Day)', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Squat (Light Day)', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Leg Extensions', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'10'},
+        {name:'Leg Curls', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'10'},
+        {name:'Standing Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'15–25'}
+      ]},
+      {name:'Back & Traps', exercises:[
+        {name:'Shrugs (Heavy Day)', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10–15'},
+        {name:'Single-Arm Dumbbell Rows', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Wide-Grip Lat Pulldowns', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'4', reps:'10'}
+      ]},
+      {name:'Arms', exercises:[
+        {name:'Seated Hammer Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Concentration Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'4', reps:'12'}
+      ]}
+    ];
+    return {
+      mon: clone(chestShouldersTricepsHeavy), tue: clone(legsBackBiceps), wed: [],
+      thu: clone(chestShouldersTricepsLight), fri: [],
+      sat: clone(legsBackArmsHeavyDeadlift), sun: []
+    };
+  })();
+  const HEPBURN_PROGRAM_A_DAYS = (function(){
+    const progNote = '2 reps/set, turning one more 2-rep set into a 3-rep set each subsequent workout (see companion blog post) — once all 8 sets read 3 reps, add 10 lb and restart at 2s';
+    const squatBench = [
+      {name:'Squat & Bench Day', exercises:[
+        {name:'Squat', rest:'2 min', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:progNote},
+        {name:'Bench Press', rest:'2 min', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:progNote}
+      ]}
+    ];
+    const deadliftDay = [
+      {name:'Deadlift Day', exercises:[
+        {name:'Deadlift', rest:'2 min', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:progNote}
+      ]}
+    ];
+    return {
+      mon: clone(squatBench), tue: clone(deadliftDay), wed: [],
+      thu: clone(squatBench), fri: clone(deadliftDay), sat: [], sun: []
+    };
+  })();
+  const GIRONDA_8X8_DAYS = (function(){
+    const day1 = [
+      {name:'Chest', exercises:[
+        {name:'Decline Low Cable Crossover', rest:'20 sec', tempo:'', equipment:'Cable', alternates:'', sets:'8', reps:'8'},
+        {name:'Bench Press to Neck', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Incline Dumbbell Press (palms facing each other)', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Wide-Grip V-Bar Dips', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Biceps', exercises:[
+        {name:'Drag Curl', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Preacher Curl (top of bench at low pec line)', rest:'20 sec', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'8', reps:'8'},
+        {name:'Incline Dumbbell Curl', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Forearms', exercises:[
+        {name:'Zottman Curl', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Barbell Wrist Curl', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'8'}
+      ]}
+    ];
+    const day2 = [
+      {name:'Shoulders', exercises:[
+        {name:'Seated Dumbbell Side Lateral Raise', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Wide-Grip Upright Row', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Front-to-Back Barbell Shoulder Press', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Dumbbell Bent-Over Rear Deltoid Lateral', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Triceps', exercises:[
+        {name:'Kneeling Rope Extension', rest:'20 sec', tempo:'', equipment:'Cable', alternates:'', sets:'8', reps:'8'},
+        {name:'Lying Triceps Extension', rest:'20 sec', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'8', reps:'8'},
+        {name:'2-Dumbbell Triceps Kickback', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'}
+      ]}
+    ];
+    const day3 = [
+      {name:'Back', exercises:[
+        {name:'Sternum Chin-Up', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'},
+        {name:'High Bench Two-Dumbbell Rowing', rest:'20 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'8', reps:'8'},
+        {name:'Low Cable Row (18" high pulley)', rest:'20 sec', tempo:'', equipment:'Cable', alternates:'', sets:'8', reps:'8'},
+        {name:'Medium-Grip Lat Pulldown to Chest', rest:'20 sec', tempo:'', equipment:'Cable', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Double Crunch (pull knees and elbows together)', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'},
+        {name:'Weighted Crunch', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'},
+        {name:'Lying Bent-Knee Leg Raise', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'}
+      ]}
+    ];
+    const day4 = [
+      {name:'Quads', exercises:[
+        {name:'Front Squat', rest:'20 sec', tempo:'', equipment:'Barbell', alternates:'Hack Squat Machine', sets:'8', reps:'8'},
+        {name:'Hack Machine Squat', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'8'},
+        {name:'Sissy Squat', rest:'20 sec', tempo:'', equipment:'Bodyweight', alternates:'', sets:'8', reps:'8'},
+        {name:'Leg Extension', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Hamstrings', exercises:[
+        {name:'Supine Leg Curl', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'8'},
+        {name:'Seated Leg Curl Machine', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'8'}
+      ]},
+      {name:'Calves', exercises:[
+        {name:'Standing Calf Raise', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'20'},
+        {name:'Seated Calf Raise', rest:'20 sec', tempo:'', equipment:'Machine', alternates:'', sets:'8', reps:'20'}
+      ]}
+    ];
+    return {
+      mon: clone(day1), tue: clone(day2), wed: clone(day3), thu: clone(day4),
+      fri: [], sat: [], sun: []
+    };
+  })();
+  const GVT_DAYS = (function(){
+    const chestBack = [
+      {name:'Chest & Back', exercises:[
+        {name:'Decline Dumbbell Press', rest:'90 sec', tempo:'4-0-2-0', equipment:'Dumbbell', alternates:'', sets:'10', reps:'10'},
+        {name:'Chin-Ups', rest:'90 sec', tempo:'4-0-2-0', equipment:'Bodyweight', alternates:'', sets:'10', reps:'10'},
+        {name:'Incline Dumbbell Flyes', rest:'60 sec', tempo:'3-0-2-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'10–12'},
+        {name:'One-Arm Dumbbell Row', rest:'60 sec', tempo:'3-0-2-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'10–12'}
+      ]}
+    ];
+    const legsAbs = [
+      {name:'Legs & Abs', exercises:[
+        {name:'Barbell Squat', rest:'90 sec', tempo:'4-0-2-0', equipment:'Barbell', alternates:'', sets:'10', reps:'10'},
+        {name:'Lying Leg Curls', rest:'90 sec', tempo:'4-0-2-0', equipment:'Machine', alternates:'', sets:'10', reps:'10'},
+        {name:'Leg Pull-In', rest:'60 sec', tempo:'2-0-2-0', equipment:'Bodyweight', alternates:'Low-Cable Pull-Ins', sets:'3', reps:'15–20'},
+        {name:'Seated Calf Raise', rest:'60 sec', tempo:'2-0-2-0', equipment:'Machine', alternates:'', sets:'3', reps:'15–20'}
+      ]}
+    ];
+    const armsShoulders = [
+      {name:'Arms & Shoulders', exercises:[
+        {name:'Parallel Bar Dips', rest:'90 sec', tempo:'4-0-2-0', equipment:'Bodyweight', alternates:'', sets:'10', reps:'10'},
+        {name:'Incline Hammer Curls', rest:'90 sec', tempo:'4-0-2-0', equipment:'Dumbbell', alternates:'', sets:'10', reps:'10'},
+        {name:'Dumbbell Lying Rear Lateral Raise', rest:'60 sec', tempo:'2-0-x-0', equipment:'Dumbbell', alternates:'Bent-Over or Seated Lateral Raises', sets:'3', reps:'10–12'},
+        {name:'Seated Dumbbell Lateral Raises', rest:'60 sec', tempo:'2-0-x-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'10–12'}
+      ]}
+    ];
+    return {
+      mon: clone(chestBack), tue: clone(legsAbs), wed: [],
+      thu: clone(armsShoulders), fri: [], sat: [], sun: []
+    };
+  })();
+  const REEVES_CLASSIC_PHYSIQUE_DAYS = (function(){
+    const fullBody = [
+      {name:'Full Body', exercises:[
+        {name:'Incline Dumbbell Press', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8–12, descending weight each set'},
+        {name:'Breathing Front Squat', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'3', reps:'15, supersetted with Dumbbell Laterals/Flyes'},
+        {name:'Dumbbell Laterals/Flyes', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'15'},
+        {name:'Seated Barbell Curls', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'3', reps:'12, emphasizing the negative'},
+        {name:'Alternate Dumbbell Forward Raise', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'2', reps:'15'},
+        {name:'Bent-Over Rows', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'2', reps:'12'},
+        {name:'One-Arm Rows', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12'},
+        {name:'Splits with Barbell', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'1', reps:'until breathless'},
+        {name:'Alternate Raise Lying', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'2', reps:'15'},
+        {name:'Good Mornings', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'1', reps:'15'},
+        {name:'Dumbbell French Press', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Dumbbell', alternates:'', sets:'3', reps:'12'},
+        {name:'Calf Raises (leg press machine)', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Machine', alternates:'', sets:'1', reps:'30–40'},
+        {name:'Bench Press', rest:'45–60 sec', tempo:'2-0-3-0', equipment:'Barbell', alternates:'', sets:'2', reps:'12'}
+      ]}
+    ];
+    return {
+      mon: clone(fullBody), tue: [], wed: clone(fullBody), thu: [],
+      fri: [], sat: clone(fullBody), sun: []
+    };
+  })();
+  const ZANE_EXPERIENCE_DAYS = (function(){
+    const torso = [
+      {name:'Back', exercises:[
+        {name:'Front Pulldown (neutral grip)', rest:'stretch, ~15 sec', tempo:'', equipment:'Cable', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Low Cable Row', rest:'stretch, ~15 sec', tempo:'', equipment:'Cable', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'One-Arm Dumbbell Row', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'}
+      ]},
+      {name:'Shoulders', exercises:[
+        {name:'Overhead Press (arcing machine or Smith)', rest:'stretch, ~15 sec', tempo:'', equipment:'Machine', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Rear Deltoid Machine', rest:'stretch, ~15 sec', tempo:'', equipment:'Machine', alternates:'Bent-Over Dumbbell Lateral Raise', sets:'2', reps:'15 then 12, increasing weight'},
+        {name:'Dumbbell Lateral Raise', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'}
+      ]},
+      {name:'Chest', exercises:[
+        {name:'Dumbbell Pullover', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'Pullover Machine', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Incline Dumbbell Press, 70° (neutral grip)', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Incline Dumbbell Press, 30° (neutral grip)', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Pec Deck / Dumbbell Flyes', rest:'stretch, ~15 sec', tempo:'', equipment:'Machine/Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Hanging Knee-Ups tri-set with Crunches', rest:'none (tri-set)', tempo:'', equipment:'Bodyweight', alternates:'', sets:'3', reps:'25–30'},
+        {name:'One-Arm Cable Crunch', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'3', reps:'10–15 each side'}
+      ]}
+    ];
+    const legs = [
+      {name:'Thighs', exercises:[
+        {name:'Leg Curl superset with Hyperextension', rest:'stretch, ~15 sec', tempo:'', equipment:'Machine', alternates:'', sets:'2', reps:'12 then 10 (leg curl), 12–15 (hyperextension)'},
+        {name:'Leg Extension superset with Leg Press', rest:'3 min after both supersets', tempo:'', equipment:'Machine', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Squat (or Hack Squat / Front Squat)', rest:'stretch, ~15 sec', tempo:'', equipment:'Barbell/Machine', alternates:'Front Squat, Hack Squat', sets:'2', reps:'12 then 10, increasing weight'}
+      ]},
+      {name:'Calves', exercises:[
+        {name:'Standing Calf Raise', rest:'burn-to-failure, ~15 sec', tempo:'', equipment:'Machine', alternates:'Donkey Calf Raise, Leg Press Calf Raise', sets:'2', reps:'15–20'},
+        {name:'Seated Calf Raise', rest:'burn-to-failure, ~15 sec', tempo:'', equipment:'Machine', alternates:'', sets:'2', reps:'15–20'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Leg Raise superset with Crunches', rest:'none (superset)', tempo:'', equipment:'Bodyweight', alternates:'', sets:'3', reps:'25–30'},
+        {name:'One-Arm Cable Crunch', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'1', reps:'25 each side'}
+      ]}
+    ];
+    const arms = [
+      {name:'Triceps', exercises:[
+        {name:'Close-Grip Bench Press', rest:'stretch, ~15 sec', tempo:'', equipment:'Barbell/Smith Machine', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Dip Machine superset with Overhead Cable Extension', rest:'3 min after both supersets', tempo:'', equipment:'Machine/Cable', alternates:'Parallel Dips', sets:'2', reps:'12 then 10, increasing weight'}
+      ]},
+      {name:'Biceps', exercises:[
+        {name:'One-Arm Curl (machine or cable)', rest:'stretch, ~15 sec', tempo:'', equipment:'Machine/Cable', alternates:'One-Arm Dumbbell Concentration Curl', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Incline Dumbbell Curl (face-down, 70°)', rest:'stretch, ~15 sec', tempo:'', equipment:'Dumbbell', alternates:'', sets:'2', reps:'12 then 10, increasing weight'},
+        {name:'Preacher Cable Curl (drop set)', rest:'seconds between drops', tempo:'', equipment:'Cable', alternates:'', sets:'1', reps:'6, 5–6, 4–5, 4 — dropping weight each stage'}
+      ]},
+      {name:'Forearms', exercises:[
+        {name:'Reverse Curl (rope or barbell, drop set)', rest:'none (drop)', tempo:'', equipment:'Rope/Barbell', alternates:'', sets:'1', reps:'8 then drop weight for 7 more'},
+        {name:'Barbell Wrist Curl', rest:'—', tempo:'', equipment:'Barbell', alternates:'', sets:'1', reps:'35'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Leg Raises, Crunches, Hanging Knee-Ups & One-Arm Cable Crunch circuit', rest:'as needed', tempo:'', equipment:'Bodyweight/Cable', alternates:'', sets:'2', reps:'30, 30, 30, 10 each arm — repeat circuit twice'}
+      ]}
+    ];
+    return {
+      mon: clone(torso), tue: [], wed: clone(legs), thu: [],
+      fri: clone(arms), sat: [], sun: []
+    };
+  })();
+  const RONNIE_COLEMAN_DAYS = (function(){
+    const backBiceps = [
+      {name:'Back', exercises:[
+        {name:'Deadlift', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'2'},
+        {name:'Bent-Over Row', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'T-Bar Row', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10'},
+        {name:'Lat Pulldown', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'3', reps:'10'},
+        {name:'Seated V-Bar Cable Row', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'3', reps:'10'}
+      ]},
+      {name:'Biceps', exercises:[
+        {name:'Barbell Curl', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Seated Dumbbell Curl', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Preacher Curl', rest:'1 min', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'3', reps:'8'},
+        {name:'Cable Curl', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'3', reps:'8'}
+      ]}
+    ];
+    const chestTriceps = [
+      {name:'Chest', exercises:[
+        {name:'Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'6'},
+        {name:'Incline Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Dumbbell Bench Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Decline Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'8'}
+      ]},
+      {name:'Triceps', exercises:[
+        {name:'Tricep Dip Machine', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'8'},
+        {name:'Overhead Dumbbell Tricep Extension', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Behind-Head Skull Crusher', rest:'1 min', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'3', reps:'8'},
+        {name:'Reverse-Grip Tricep Pushdown', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'3', reps:'8'}
+      ]}
+    ];
+    const shouldersTraps = [
+      {name:'Shoulders', exercises:[
+        {name:'Military Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'8'},
+        {name:'Seated Dumbbell Military Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Alternating Dumbbell Front Raise (superset)', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Lateral Raise (superset)', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Machine Reverse Fly', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'8'}
+      ]},
+      {name:'Traps', exercises:[
+        {name:'Shrug', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'8'}
+      ]}
+    ];
+    const legs = [
+      {name:'Legs', exercises:[
+        {name:'Squat', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'2'},
+        {name:'Seated Leg Press', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'8'},
+        {name:'Walking Bodyweight Lunge', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'2', reps:'50'},
+        {name:'Leg Extension', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'8'},
+        {name:'Straight-Leg Deadlift', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'8'},
+        {name:'Seated Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'8'},
+        {name:'Standing Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'3', reps:'8'},
+        {name:'Standing Barbell Calf Raise', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10'},
+        {name:'Donkey Calf Raise', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'12'},
+        {name:'Seated Machine Calf Raise', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'4', reps:'12'}
+      ]}
+    ];
+    return {
+      mon: clone(backBiceps), tue: clone(chestTriceps), wed: clone(shouldersTraps), thu: clone(legs),
+      fri: [], sat: [], sun: []
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'old-school-70s',
@@ -6390,6 +6722,48 @@ createIntervalTimer(
       name: "Lee Haney’s 3-On-1-Off Split",
       description: "8-time Mr. Olympia Lee Haney's rotating split: Chest/Arms → Legs → Back/Shoulders → Rest, repeating continuously every 4 days rather than locking to specific weekdays (calves/abs trained on every training day). This preset fits one pass of that cycle into a calendar week for convenience — see the companion blog post for how the true rest day drifts if you keep the exact 4-day rotation going. Moderate 4–5 sets of 6–15 reps per exercise. Source: “Old School Workout: Lee Haney,” Generation Iron (see Sources & Credits).",
       data: LEE_HANEY_DAYS
+    },
+    {
+      id: 'kazmaier-power-building',
+      name: "Bill Kazmaier’s Power-Building Split",
+      description: "Strongman/powerlifter Bill Kazmaier's 4-day \"heavy/light\" hybrid: Chest/Shoulders/Triceps and Legs/Back/Arms each trained twice a week, alternating a heavy day and a light day per lift (e.g. heavy squats paired with light deadlifts, then flipped later in the week). Mostly moderate 8-10 rep sets rather than max-effort singles. Source: Evette Hinzman, “Classic Strength Training with Bill Kazmaier” (see Sources & Credits).",
+      data: KAZMAIER_DAYS
+    },
+    {
+      id: 'hepburn-program-a',
+      name: "Doug Hepburn’s Program A",
+      description: "1953 Weightlifting World Champion Doug Hepburn's double-progression strength method: squat, bench press, and deadlift each trained twice a week, 8 sets per lift starting at 2 reps a set. Each workout, one more 2-rep set becomes a 3-rep set — once all 8 sets read 3 reps, add 10 lb and restart at 2s. A slow, steady, low-drama way to add weight to the bar every month. Source: “Extreme Powerbuilding: The Hepburn Method,” Muscle & Strength (see Sources & Credits).",
+      data: HEPBURN_PROGRAM_A_DAYS
+    },
+    {
+      id: 'gironda-8x8',
+      name: "Vince Gironda’s 8 X 8",
+      description: "Legendary trainer Vince Gironda's \"honest workout\": 8 sets of 8 reps per exercise, 2-4 exercises per muscle group, only 15-30 seconds rest between sets — the whole point is condensing more work into less time rather than adding weight. An advanced \"shock routine\" Gironda didn't recommend using constantly; not for beginners. 4-day split (Chest/Biceps/Forearms → Shoulders/Triceps → Back/Abs → Quads/Hamstrings/Calves). Source: “Vince Gironda's 8 X 8 Workout,” Old School Trainer (see Sources & Credits).",
+      data: GIRONDA_8X8_DAYS
+    },
+    {
+      id: 'german-volume-training',
+      name: "German Volume Training (10×10)",
+      description: "The classic \"Ten Sets Method,\" popularized in German weightlifting circles in the 1970s and written up by Charles Poliquin: one exercise per body part, 10 straight sets of 10 reps at a weight you could otherwise lift for 20, 90 seconds rest, one session per body part every 4-5 days. Brutally simple, famous for fast size gains — and famous for extreme soreness. 5-day cycle (Chest/Back → Legs/Abs → Off → Arms/Shoulders → Off) mapped onto Monday-Friday, weekends free. Source: Charles Poliquin, “German Volume Training!”, Bodybuilding.com (see Sources & Credits).",
+      data: GVT_DAYS
+    },
+    {
+      id: 'steve-reeves-classic-physique',
+      name: "Steve Reeves’ Classic Physique Routine",
+      description: "Mr. Universe Steve Reeves' 1951 full-body routine, trained 3 non-consecutive days a week (e.g. Monday, Wednesday, Saturday) rather than split by body part — the pre-steroid-era standard. All sets to failure, 45-60 seconds between sets, 2 minutes between exercises, emphasizing a slow negative. The same full workout is repeated each session. Source: “The Steve Reeves 'Classic Physique' Routine,” GymTalk (see Sources & Credits).",
+      data: REEVES_CLASSIC_PHYSIQUE_DAYS
+    },
+    {
+      id: 'zane-experience-split',
+      name: "Frank Zane’s Torso/Legs/Arms Split",
+      description: "3x Mr. Olympia Frank Zane's \"Zane Experience\" routine: Torso (back, shoulders, chest) → Legs (thighs, calves) → Arms (triceps, biceps, forearms), abs trained every session, a brief stretch between sets on every exercise instead of a timed rest. Just 2 working sets per exercise (first set ~12 reps, second set ~10 reps at a heavier weight) — quality and mind-muscle focus over sheer volume. This preset uses Zane's own recommended maintenance cycle (each body part once every 7 days: Monday/Wednesday/Friday) — his book also describes faster 4, 5, and 6-day cycles for in-season training. Source: Frank Zane, “The Zane Body Training Manual” (see Sources & Credits); exercise names generalized from Zane's personal home-gym equipment.",
+      data: ZANE_EXPERIENCE_DAYS
+    },
+    {
+      id: 'ronnie-coleman-split',
+      name: "Ronnie Coleman’s Power-Building Split",
+      description: "8-time Mr. Olympia Ronnie Coleman's 4-day split (Back/Biceps → Chest/Triceps → Shoulders/Traps → Legs), combining a very heavy, low-rep compound lift (deadlift or squat for singles/doubles) with higher-rep accessory work for everything else. This preset uses Week 1 of the source's multi-week template — the original plan calls for the compound lift's rep count to climb in later weeks (e.g. squat moves from 2 reps up toward 6-10) as the accessory work stays constant, so treat this as a starting point rather than a routine to repeat unchanged for months. Source: exercise.com, “Ronnie Coleman Workout Plan” (see Sources & Credits).",
+      data: RONNIE_COLEMAN_DAYS
     }
   ];
 
