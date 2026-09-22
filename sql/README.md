@@ -162,7 +162,49 @@
     `on conflict (slug) do nothing`. Mirrors the matching entry in
     `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
 
-24. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+24. **24-blog-bill-kazmaier.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Bill Kazmaier's Power-Building Split"
+    (Health & Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+25. **25-blog-doug-hepburn.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Doug Hepburn's Program A" (Health &
+    Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+26. **26-blog-vince-gironda-8x8.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Vince Gironda's 8×8" (Health & Appearance
+    category) to `blog_posts`, idempotent via `on conflict (slug) do
+    nothing`. Mirrors the matching entry in `js/bells-n-barz-blog.js`'s
+    `SEED_POSTS`. Run any time.
+
+27. **27-blog-german-volume-training.sql** — a one-off content insert,
+    not a schema/RLS change: adds "German Volume Training: The Ten Sets
+    Method" (Health & Appearance category) to `blog_posts`, idempotent
+    via `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+28. **28-blog-steve-reeves.sql** — a one-off content insert, not a
+    schema/RLS change: adds "The Steve Reeves Classic Physique Routine"
+    (Health & Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+29. **29-blog-frank-zane.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Frank Zane's Torso/Legs/Arms Split" (Health
+    & Appearance category) to `blog_posts`, idempotent via `on conflict
+    (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+30. **30-blog-ronnie-coleman.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Ronnie Coleman's Power-Building Split"
+    (Health & Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+31. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
