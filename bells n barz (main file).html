@@ -1403,6 +1403,7 @@
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
   <button data-me-section="nutrition">Nutrition</button>
+  <button data-me-section="moon">Moon</button>
 </div>
 
 <!-- ================= WEIGHT ================= -->
@@ -1684,6 +1685,38 @@
 <div class="weight-clear-row">
 <button class="weight-clear-btn" id="nutrition-clear-btn" type="button">Clear all entries</button>
 </div>
+</div>
+</section>
+
+<!-- ================= MOON PHASE ================= -->
+<section class="me-section" id="tab-moon">
+<div class="day-head"><h2>Moon Phase</h2></div>
+<div class="day-focus">Where the moon is right now, and what's coming up</div>
+
+<div class="moon-today-card">
+  <div class="moon-today-icon" id="moon-today-icon">🌑</div>
+  <div class="moon-today-info">
+    <div class="moon-today-name" id="moon-today-name">—</div>
+    <div class="moon-today-illum" id="moon-today-illum">—</div>
+    <div class="moon-today-next" id="moon-today-next">—</div>
+  </div>
+</div>
+
+<div class="moon-strip" id="moon-strip"></div>
+
+<div class="ekadashi-card" id="ekadashi-card">
+  <div class="ekadashi-hourglass" id="ekadashi-hourglass">
+    <svg viewBox="0 0 100 160" width="72" height="115">
+      <polygon class="eg-sand-top" id="eg-sand-top" points=""></polygon>
+      <polygon class="eg-sand-bottom" id="eg-sand-bottom" points=""></polygon>
+      <path class="eg-frame" d="M20,18 L80,18 L50,78 Z M20,142 L80,142 L50,82 Z"></path>
+      <rect class="eg-neck" x="48" y="76" width="4" height="8"></rect>
+    </svg>
+  </div>
+  <div class="ekadashi-label">Ekadashi</div>
+  <div class="ekadashi-status" id="ekadashi-status">—</div>
+  <div class="ekadashi-countdown" id="ekadashi-countdown">—</div>
+  <div class="ekadashi-note">Approximate — based on exact tithi timing in UTC, not adjusted for sunrise or your local Panchang (observance can shift by a day depending on tradition). Confirm exact fasting/Parana times with your temple or community calendar.</div>
 </div>
 </section>
 
@@ -4629,7 +4662,8 @@ let previousLocation = null;
     weight: document.getElementById('tab-weight'),
     period: document.getElementById('tab-period'),
     track: document.getElementById('tab-track'),
-    nutrition: document.getElementById('tab-nutrition')
+    nutrition: document.getElementById('tab-nutrition'),
+    moon: document.getElementById('tab-moon')
   };
   const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition' };
   btns.forEach(btn=>{
@@ -4650,6 +4684,245 @@ let previousLocation = null;
     });
   });
 })();
+
+/* ---------------- MOON PHASE (Me sub-tab) ----------------
+   Pure client-side calculation from the current date — no logging, no
+   Supabase table, so unlike Weight/Period/Track/Nutrition it renders
+   once, synchronously, with no lazy module and no ME_SECTION_TO_MODULE
+   entry (undefined there is already a no-op, see above). Standard
+   synodic-month approximation (~29.53059 days), anchored to a known
+   new moon (2000-01-06 18:14 UTC) — accurate to within a few hours,
+   plenty for a "what phase is it, roughly" widget. */
+const MOON_SYNODIC_DAYS = 29.53058867;
+const MOON_KNOWN_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+const MOON_PHASES = [
+  { name: 'New Moon', icon: '🌑' },
+  { name: 'Waxing Crescent', icon: '🌒' },
+  { name: 'First Quarter', icon: '🌓' },
+  { name: 'Waxing Gibbous', icon: '🌔' },
+  { name: 'Full Moon', icon: '🌕' },
+  { name: 'Waning Gibbous', icon: '🌖' },
+  { name: 'Last Quarter', icon: '🌗' },
+  { name: 'Waning Crescent', icon: '🌘' }
+];
+function moonPhaseFor(date){
+  const diffDays = (date.getTime() - MOON_KNOWN_NEW_MOON) / 86400000;
+  let age = diffDays % MOON_SYNODIC_DAYS;
+  if (age < 0) age += MOON_SYNODIC_DAYS;
+  const frac = age / MOON_SYNODIC_DAYS; // 0 = new moon, 0.5 = full moon
+  const idx = Math.floor(frac * 8 + 0.5) % 8; // nearest of 8 named phases, boundaries centered on each
+  const illumination = Math.round((1 - Math.cos(2 * Math.PI * frac)) / 2 * 100);
+  return { name: MOON_PHASES[idx].name, icon: MOON_PHASES[idx].icon, illumination: illumination, age: age };
+}
+function renderMoonPhase(){
+  const iconEl = document.getElementById('moon-today-icon');
+  if (!iconEl) return;
+  const today = new Date();
+  const phase = moonPhaseFor(today);
+  iconEl.textContent = phase.icon;
+  document.getElementById('moon-today-name').textContent = phase.name;
+  document.getElementById('moon-today-illum').textContent = phase.illumination + '% illuminated';
+
+  const half = MOON_SYNODIC_DAYS / 2;
+  const daysToFullMoon = Math.ceil(phase.age < half ? half - phase.age : MOON_SYNODIC_DAYS - phase.age + half);
+  const daysToNewMoon = Math.ceil(MOON_SYNODIC_DAYS - phase.age);
+  document.getElementById('moon-today-next').textContent =
+    'Next full moon in ' + daysToFullMoon + ' day' + (daysToFullMoon===1?'':'s') +
+    ' · Next new moon in ' + daysToNewMoon + ' day' + (daysToNewMoon===1?'':'s');
+
+  const strip = document.getElementById('moon-strip');
+  if (strip){
+    let html = '';
+    for (let i = 0; i < 14; i++){
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const p = moonPhaseFor(d);
+      html += '<div class="moon-day' + (i===0 ? ' today' : '') + '">' +
+        '<div class="moon-day-icon">' + p.icon + '</div>' +
+        '<div class="moon-day-label">' + d.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + '</div>' +
+      '</div>';
+    }
+    strip.innerHTML = html;
+  }
+}
+renderMoonPhase();
+
+/* ---------------- EKADASHI TIMER (Moon Phase companion) ----------------
+   Ekadashi is the 11th tithi (lunar day) of each of the two lunar
+   fortnights — tithi 11 in the waxing Shukla Paksha, tithi 26 (15+11)
+   in the waning Krishna Paksha. A tithi is defined by the Moon-Sun
+   ecliptic longitude difference crossing each 12° boundary, which needs
+   real solar/lunar position, not just the fixed-period sinusoid used
+   for the moon-phase visual above — that's accurate enough for "what
+   phase, roughly" but nowhere near precise enough for a tithi boundary.
+   sunLongitude/moonLongitude below are Meeus' abridged low-precision
+   series (Astronomical Algorithms ch.25 for the Sun, the ~20 largest
+   ELP2000-82 terms for the Moon) — good to roughly arcminute level,
+   i.e. within a few minutes of the true tithi boundary. What this still
+   doesn't account for: which tithi is present at LOCAL sunrise (the
+   actual rule most traditions use to decide the observed calendar day,
+   which can shift by a day from the raw astronomical boundary) — that
+   needs the viewer's location, which isn't collected anywhere in this
+   app. Labeled as approximate in the UI for exactly this reason. */
+function toJulianDate(date){ return date.getTime() / 86400000 + 2440587.5; }
+function normalizeDeg(x){ x = x % 360; return x < 0 ? x + 360 : x; }
+function sunLongitude(date){
+  const T = (toJulianDate(date) - 2451545.0) / 36525;
+  const L0 = 280.46646 + 36000.76983*T + 0.0003032*T*T;
+  const M = (357.52911 + 35999.05029*T - 0.0001537*T*T) * Math.PI/180;
+  const C = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(M)
+          + (0.019993 - 0.000101*T)*Math.sin(2*M)
+          + 0.000289*Math.sin(3*M);
+  return normalizeDeg(L0 + C);
+}
+function moonLongitude(date){
+  const T = (toJulianDate(date) - 2451545.0) / 36525;
+  const d2r = Math.PI/180;
+  const Lp = normalizeDeg(218.3164477 + 481267.88123421*T - 0.0015786*T*T + T*T*T/538841 - T*T*T*T/65194000);
+  const D  = (297.8501921 + 445267.1114034*T - 0.0018819*T*T + T*T*T/545868 - T*T*T*T/113065000) * d2r;
+  const M  = (357.5291092 + 35999.0502909*T - 0.0001536*T*T + T*T*T/24490000) * d2r;
+  const Mp = (134.9633964 + 477198.8675055*T + 0.0087414*T*T + T*T*T/69699 - T*T*T*T/14712000) * d2r;
+  const F  = (93.2720950 + 483202.0175233*T - 0.0036539*T*T - T*T*T/3526000 + T*T*T*T/863310000) * d2r;
+  const dL =
+      6.288774*Math.sin(Mp) + 1.274027*Math.sin(2*D - Mp) + 0.658314*Math.sin(2*D)
+    + 0.213618*Math.sin(2*Mp) - 0.185116*Math.sin(M) - 0.114332*Math.sin(2*F)
+    + 0.058793*Math.sin(2*D - 2*Mp) + 0.057066*Math.sin(2*D - M - Mp) + 0.053322*Math.sin(2*D + Mp)
+    + 0.045758*Math.sin(2*D - M) - 0.040923*Math.sin(M - Mp) - 0.034720*Math.sin(D)
+    - 0.030383*Math.sin(M + Mp) + 0.015327*Math.sin(2*D - 2*F) - 0.012528*Math.sin(Mp + 2*F)
+    + 0.010980*Math.sin(Mp - 2*F) + 0.010675*Math.sin(4*D - Mp) + 0.010034*Math.sin(3*Mp)
+    + 0.008548*Math.sin(4*D - 2*Mp) - 0.007888*Math.sin(2*D + M - Mp) - 0.006766*Math.sin(2*D + M);
+  return normalizeDeg(Lp + dL);
+}
+function tithiAt(date){
+  const diff = normalizeDeg(moonLongitude(date) - sunLongitude(date));
+  return Math.floor(diff / 12) + 1; // 1..30 (15 = Purnima/full moon, 30 = Amavasya/new moon)
+}
+// Coarse 3-hour sweep (max 50 days — Ekadashi never goes longer than
+// ~16 days between occurrences) then a binary-search refinement down to
+// sub-minute precision, rather than assuming a fixed tithi length —
+// real tithi durations vary (~19-26 hours) with the Moon's orbital speed.
+function findTithiTransition(fromDate, matches, initialMatches){
+  const stepMs = 3 * 60 * 60 * 1000;
+  let t = fromDate.getTime();
+  for (let i = 0; i < 400; i++){
+    t += stepMs;
+    if (matches(tithiAt(new Date(t))) !== initialMatches){
+      let lo = t - stepMs, hi = t;
+      for (let b = 0; b < 25; b++){
+        const mid = (lo + hi) / 2;
+        if (matches(tithiAt(new Date(mid))) === initialMatches) lo = mid; else hi = mid;
+      }
+      return new Date(hi);
+    }
+  }
+  return null;
+}
+function nextEkadashi(fromDate){
+  const cur = tithiAt(fromDate);
+  if (cur === 11 || cur === 26){
+    const end = findTithiTransition(fromDate, t => t === cur, true);
+    return { ongoing: true, paksha: cur === 11 ? 'Shukla' : 'Krishna', start: null, end: end };
+  }
+  const shuklaStart = findTithiTransition(fromDate, t => t === 11, false);
+  const krishnaStart = findTithiTransition(fromDate, t => t === 26, false);
+  const useShukla = shuklaStart && (!krishnaStart || shuklaStart < krishnaStart);
+  const target = useShukla ? 11 : 26;
+  const start = useShukla ? shuklaStart : krishnaStart;
+  const end = start ? findTithiTransition(start, t => t === target, true) : null;
+  return { ongoing: false, paksha: useShukla ? 'Shukla' : 'Krishna', start: start, end: end };
+}
+function fmtCountdown(ms){
+  if (ms <= 0) return '0s';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (d > 0) return d + 'd ' + h + 'h ' + m + 'm';
+  if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
+  return m + 'm ' + s + 's';
+}
+/* ---- Hourglass visual: a decorative approximation, not tied to the
+   exact (variable, ~19-26h) length of the real tithi cycle — it drains
+   over a nominal half-synodic-month (~14.77 days), which is close
+   enough that the sand level always looks "about right" relative to
+   the precise countdown text next to it, without the complexity of
+   also computing the previous Ekadashi's boundary just to measure a
+   fill percentage. Geometry: two mirrored triangles (apex-to-apex,
+   base 20..80, apex/neck around y=78-82 in a 0 0 100 160 viewBox);
+   "sand" is drawn as a smaller similar triangle for the draining top
+   half and a growing trapezoid for the accumulating bottom half, each
+   recomputed from the same top-triangle taper. ---- */
+const MOON_HALF_SYNODIC_MS = 29.53058867 / 2 * 86400000;
+function updateHourglassSand(progress){
+  const topEl = document.getElementById('eg-sand-top');
+  const bottomEl = document.getElementById('eg-sand-bottom');
+  if (!topEl || !bottomEl) return;
+  const p = Math.max(0, Math.min(1, progress));
+  const topBaseY = 18, topApexY = 78, bottomApexY = 82, bottomBaseY = 142, halfBaseWidth = 30;
+
+  const topSurfaceY = topBaseY + p * (topApexY - topBaseY);
+  const topHalfWidth = halfBaseWidth * (topApexY - topSurfaceY) / (topApexY - topBaseY);
+  topEl.setAttribute('points',
+    (50 - topHalfWidth) + ',' + topSurfaceY + ' ' +
+    (50 + topHalfWidth) + ',' + topSurfaceY + ' ' +
+    '50,' + topApexY
+  );
+
+  const bottomSurfaceY = bottomBaseY - p * (bottomBaseY - bottomApexY);
+  const bottomHalfWidth = halfBaseWidth * (bottomSurfaceY - bottomApexY) / (bottomBaseY - bottomApexY);
+  bottomEl.setAttribute('points',
+    '20,' + bottomBaseY + ' 80,' + bottomBaseY + ' ' +
+    (50 + bottomHalfWidth) + ',' + bottomSurfaceY + ' ' +
+    (50 - bottomHalfWidth) + ',' + bottomSurfaceY
+  );
+}
+
+let ekadashiInfo = null;
+let ekadashiRefreshAt = 0;
+let ekadashiWasOngoing = null; // null until the first render, so page load never "turns" the glass
+function renderEkadashi(){
+  const statusEl = document.getElementById('ekadashi-status');
+  const countdownEl = document.getElementById('ekadashi-countdown');
+  if (!statusEl || !countdownEl) return;
+  const now = Date.now();
+  // Recompute the underlying tithi search at most once a minute (it's a
+  // few hundred trig calls, cheap but pointless to redo every tick) —
+  // the 1-second ticker below just re-formats the countdown in between.
+  if (!ekadashiInfo || now >= ekadashiRefreshAt){
+    ekadashiInfo = nextEkadashi(new Date(now));
+    ekadashiRefreshAt = now + 60000;
+  }
+  const info = ekadashiInfo;
+  if (info.ongoing){
+    statusEl.textContent = 'Today is Ekadashi (' + info.paksha + ' Paksha)';
+    countdownEl.textContent = info.end ? ('Ends in ' + fmtCountdown(info.end.getTime() - now)) : '—';
+    updateHourglassSand(1);
+  } else if (info.start){
+    statusEl.textContent = 'Next Ekadashi: ' + info.paksha + ' Paksha, ' +
+      info.start.toLocaleDateString(undefined, {weekday:'short', month:'short', day:'numeric'});
+    countdownEl.textContent = 'Starts in ' + fmtCountdown(info.start.getTime() - now);
+    updateHourglassSand(1 - Math.min(1, (info.start.getTime() - now) / MOON_HALF_SYNODIC_MS));
+  } else {
+    statusEl.textContent = 'Could not calculate — try reloading.';
+    countdownEl.textContent = '';
+  }
+  // The hourglass "turns" once, right as Ekadashi arrives (the moment
+  // the countdown-to-next hits zero) — not on the way out the other
+  // side, so it turns once per occurrence, not twice.
+  if (ekadashiWasOngoing === false && info.ongoing === true){
+    const hourglass = document.getElementById('ekadashi-hourglass');
+    if (hourglass){
+      hourglass.classList.remove('turning');
+      void hourglass.offsetWidth; // restart the animation if it's somehow already mid-run
+      hourglass.classList.add('turning');
+      setTimeout(() => hourglass.classList.remove('turning'), 1400);
+    }
+  }
+  ekadashiWasOngoing = info.ongoing;
+}
+renderEkadashi();
+setInterval(renderEkadashi, 1000);
 
 function hideBackPill(){
   backPill.classList.remove('show');
@@ -4766,6 +5039,49 @@ async function checkBirthdaysAndNotify(){
   refreshUnreadCount();
 }
 
+/* ---- Ekadashi reminder (staff, computed on open) ----
+   Same "no real scheduler" limitation as checkBirthdaysAndNotify()
+   above, plus one more wrinkle: the reminder goes out as an Inbox
+   direct message (sql/14-inbox.sql's send_direct_message()), which has
+   no "system sender" concept — it's sent FROM whichever staff account
+   happens to trigger this, which could be a different staff member
+   each time depending on who's got the app open. That means a simple
+   "did *I* already send this" check (like the birthday one uses)
+   isn't enough — a different staff member opening the app later that
+   same day would send a second copy. ekadashi_reminders_sent
+   (sql/15-ekadashi-reminders.sql) is the cross-session, cross-staff
+   fix: a (member_id, ekadashi_start) primary key claimed via insert
+   right before the send, so whichever session gets there first "wins"
+   and every later attempt — same staff reloading, or a different staff
+   member entirely — hits the conflict and skips. */
+async function checkEkadashiReminderAndNotify(){
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  if (!me || !isStaff()) return;
+  const info = nextEkadashi(new Date());
+  if (info.ongoing || !info.start) return; // only a "tomorrow" reminder, not a same-day one
+  const msUntilStart = info.start.getTime() - Date.now();
+  if (msUntilStart <= 0 || msUntilStart > 24 * 60 * 60 * 1000) return; // outside the 24h-before window
+
+  const members = (window.BNB_USERS.getMembers && window.BNB_USERS.getMembers()) || [];
+  if (!members.length) return;
+  const startIso = info.start.toISOString();
+  const dateStr = info.start.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
+  const message = 'Reminder: ' + info.paksha + ' Paksha Ekadashi begins tomorrow (' + dateStr +
+    '). See the Moon Phase tab under Me for the exact time.';
+
+  for (const member of members){
+    const { error: claimErr } = await bnbClient
+      .from('ekadashi_reminders_sent')
+      .insert([{ member_id: member.id, ekadashi_start: startIso }]);
+    if (claimErr){
+      if (claimErr.code !== '23505') console.warn('Supabase claim Ekadashi reminder slot failed:', claimErr);
+      continue; // '23505' = already claimed (by this staff member or another) — expected, not an error
+    }
+    const { error: sendErr } = await bnbClient.rpc('send_direct_message', { p_recipient_id: member.id, p_body: message });
+    if (sendErr) console.warn('Supabase send Ekadashi reminder failed:', sendErr);
+  }
+}
+
 async function refreshUnreadCount(){
   const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
   if (!me || !notifBellCount) return;
@@ -4817,6 +5133,7 @@ function refreshNotificationBell(signedIn){
   }
   refreshUnreadCount();
   checkBirthdaysAndNotify();
+  checkEkadashiReminderAndNotify();
   // Only real polling loop in this codebase (confirmed none existed
   // before) — justified because a notification feature that only
   // updates on login/logout would feel broken while just sitting open.

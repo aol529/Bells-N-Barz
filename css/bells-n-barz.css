@@ -686,6 +686,39 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
   .sched-scope .msg-staff-layout{grid-template-columns:1fr;}
 }
 
+/* ---------- MOON TAB ---------- */
+.sched-scope .moon-today-card{display:flex; align-items:center; gap:20px; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:22px; margin-top:16px;}
+.sched-scope .moon-today-icon{font-size:56px; line-height:1;}
+.sched-scope .moon-today-name{font-family:'Oswald',sans-serif; font-size:20px; text-transform:uppercase; letter-spacing:.03em; color:var(--text);}
+.sched-scope .moon-today-illum{font-size:13px; color:var(--muted); margin-top:4px;}
+.sched-scope .moon-today-next{font-size:12px; color:var(--muted-2); font-family:'IBM Plex Mono',monospace; margin-top:8px;}
+.sched-scope .moon-strip{display:flex; gap:10px; overflow-x:auto; margin-top:22px; padding-bottom:6px;}
+.sched-scope .moon-day{flex:0 0 auto; width:58px; text-align:center; padding:10px 6px; border:1px solid var(--line-soft); border-radius:4px; background:var(--surface);}
+.sched-scope .moon-day.today{border-color:var(--accent); background:rgba(var(--accent-rgb),.08);}
+.sched-scope .moon-day .moon-day-icon{font-size:22px; line-height:1;}
+.sched-scope .moon-day .moon-day-label{font-size:10.5px; font-family:'IBM Plex Mono',monospace; color:var(--muted-2); margin-top:6px;}
+@media (max-width:640px){
+  .sched-scope .moon-today-card{flex-direction:column; align-items:flex-start; text-align:left;}
+}
+.sched-scope .ekadashi-card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:22px; margin-top:16px; text-align:center;}
+.sched-scope .ekadashi-label{font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent);}
+.sched-scope .ekadashi-status{font-family:'Oswald',sans-serif; font-size:18px; color:var(--text); margin-top:8px;}
+.sched-scope .ekadashi-countdown{font-family:'IBM Plex Mono',monospace; font-size:22px; color:var(--accent); margin-top:6px;}
+.sched-scope .ekadashi-note{font-size:11.5px; color:var(--muted-2); margin-top:12px; padding-top:12px; border-top:1px solid var(--line-soft); line-height:1.5; text-align:left;}
+.sched-scope .ekadashi-hourglass{display:flex; justify-content:center; margin-bottom:10px;}
+.sched-scope .ekadashi-hourglass svg{display:block; overflow:visible; transform-origin:50% 50%;}
+.sched-scope .ekadashi-hourglass .eg-frame{fill:none; stroke:var(--muted-2); stroke-width:3; stroke-linejoin:round;}
+.sched-scope .ekadashi-hourglass .eg-neck{fill:var(--muted-2);}
+.sched-scope .ekadashi-hourglass .eg-sand-top,
+.sched-scope .ekadashi-hourglass .eg-sand-bottom{fill:var(--accent);}
+@keyframes ekadashi-hourglass-turn{
+  0%{transform:rotate(0deg);}
+  100%{transform:rotate(360deg);}
+}
+.sched-scope .ekadashi-hourglass.turning svg{
+  animation:ekadashi-hourglass-turn 1.4s cubic-bezier(.65,0,.35,1);
+}
+
 /* ---------- PERIOD TAB ---------- */
 .period-flow-switch{display:flex;flex-wrap:wrap;border-radius:0;}
 .period-flow-switch button{flex:1;white-space:nowrap;}
@@ -1670,6 +1703,7 @@ header.site{
 #me-section-switch [data-me-section="period"]::before{content:"🩸";}
 #me-section-switch [data-me-section="track"]::before{content:"📈";}
 #me-section-switch [data-me-section="nutrition"]::before{content:"🍎";}
+#me-section-switch [data-me-section="moon"]::before{content:"🌙";}
 #coach-section-switch [data-coach-section="dashboard"]::before{content:"📊";}
 #coach-section-switch [data-coach-section="program"]::before{content:"📋";}
 #coach-section-switch [data-coach-section="roster"]::before{content:"🗓️";}

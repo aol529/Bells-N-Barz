@@ -99,7 +99,17 @@
     `is_staff()`/`my_user_id()`, `accountability_search_members()`, and
     the `notifications` table).
 
-15. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+15. **15-ekadashi-reminders.sql** — a dedup log (`ekadashi_reminders_sent`,
+    one row per member per Ekadashi occurrence) for the automatic 24h-before
+    reminder the Ekadashi timer sends via the Inbox. Needed because the
+    reminder can be triggered by any staff member who happens to have the
+    app open in that window — this table is the cross-session, cross-staff
+    "has this already been sent" check, claimed via a primary-key insert
+    before the Inbox message goes out. Staff-only bookkeeping, not
+    member-facing. Run after `gym.sql` and `14-inbox.sql` (needs
+    `is_staff()`/`my_user_id()` and `send_direct_message()`).
+
+16. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
