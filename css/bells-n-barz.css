@@ -739,6 +739,13 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 .sched-scope .fasting-action-btn:hover{opacity:.9;}
 .sched-scope .fasting-action-btn:disabled{opacity:.5; cursor:default;}
 .sched-scope .fasting-action-btn.danger{background:transparent; border:1px solid #8a3a32; color:#e0736a;}
+.sched-scope .fasting-alarm-row{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid var(--line-soft);}
+.sched-scope .fasting-sound-toggle,
+.sched-scope .fasting-notif-btn{background:transparent; border:1px solid var(--line); color:var(--muted); padding:6px 13px; border-radius:20px; cursor:pointer; font-size:11.5px; font-family:'IBM Plex Mono',monospace; letter-spacing:.03em;}
+.sched-scope .fasting-sound-toggle:hover,
+.sched-scope .fasting-notif-btn:hover{border-color:var(--accent-dim); color:var(--text);}
+.sched-scope .fasting-sound-toggle.muted{color:var(--muted-2);}
+.sched-scope .fasting-notif-note{font-size:11px; color:var(--muted-2);}
 @media (max-width:480px){
   .sched-scope .fasting-ring-wrap svg{width:130px; height:130px;}
 }

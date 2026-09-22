@@ -24,6 +24,9 @@
   const statStreak = document.getElementById('fasting-stat-streak');
   const historyBody = document.getElementById('fasting-history-body');
   const historyEmpty = document.getElementById('fasting-history-empty');
+  const soundToggleBtn = document.getElementById('fasting-sound-toggle');
+  const notifBtn = document.getElementById('fasting-notif-btn');
+  const notifNote = document.getElementById('fasting-notif-note');
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -34,6 +37,102 @@
   let logCache = [];
   let activeFast = null; // most recent row with fast_end still null, or null
   let tickTimer = null;
+  let lastPhase = null; // null until the first render, so page load never fires an alarm
+
+  /* ---------------- ALARMS ----------------
+     Fires when the phase actually changes — fast completes (eating
+     window opens) or the eating window closes — not on every tick.
+     Sound is a plain Web Audio beep, no audio file to host. Browsers
+     suspend a fresh AudioContext until a real user gesture, so it's
+     created lazily on the first click anywhere in this card (Start
+     Fast, the mute toggle, Enable Browser Alerts) rather than at alarm
+     time, when there may not have been a recent gesture. Browser
+     notifications are the Notification API directly (no service
+     worker) — they only fire while this tab is open somewhere, not a
+     true background push; same "no real scheduler" ceiling as the
+     Ekadashi/birthday reminders elsewhere in this app. */
+  const SOUND_MUTED_KEY = 'bnb-fasting-sound-muted';
+  let soundMuted = false;
+  try { soundMuted = localStorage.getItem(SOUND_MUTED_KEY) === '1'; } catch(e){}
+  let audioCtx = null;
+  function ensureAudioCtx(){
+    if (audioCtx) return audioCtx;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    } catch(e){ console.warn('AudioContext unavailable:', e); }
+    return audioCtx;
+  }
+  function playAlarmSound(){
+    if (soundMuted) return;
+    const ctx = ensureAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    try {
+      const now = ctx.currentTime;
+      [0, 0.22].forEach(offset => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.25, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.18);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.2);
+      });
+    } catch(e){ console.warn('Alarm sound failed:', e); }
+  }
+  function renderNotifButton(){
+    if (!('Notification' in window)){ notifBtn.style.display = 'none'; notifNote.style.display = 'none'; return; }
+    if (Notification.permission === 'granted'){
+      notifBtn.style.display = 'none';
+      notifNote.style.display = '';
+      notifNote.textContent = '🔔 Browser alerts on';
+    } else if (Notification.permission === 'denied'){
+      notifBtn.style.display = 'none';
+      notifNote.style.display = '';
+      notifNote.textContent = 'Browser alerts blocked — enable them in your browser’s site settings.';
+    } else {
+      notifBtn.style.display = '';
+      notifNote.style.display = 'none';
+    }
+  }
+  function maybeNotify(title, body){
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try { new Notification(title, { body: body }); } catch(e){ console.warn('Notification failed:', e); }
+  }
+  function toast(msg){
+    const t = document.getElementById('t-toast');
+    if (t){ t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+  }
+  function fireAlarmFor(phase){
+    playAlarmSound();
+    if (phase === 'eating'){
+      toast('Your fast is complete — eating window is open.');
+      maybeNotify('Eating window open', 'Your fast is complete. Time to eat!');
+    } else if (phase === 'window-closed'){
+      toast('Your eating window has closed. Start your next fast when ready.');
+      maybeNotify('Eating window closed', 'Start your next fast whenever you’re ready.');
+    }
+  }
+  soundToggleBtn.addEventListener('click', () => {
+    ensureAudioCtx();
+    soundMuted = !soundMuted;
+    try { localStorage.setItem(SOUND_MUTED_KEY, soundMuted ? '1' : '0'); } catch(e){}
+    soundToggleBtn.textContent = soundMuted ? '🔕 Sound Off' : '🔔 Sound On';
+    soundToggleBtn.classList.toggle('muted', soundMuted);
+    if (!soundMuted) playAlarmSound(); // quick confirmation beep
+  });
+  soundToggleBtn.textContent = soundMuted ? '🔕 Sound Off' : '🔔 Sound On';
+  soundToggleBtn.classList.toggle('muted', soundMuted);
+  notifBtn.addEventListener('click', () => {
+    ensureAudioCtx();
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(renderNotifButton);
+  });
+  renderNotifButton();
 
   function fmtCountdown(ms){
     if (ms <= 0) return '0m 0s';
@@ -168,6 +267,13 @@
       actionBtn.classList.remove('danger');
       setRingProgress(1);
     }
+    // Alarm on a real phase change only — 'idle' is excluded since that
+    // transition only ever happens via the action button itself (the
+    // user already knows they just started a fast).
+    if (lastPhase !== null && lastPhase !== state.phase && (state.phase === 'eating' || state.phase === 'window-closed')){
+      fireAlarmFor(state.phase);
+    }
+    lastPhase = state.phase;
     renderStats();
     renderHistory();
   }
@@ -209,13 +315,13 @@
   }
 
   function showError(){
-    const t = document.getElementById('t-toast');
-    if (t){ t.textContent = 'Could not save — check your connection and try again.'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+    toast('Could not save — check your connection and try again.');
   }
 
   actionBtn.addEventListener('click', async () => {
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return;
+    ensureAudioCtx(); // this click is a real user gesture — the most likely one to unlock audio for later alarms
     actionBtn.disabled = true;
     const now = new Date();
     const state = currentPhase(now.getTime());
