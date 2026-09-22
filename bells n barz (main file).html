@@ -6727,6 +6727,48 @@ createIntervalTimer(
       fri: clone(workoutA), sat: [], sun: []
     };
   })();
+  const ONE_PERCENT_FITNESS_AB_DAYS = (function(){
+    const workoutA = [
+      {name:'Squat & Vertical Pull (A1/A2)', exercises:[
+        {name:'Squat Variation', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'Coach picks any squat-pattern variation suited to the client', sets:'4', reps:'5'},
+        {name:'Vertical Pull Variation', rest:'1 min', tempo:'', equipment:'Bodyweight/Cable', alternates:'Coach picks any vertical-pull variation (e.g. pulldown, pull-up family)', sets:'4', reps:'5'}
+      ]},
+      {name:'Lunge & Horizontal Pull (B1/B2)', exercises:[
+        {name:'Lunge Variation', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Coach picks any lunge-pattern variation', sets:'4', reps:'5'},
+        {name:'Horizontal Pull Variation', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell/Cable', alternates:'Coach picks any horizontal-pull (row-family) variation', sets:'3', reps:'8 /side'}
+      ]},
+      {name:'Knee Extension & Single-Arm Pull (C1/C2)', exercises:[
+        {name:'Knee Extension Variation', rest:'1 min', tempo:'', equipment:'Machine/Bodyweight', alternates:'Coach picks any knee-extension-dominant variation', sets:'3', reps:'6–8 /side'},
+        {name:'Single-Arm Horizontal Pull Variation', rest:'1 min', tempo:'', equipment:'Dumbbell/Cable', alternates:'Coach picks any single-arm row variation', sets:'3', reps:'10'}
+      ]},
+      {name:'Ankle & Elbow Finisher (D1/D2)', exercises:[
+        {name:'Ankle Plantar Flexion', rest:'1 min', tempo:'', equipment:'Bodyweight/Machine', alternates:'Standing or seated calf raise family', sets:'7', reps:'12 /side'},
+        {name:'Elbow Flexion', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Any curl variation, high-rep burnout style', sets:'7', reps:'100+ total'}
+      ]}
+    ];
+    const workoutB = [
+      {name:'Deadlift & Vertical Push (A1/A2)', exercises:[
+        {name:'Deadlift Variation', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'Coach picks any deadlift-pattern variation suited to the client', sets:'4', reps:'5'},
+        {name:'Vertical Push Variation', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Coach picks any vertical-push (overhead press family) variation', sets:'4', reps:'5'}
+      ]},
+      {name:'Reverse Lunge & Horizontal Push (B1/B2)', exercises:[
+        {name:'Reverse Lunge Variation', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Coach picks any reverse-lunge-pattern variation', sets:'4', reps:'5'},
+        {name:'Horizontal Push Variation', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell/Bodyweight', alternates:'Coach picks any horizontal-push (press family) variation', sets:'3', reps:'8 /side'}
+      ]},
+      {name:'Knee Flexion & Single-Arm Push (C1/C2)', exercises:[
+        {name:'Knee Flexion Variation', rest:'1 min', tempo:'', equipment:'Machine/Bodyweight', alternates:'Coach picks any knee-flexion-dominant (hamstring) variation', sets:'3', reps:'6–8 /side'},
+        {name:'Single-Arm Horizontal Push Variation', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'Coach picks any single-arm press variation', sets:'3', reps:'10'}
+      ]},
+      {name:'Ankle & Elbow Finisher (D1/D2)', exercises:[
+        {name:'Ankle Dorsiflexion', rest:'1 min', tempo:'', equipment:'Bodyweight/Band', alternates:'Banded or bodyweight dorsiflexion work', sets:'7', reps:'12 /side'},
+        {name:'Elbow Extension', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell/Cable', alternates:'Any triceps extension variation, high-rep burnout style', sets:'7', reps:'100+ total'}
+      ]}
+    ];
+    return {
+      mon: clone(workoutA), tue: [], wed: clone(workoutB), thu: [],
+      fri: clone(workoutA), sat: [], sun: []
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'old-school-70s',
@@ -6799,6 +6841,12 @@ createIntervalTimer(
       name: "Men's Health Total-Body Template (A/B)",
       description: "A modern \"choose your own exercise\" full-body template, not tied to a specific historical lifter like the Old School presets above. Two alternating workouts (A and B) each cover the whole body — core, one lower-body pattern, one upper-body pull or push — with a named exercise category per slot (e.g. \"Quadriceps, single-leg\") rather than one fixed movement, so pick whichever listed alternate suits the client's equipment and experience. 3 sets of 12 reps per exercise, 1 minute rest, a cardio finisher after every session. This preset alternates A/Wed-B/A across the week (Mon/Fri A, Wed B) — swap it to A/B/A/B if you'd rather alternate strictly workout-to-workout regardless of the calendar. Source: Adam Campbell, The Men's Health Big Book of Exercises (Rodale Books) — a purchased book, not a free article, so no companion blog post accompanies this preset.",
       data: MENS_HEALTH_AB_DAYS
+    },
+    {
+      id: 'one-percent-fitness-ab',
+      name: "1% Fitness Push/Pull Template (A/B)",
+      description: "Another \"choose your movement pattern\" full-body A/B template, paired as supersets (A1+A2, B1+B2, etc.) rather than straight sets. Workout A leans lower-body push / upper-body pull (squat, vertical pull, lunge, horizontal pull); Workout B mirrors it as lower-body pull / upper-body push (deadlift, vertical push, reverse lunge, horizontal push) — alternate the two and every major pattern gets trained across the week. Ends with a high-rep ankle + elbow finisher pairing (7 sets, 12/side and 100+ reps). As with the exercise slots, the coach picks the specific movement that fits each named pattern. Alternates Mon/Fri A, Wed B — swap to strict A/B/A/B if preferred. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — a purchased book, not a free article, so no companion blog post accompanies this preset.",
+      data: ONE_PERCENT_FITNESS_AB_DAYS
     }
   ];
 
