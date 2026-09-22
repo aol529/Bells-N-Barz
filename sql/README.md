@@ -150,7 +150,19 @@
     idempotent via `on conflict (slug) do nothing`. Mirrors the matching
     entry in `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
 
-22. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+22. **22-blog-serge-nubret.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Serge Nubret's Pump: Golden-Era Training
+    Without the Pyramid" (Health & Appearance category) to `blog_posts`,
+    idempotent via `on conflict (slug) do nothing`. Mirrors the matching
+    entry in `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+23. **23-blog-lee-haney.sql** — a one-off content insert, not a
+    schema/RLS change: adds "Lee Haney's 3-On-1-Off Split" (Health &
+    Appearance category) to `blog_posts`, idempotent via
+    `on conflict (slug) do nothing`. Mirrors the matching entry in
+    `js/bells-n-barz-blog.js`'s `SEED_POSTS`. Run any time.
+
+24. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
