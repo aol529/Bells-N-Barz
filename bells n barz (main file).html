@@ -6209,12 +6209,75 @@ createIntervalTimer(
       sun: []
     };
   })();
+  const OLD_SCHOOL_IRON_GRIT_DAYS = (function(){
+    const chestBack = [
+      {name:'Chest', exercises:[
+        {name:'Barbell Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–12'},
+        {name:'Incline Dumbbell Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'5–12'},
+        {name:'Dumbbell Pullovers', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'3', reps:'8–12'},
+        {name:'Cable Cross Over', rest:'1 min', tempo:'', equipment:'Cable', alternates:'Dumbbell Flyes', sets:'5', reps:'10–20'}
+      ]},
+      {name:'Back', exercises:[
+        {name:'Chin Ups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'', reps:'50 total reps, using as few sets as possible'},
+        {name:'Bent Over Barbell Rows', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–12'},
+        {name:'Deadlifts', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'4', reps:'10, 6, 4, 2 — each set to failure'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Leg Raises', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'Incline Sit Ups', sets:'5', reps:'25'}
+      ]}
+    ];
+    const legs = [
+      {name:'Legs', exercises:[
+        {name:'Back Squat', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–20'},
+        {name:'Lunges', rest:'1 min', tempo:'', equipment:'Dumbbell/Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Leg Curl', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'5', reps:'8–20'},
+        {name:'Straight Leg Deadlifts', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10, to failure'}
+      ]},
+      {name:'Calves', exercises:[
+        {name:'Standing Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'5', reps:'15'},
+        {name:'Seated Calf Raises', rest:'1 min', tempo:'', equipment:'Machine', alternates:'Calf Raises on Leg Press', sets:'3', reps:'20'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Leg Raises', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'5', reps:'25'}
+      ]}
+    ];
+    const shouldersArms = [
+      {name:'Shoulders', exercises:[
+        {name:'Standing Military Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–12'},
+        {name:'Dumbbell Side Lateral Raises', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Heavy Upright Rows', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'3', reps:'10, 6, 4 — each set to failure'}
+      ]},
+      {name:'Arms', exercises:[
+        {name:'Standing Barbell Curls', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Seated Dumbbell Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Narrow-Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Standing Triceps Extensions', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Reverse EZ Bar Curl', rest:'1 min', tempo:'', equipment:'EZ-Bar', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Wrist Curls', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Reverse Wrist Curls', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'}
+      ]},
+      {name:'Abs', exercises:[
+        {name:'Incline Sit-Ups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'5', reps:'25'}
+      ]}
+    ];
+    return {
+      mon: clone(chestBack), tue: clone(legs), wed: clone(shouldersArms),
+      thu: clone(chestBack), fri: clone(legs), sat: clone(shouldersArms),
+      sun: []
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'old-school-70s',
       name: "Old School 70’s Split",
       description: "High-volume 3-day body-part split (Chest/Back → Shoulders/Arms → Legs, each repeated twice a week, Sunday off) built around the training approach of 1970s golden-era bodybuilders — Arnold Schwarzenegger, Frank Zane, Franco Columbu, and others. 5 sets per exercise, pyramiding weight up each set, ~1 minute rest. Source: Gustavo Mirabal Castro, “The Old School 70’s Bodybuilding Routine” (see Sources & Credits).",
       data: OLD_SCHOOL_70S_DAYS
+    },
+    {
+      id: 'old-school-70s-iron-grit',
+      name: "Old School 70’s Routine (Iron & Grit)",
+      description: "A second take on the same golden-era split, order swapped to Chest/Back → Legs → Shoulders/Arms (each repeated twice a week, Sunday off). 5 sets per exercise, ~1 minute rest, built for high volume and training to failure — pair with forced reps, drop sets, rest-pause, and other techniques described in the companion blog post. Source: Jordan, “The Old School 70’s Bodybuilding Routine,” Iron & Grit (see Sources & Credits).",
+      data: OLD_SCHOOL_IRON_GRIT_DAYS
     }
   ];
 
