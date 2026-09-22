@@ -85,7 +85,21 @@
     `03-fix-users-self-escalation.sql`) so a member still can't
     self-assign their own coach. Run after `03-fix-users-self-escalation.sql`.
 
-14. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+14. **14-inbox.sql** — Inbox: general-purpose 1:1 messaging between ANY
+    two users (member, trainer, or admin), separate from `11-messages.sql`'s
+    pooled member<->"all staff" support thread — both stay live side by
+    side. Two new tables (`dm_threads`, `dm_messages`, deduplicated per
+    unordered pair via a `(user_a, user_b)` unique constraint), SELECT-only
+    RLS, a `my_dm_threads()` RPC that joins in the other participant's
+    name/avatar (a plain member can't otherwise SELECT another user's row),
+    and a `send_direct_message()` RPC that does all writes. Reuses
+    `accountability_search_members()` from `06-accountability-groups.sql`
+    to search for who to message — no new search RPC needed. Run after
+    `06-accountability-groups.sql` and `09-notifications.sql` (needs
+    `is_staff()`/`my_user_id()`, `accountability_search_members()`, and
+    the `notifications` table).
+
+15. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

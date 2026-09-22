@@ -97,6 +97,7 @@
     migrate:      { file: 'js/bells-n-barz-migrate.js' },
     accountability: { file: 'js/bells-n-barz-accountability.js' },
     messages:     { file: 'js/bells-n-barz-messages.js' },
+    inbox:        { file: 'js/bells-n-barz-inbox.js' },
     reports:      { file: 'js/bells-n-barz-reports.js' }
   };
   const BNB_MODULE_PROMISES = {};
@@ -867,6 +868,7 @@
     <div class="plate util" data-tab="member" id="nav-member-btn">MEMBER</div>
     <div class="plate util" data-tab="coach">COACH</div>
     <div class="plate util" data-tab="admin" id="nav-admin-btn">ADMIN</div>
+    <div class="plate util" data-tab="inbox" id="nav-inbox-btn">INBOX</div>
     </div>
     <div class="glance-inline-search" id="glance-inline-search">
       <input type="text" id="search" placeholder="Search an exercise or muscle group…" autocomplete="off">
@@ -2249,6 +2251,14 @@
     <div class="admin-notice">Every message here is visible to all coaches/admins — this is a shared inbox, not a private line to one specific trainer.</div>
     <div id="coach-messages-body"></div>
   </div>
+  </div>
+</section>
+
+<!-- ================= INBOX (open messaging — everyone can message anyone) ================= -->
+<section class="tab-panel" id="tab-inbox">
+  <div class="sched-scope">
+  <div class="day-head"><h2>Inbox</h2><span class="day-sub">Message any member, trainer, or admin directly</span></div>
+  <div id="inbox-body"></div>
   </div>
 </section>
 
@@ -4420,7 +4430,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -4446,6 +4456,7 @@ function switchTab(rawTab, scrollTop){
     me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track load lazily from the inner me-section-switch instead, once actually selected.
     accountability: 'accountability',
     messages: 'messages',
+    inbox: 'inbox',
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
@@ -4538,6 +4549,8 @@ function switchTab(rawTab, scrollTop){
   // Messages: same reasoning as My Teams above — refresh on tab-open so a
   // reply sent from elsewhere (or by staff) doesn't sit stale in the DOM.
   if (tab === 'messages' && typeof window.bnbMessagesOnTabShown === 'function') window.bnbMessagesOnTabShown();
+  // Inbox: same reasoning as Messages above.
+  if (tab === 'inbox' && typeof window.bnbInboxOnTabShown === 'function') window.bnbInboxOnTabShown();
   // Reports reads from invoices/payments/checkins/bookings, all of which can
   // change elsewhere while staff isn't looking — always refetch on tab-open
   // rather than showing whatever numbers happened to load the first time.
@@ -4651,8 +4664,9 @@ function hideBackPill(){
 // COACH and ADMIN additionally require a staff role (admin/trainer/staff)
 // — a signed-in plain member sees them greyed too, and clicking shows a
 // brief "staff only" toast rather than the login prompt, since logging in
-// again wouldn't change anything.
-const GATED_TABS = ['member', 'coach', 'schedule', 'admin'];
+// again wouldn't change anything. INBOX requires sign-in like the rest,
+// but no staff role — everyone signed in can use it.
+const GATED_TABS = ['member', 'coach', 'schedule', 'admin', 'inbox'];
 const STAFF_ROLES = ['admin', 'trainer', 'staff'];
 const STAFF_ONLY_TABS = ['coach', 'admin'];
 function isSignedIn(){
@@ -5490,6 +5504,10 @@ createIntervalTimer(
 <script>
 /* ---------------- MESSAGES (Member <-> Staff) ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-messages.js (loaded on demand — see bnbLoadModule) -->
+</script>
+<script>
+/* ---------------- INBOX (open messaging — everyone can message anyone) ---------------- */
+<!-- LAZY-LOADED MODULE: bells-n-barz-inbox.js (loaded on demand — see bnbLoadModule) -->
 </script>
 <script>
 /* ---------------- REPORTS (Revenue / Attendance / Retention) ---------------- */

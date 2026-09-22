@@ -1825,6 +1825,8 @@ header.site{
 .sched-scope .acc-card-actions{margin-top:auto; padding-top:6px;}
 .sched-scope #acc-search-input{width:100%; max-width:360px; background:var(--bg); border:1px solid var(--line-soft); color:var(--text); padding:9px 12px; border-radius:2px; font-size:13px; font-family:'IBM Plex Sans',sans-serif; margin-bottom:12px;}
 .sched-scope #acc-search-results .roster-list{margin-bottom:0;}
+.sched-scope #inbox-search-input{width:100%; max-width:360px; background:var(--bg); border:1px solid var(--line-soft); color:var(--text); padding:9px 12px; border-radius:2px; font-size:13px; font-family:'IBM Plex Sans',sans-serif; margin-bottom:12px;}
+.sched-scope #inbox-search-results .roster-list{margin-bottom:0;}
 .sched-scope #acc-pending-invites .admin-notice{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px;}
 
 .gate-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:200; align-items:center; justify-content:center; padding:20px;}
