@@ -109,7 +109,14 @@
     member-facing. Run after `gym.sql` and `14-inbox.sql` (needs
     `is_staff()`/`my_user_id()` and `send_direct_message()`).
 
-16. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+16. **16-fasting.sql** — the Intermittent Fasting tracker: two new tables,
+    `fasting_settings` (one row per member — their chosen protocol, 16:8/
+    18:6/20:4/custom) and `fasting_log` (one row per fast, `fast_end` null
+    while a fast or its eating window is still in progress). Same
+    owner-or-staff RLS shape as `weight_log`/`nutrition_log`, no RPCs. Run
+    after `gym.sql` (needs `is_staff()`/`my_user_id()`).
+
+17. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

@@ -719,6 +719,30 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
   animation:ekadashi-hourglass-turn 1.4s cubic-bezier(.65,0,.35,1);
 }
 
+/* ---------- INTERMITTENT FASTING TAB ---------- */
+.sched-scope .fasting-protocol-switch{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0;}
+.sched-scope .fasting-protocol-switch button{padding:9px 18px; border-radius:20px; border:1px solid var(--line); background:var(--surface-2); color:var(--muted); cursor:pointer; font-size:13px; font-family:'IBM Plex Mono',monospace; letter-spacing:.03em; text-transform:uppercase;}
+.sched-scope .fasting-protocol-switch button.active{background:var(--accent); border-color:var(--accent); color:var(--on-accent); font-weight:600;}
+.sched-scope .fasting-custom-row{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px; background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:14px;}
+.sched-scope .fasting-custom-row label{font-size:10.5px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.05em; color:var(--muted-2); display:block; margin-bottom:5px;}
+.sched-scope .fasting-custom-row input{width:80px; background:var(--bg); border:1px solid var(--line-soft); color:var(--text); padding:8px 10px; border-radius:2px; font-size:13px; font-family:'IBM Plex Sans',sans-serif;}
+.sched-scope .fasting-timer-card{background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:28px; text-align:center; margin-bottom:22px;}
+.sched-scope .fasting-ring-wrap{position:relative; display:inline-block; margin:0 auto 14px;}
+.sched-scope .fasting-ring{transform:rotate(-90deg);}
+.sched-scope .fasting-ring-bg{fill:none; stroke:var(--line-soft); stroke-width:8;}
+.sched-scope .fasting-ring-progress{fill:none; stroke:var(--accent); stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset 1s linear;}
+.sched-scope .fasting-ring-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 12px;}
+.sched-scope .fasting-phase{font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:14px; letter-spacing:.04em; color:var(--text);}
+.sched-scope .fasting-countdown{font-family:'IBM Plex Mono',monospace; font-size:19px; color:var(--accent); margin-top:4px;}
+.sched-scope .fasting-meta{font-size:12.5px; color:var(--muted); margin:16px 0 20px; max-width:360px; margin-left:auto; margin-right:auto;}
+.sched-scope .fasting-action-btn{background:var(--accent); border:none; color:var(--on-accent); padding:12px 30px; border-radius:4px; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.03em; font-size:14px; cursor:pointer;}
+.sched-scope .fasting-action-btn:hover{opacity:.9;}
+.sched-scope .fasting-action-btn:disabled{opacity:.5; cursor:default;}
+.sched-scope .fasting-action-btn.danger{background:transparent; border:1px solid #8a3a32; color:#e0736a;}
+@media (max-width:480px){
+  .sched-scope .fasting-ring-wrap svg{width:130px; height:130px;}
+}
+
 /* ---------- PERIOD TAB ---------- */
 .period-flow-switch{display:flex;flex-wrap:wrap;border-radius:0;}
 .period-flow-switch button{flex:1;white-space:nowrap;}
@@ -1704,6 +1728,7 @@ header.site{
 #me-section-switch [data-me-section="track"]::before{content:"📈";}
 #me-section-switch [data-me-section="nutrition"]::before{content:"🍎";}
 #me-section-switch [data-me-section="moon"]::before{content:"🌙";}
+#me-section-switch [data-me-section="fasting"]::before{content:"⏳";}
 #coach-section-switch [data-coach-section="dashboard"]::before{content:"📊";}
 #coach-section-switch [data-coach-section="program"]::before{content:"📋";}
 #coach-section-switch [data-coach-section="roster"]::before{content:"🗓️";}

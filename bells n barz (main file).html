@@ -82,6 +82,7 @@
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
     nutrition:    { file: 'js/bells-n-barz-nutrition.js' },
+    fasting:      { file: 'js/bells-n-barz-fasting.js' },
     blog:         { file: 'js/bells-n-barz-blog.js' },
     gallery:      { file: 'js/bells-n-barz-gallery.js' },
     // Shop's checkout flow calls window.BNB_BILLING.createInvoice()
@@ -1404,6 +1405,7 @@
   <button data-me-section="track">Track</button>
   <button data-me-section="nutrition">Nutrition</button>
   <button data-me-section="moon">Moon</button>
+  <button data-me-section="fasting">Fasting</button>
 </div>
 
 <!-- ================= WEIGHT ================= -->
@@ -1717,6 +1719,56 @@
   <div class="ekadashi-status" id="ekadashi-status">—</div>
   <div class="ekadashi-countdown" id="ekadashi-countdown">—</div>
   <div class="ekadashi-note">Approximate — based on exact tithi timing in UTC, not adjusted for sunrise or your local Panchang (observance can shift by a day depending on tradition). Confirm exact fasting/Parana times with your temple or community calendar.</div>
+</div>
+</section>
+
+<!-- ================= INTERMITTENT FASTING ================= -->
+<section class="me-section" id="tab-fasting">
+<div class="day-head"><h2>Intermittent Fasting</h2></div>
+<div class="day-focus">Pick a protocol — or set your own — then start your fast</div>
+
+<div class="fasting-protocol-switch" id="fasting-protocol-switch">
+  <button data-protocol="16:8" data-fast="16" data-eat="8" class="active">16:8</button>
+  <button data-protocol="18:6" data-fast="18" data-eat="6">18:6</button>
+  <button data-protocol="20:4" data-fast="20" data-eat="4">20:4</button>
+  <button data-protocol="custom" data-fast="" data-eat="">Custom</button>
+</div>
+
+<div class="fasting-custom-row" id="fasting-custom-row" style="display:none;">
+  <div><label for="fasting-custom-fast">Fast hours</label><input type="number" id="fasting-custom-fast" min="1" max="23" value="16"></div>
+  <div><label for="fasting-custom-eat">Eat hours</label><input type="number" id="fasting-custom-eat" min="1" max="23" value="8"></div>
+  <button class="btn2 primary" id="fasting-custom-apply" type="button">Apply</button>
+</div>
+
+<div class="fasting-timer-card">
+  <div class="fasting-ring-wrap">
+    <svg class="fasting-ring" viewBox="0 0 120 120" width="160" height="160">
+      <circle class="fasting-ring-bg" cx="60" cy="60" r="52"></circle>
+      <circle class="fasting-ring-progress" id="fasting-ring-progress" cx="60" cy="60" r="52"></circle>
+    </svg>
+    <div class="fasting-ring-center">
+      <div class="fasting-phase" id="fasting-phase">Not Fasting</div>
+      <div class="fasting-countdown" id="fasting-countdown">—</div>
+    </div>
+  </div>
+  <div class="fasting-meta" id="fasting-meta">Choose a protocol above, then start your fast.</div>
+  <button class="fasting-action-btn" id="fasting-action-btn" type="button">Start Fast</button>
+</div>
+
+<div class="weight-stats" id="fasting-stats" style="display:none;">
+  <div class="weight-stat"><span class="lbl">Fasts Logged</span><span class="val" id="fasting-stat-count">—</span></div>
+  <div class="weight-stat"><span class="lbl">Avg Fast Length</span><span class="val" id="fasting-stat-avg">—</span></div>
+  <div class="weight-stat"><span class="lbl">Longest Fast</span><span class="val" id="fasting-stat-longest">—</span></div>
+  <div class="weight-stat"><span class="lbl">Current Streak</span><span class="val" id="fasting-stat-streak">—</span></div>
+</div>
+
+<div class="weight-history" style="margin-top:22px;">
+<h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Fast Log</h3>
+<table class="weight-history-table" id="fasting-history-table">
+<thead><tr><th>Started</th><th>Ended</th><th>Duration</th><th>Goal</th></tr></thead>
+<tbody id="fasting-history-body"></tbody>
+</table>
+<div class="weight-chart-empty" id="fasting-history-empty" style="display:none;">Nothing logged yet.</div>
 </div>
 </section>
 
@@ -4663,9 +4715,10 @@ let previousLocation = null;
     period: document.getElementById('tab-period'),
     track: document.getElementById('tab-track'),
     nutrition: document.getElementById('tab-nutrition'),
-    moon: document.getElementById('tab-moon')
+    moon: document.getElementById('tab-moon'),
+    fasting: document.getElementById('tab-fasting')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
@@ -5817,6 +5870,10 @@ createIntervalTimer(
 <script>
 /* ---------------- NUTRITION TRACKER ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-nutrition.js (loaded on demand — see bnbLoadModule) -->
+</script>
+<script>
+/* ---------------- INTERMITTENT FASTING TRACKER ---------------- */
+<!-- LAZY-LOADED MODULE: bells-n-barz-fasting.js (loaded on demand — see bnbLoadModule) -->
 </script>
 <script>
 /* ---------------- MESSAGES (Member <-> Staff) ---------------- */
