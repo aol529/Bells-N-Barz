@@ -6698,6 +6698,40 @@ createIntervalTimer(
       fri: [], sat: [], sun: []
     };
   })();
+  const MENS_HEALTH_AB_DAYS = (function(){
+    const workoutA = [
+      {name:'Core & Lower Body', exercises:[
+        {name:'Core (choose any)', rest:'1 min', tempo:'', equipment:'Varies', alternates:'Plank, Side Plank, Mountain Climber, Swiss-Ball Jackknife', sets:'3', reps:'12 (or hold for time if the chosen move is a hold)'},
+        {name:'Glutes & Hamstrings, single-leg (choose any)', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Single-Leg Barbell Straight-Leg Deadlift, Single-Leg Hip Raise, Dumbbell Stepup', sets:'3', reps:'12'},
+        {name:'Upper Back (choose any)', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell/Cable', alternates:'Dumbbell Row, Barbell Row, Cable Row', sets:'3', reps:'12'}
+      ]},
+      {name:'Quads & Chest', exercises:[
+        {name:'Quadriceps, both legs (choose any)', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Dumbbell Squat, Goblet Squat, Barbell Front Squat', sets:'3', reps:'12'},
+        {name:'Chest (choose any)', rest:'1 min', tempo:'', equipment:'Bodyweight/Barbell/Dumbbell', alternates:'Pushup, Dumbbell Bench Press, Swiss-Ball Dumbbell Chest Press', sets:'3', reps:'12'}
+      ]},
+      {name:'Cardio', exercises:[
+        {name:'Cardio Finisher (choose any)', rest:'—', tempo:'', equipment:'Varies', alternates:'Any "Finisher" cardio move, or any cardio workout the client already uses', sets:'1', reps:'to taste, done immediately after the weight workout'}
+      ]}
+    ];
+    const workoutB = [
+      {name:'Core & Legs', exercises:[
+        {name:'Core (choose any)', rest:'1 min', tempo:'', equipment:'Varies', alternates:'Plank, Side Plank, Mountain Climber, Swiss-Ball Jackknife', sets:'3', reps:'12 (or hold for time if the chosen move is a hold)'},
+        {name:'Quadriceps, single-leg (choose any)', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Barbell/Dumbbell Lunge, Barbell/Dumbbell Split Squat, Single-Leg Squat', sets:'3', reps:'12'},
+        {name:'Lats (choose any)', rest:'1 min', tempo:'', equipment:'Bodyweight/Cable/Dumbbell', alternates:'Chinup, Lat Pulldown, Pullover', sets:'3', reps:'12'}
+      ]},
+      {name:'Posterior Chain & Shoulders', exercises:[
+        {name:'Glutes & Hamstrings, both legs (choose any)', rest:'1 min', tempo:'', equipment:'Barbell/Dumbbell', alternates:'Barbell Deadlift, Dumbbell Straight-Leg Deadlift, Swiss-Ball Hip Raise & Leg Curl', sets:'3', reps:'12'},
+        {name:'Shoulders (choose any)', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'Dumbbell Shoulder Press, Lateral Raise, Scaption & Shrug', sets:'3', reps:'12'}
+      ]},
+      {name:'Cardio', exercises:[
+        {name:'Cardio Finisher (choose any)', rest:'—', tempo:'', equipment:'Varies', alternates:'Any "Finisher" cardio move, or any cardio workout the client already uses', sets:'1', reps:'to taste, done immediately after the weight workout'}
+      ]}
+    ];
+    return {
+      mon: clone(workoutA), tue: [], wed: clone(workoutB), thu: [],
+      fri: clone(workoutA), sat: [], sun: []
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'old-school-70s',
@@ -6764,6 +6798,12 @@ createIntervalTimer(
       name: "Ronnie Coleman’s Power-Building Split",
       description: "8-time Mr. Olympia Ronnie Coleman's 4-day split (Back/Biceps → Chest/Triceps → Shoulders/Traps → Legs), combining a very heavy, low-rep compound lift (deadlift or squat for singles/doubles) with higher-rep accessory work for everything else. This preset uses Week 1 of the source's multi-week template — the original plan calls for the compound lift's rep count to climb in later weeks (e.g. squat moves from 2 reps up toward 6-10) as the accessory work stays constant, so treat this as a starting point rather than a routine to repeat unchanged for months. Source: exercise.com, “Ronnie Coleman Workout Plan” (see Sources & Credits).",
       data: RONNIE_COLEMAN_DAYS
+    },
+    {
+      id: 'mens-health-total-body-ab',
+      name: "Men's Health Total-Body Template (A/B)",
+      description: "A modern \"choose your own exercise\" full-body template, not tied to a specific historical lifter like the Old School presets above. Two alternating workouts (A and B) each cover the whole body — core, one lower-body pattern, one upper-body pull or push — with a named exercise category per slot (e.g. \"Quadriceps, single-leg\") rather than one fixed movement, so pick whichever listed alternate suits the client's equipment and experience. 3 sets of 12 reps per exercise, 1 minute rest, a cardio finisher after every session. This preset alternates A/Wed-B/A across the week (Mon/Fri A, Wed B) — swap it to A/B/A/B if you'd rather alternate strictly workout-to-workout regardless of the calendar. Source: Adam Campbell, The Men's Health Big Book of Exercises (Rodale Books) — a purchased book, not a free article, so no companion blog post accompanies this preset.",
+      data: MENS_HEALTH_AB_DAYS
     }
   ];
 
