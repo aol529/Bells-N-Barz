@@ -2431,6 +2431,19 @@
 
     <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
       <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Preset Programs</span>
+      </div>
+      <div class="field" style="max-width:420px;">
+        <select id="admin-preset-picker"></select>
+        <p class="field-hint" id="admin-preset-desc" style="margin-top:8px;"></p>
+      </div>
+      <div class="crud-actions" style="padding-left:0;">
+        <button class="btn2 primary" id="admin-preset-load">Load Preset for Selected Client</button>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
         <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Backup / Restore Program Data</span>
       </div>
       <div class="crud-actions" style="padding-left:0;">
@@ -6145,6 +6158,66 @@ createIntervalTimer(
 
   function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
+  /* ---------------- PRESET PROGRAMS (Program Builder) ----------------
+     Read-only starter templates a coach can load onto a client's own
+     program (same effect as Import Program JSON, just from a built-in
+     library instead of a file) — see the "Load Preset for Selected
+     Client" wiring further down. Each day-key array below is cloned
+     per weekday rather than shared by reference, so editing one day
+     afterward in the builder can never silently mutate another. */
+  const OLD_SCHOOL_70S_DAYS = (function(){
+    const chestBack = [
+      {name:'Chest', exercises:[
+        {name:'Flat Barbell Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'1–12, pyramiding up in weight each set'},
+        {name:'Incline Barbell Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–12'},
+        {name:'Flat Bench Dumbbell Flyes', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'}
+      ]},
+      {name:'Back', exercises:[
+        {name:'Chinups', rest:'1 min', tempo:'', equipment:'Bodyweight', alternates:'', sets:'', reps:'50 total reps, however many sets that takes'},
+        {name:'Bent Rows', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'T-Bar Rows', rest:'1 min', tempo:'', equipment:'T-Bar', alternates:'', sets:'5', reps:'8–12'}
+      ]}
+    ];
+    const shouldersArms = [
+      {name:'Shoulders', exercises:[
+        {name:'Behind the Neck Barbell Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'Standing Military Press (shoulder-friendlier)', sets:'5', reps:'5–12, pyramiding up in weight each set'},
+        {name:'Arnold Press', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'Scott Press', sets:'5', reps:'8–12'},
+        {name:'Lateral Dumbbell Raises', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'}
+      ]},
+      {name:'Biceps', exercises:[
+        {name:'Barbell Curls', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Incline Dumbbell Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Concentration Curls', rest:'1 min', tempo:'', equipment:'Dumbbell', alternates:'', sets:'5', reps:'8–12'}
+      ]},
+      {name:'Triceps', exercises:[
+        {name:'Close Grip Bench Press', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Standing French Press', rest:'1 min', tempo:'', equipment:'Barbell/EZ-Bar', alternates:'', sets:'5', reps:'8–12'},
+        {name:'Cable/Rope Pushdowns', rest:'1 min', tempo:'', equipment:'Cable', alternates:'', sets:'5', reps:'8–12'}
+      ]}
+    ];
+    const legs = [
+      {name:'Legs', exercises:[
+        {name:'Squats', rest:'1 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5', reps:'5–20, starting empty-bar and pyramiding up'},
+        {name:'Hack Squats', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'5', reps:'8–20'},
+        {name:'Lying Leg Curls', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'5', reps:'8–20'},
+        {name:'Leg Extensions', rest:'1 min', tempo:'', equipment:'Machine', alternates:'', sets:'5', reps:'8–20'}
+      ]}
+    ];
+    return {
+      mon: clone(chestBack), tue: clone(shouldersArms), wed: clone(legs),
+      thu: clone(chestBack), fri: clone(shouldersArms), sat: clone(legs),
+      sun: []
+    };
+  })();
+  const PROGRAM_PRESETS = [
+    {
+      id: 'old-school-70s',
+      name: "Old School 70’s Split",
+      description: "High-volume 3-day body-part split (Chest/Back → Shoulders/Arms → Legs, each repeated twice a week, Sunday off) built around the training approach of 1970s golden-era bodybuilders — Arnold Schwarzenegger, Frank Zane, Franco Columbu, and others. 5 sets per exercise, pyramiding weight up each set, ~1 minute rest. Source: Gustavo Mirabal Castro, “The Old School 70’s Bodybuilding Routine” (see Sources & Credits).",
+      data: OLD_SCHOOL_70S_DAYS
+    }
+  ];
+
   document.addEventListener('click', ()=>{
     document.querySelectorAll('.cs-freeform-copy-menu').forEach(m => { m.style.display = 'none'; });
   });
@@ -6470,6 +6543,26 @@ createIntervalTimer(
     adminProgramData[adminDay] = clone(DEFAULT_PROGRAM[adminDay]);
     saveAdminProgram(); renderAdminBlocks();
   };
+  (function(){
+    const picker = document.getElementById('admin-preset-picker');
+    const desc = document.getElementById('admin-preset-desc');
+    if (!picker) return;
+    picker.innerHTML = PROGRAM_PRESETS.map(p => '<option value="' + p.id + '">' + esc(p.name) + '</option>').join('');
+    function updateDesc(){
+      const preset = PROGRAM_PRESETS.find(p => p.id === picker.value);
+      desc.textContent = preset ? preset.description : '';
+    }
+    picker.addEventListener('change', updateDesc);
+    updateDesc();
+    document.getElementById('admin-preset-load').onclick = ()=>{
+      const preset = PROGRAM_PRESETS.find(p => p.id === picker.value);
+      if (!preset) return;
+      if (!confirm('Load "' + preset.name + '" for the client currently selected above? This replaces every day of their current program.')) return;
+      adminProgramData = clone(preset.data);
+      saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
+      alert('Preset loaded.');
+    };
+  })();
   document.getElementById('admin-export').onclick = ()=>{
     const blob = new Blob([JSON.stringify(adminProgramData, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
