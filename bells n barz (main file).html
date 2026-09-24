@@ -177,6 +177,41 @@
 </header>
 
 <section class="site-page active" id="site-home">
+  <div class="home-moon-banner">
+    <div class="wrap sched-scope">
+      <div class="home-moon-banner-head">
+        <span class="home-moon-banner-eyebrow">Right Now</span>
+        <h2>Moon Phase &amp; Ekadashi</h2>
+      </div>
+
+      <div class="moon-today-card">
+        <div class="moon-today-icon" id="moon-today-icon">🌑</div>
+        <div class="moon-today-info">
+          <div class="moon-today-name" id="moon-today-name">—</div>
+          <div class="moon-today-illum" id="moon-today-illum">—</div>
+          <div class="moon-today-next" id="moon-today-next">—</div>
+        </div>
+      </div>
+
+      <div class="moon-strip" id="moon-strip"></div>
+
+      <div class="ekadashi-card" id="ekadashi-card">
+        <div class="ekadashi-hourglass" id="ekadashi-hourglass">
+          <svg viewBox="0 0 100 160" width="72" height="115">
+            <polygon class="eg-sand-top" id="eg-sand-top" points=""></polygon>
+            <polygon class="eg-sand-bottom" id="eg-sand-bottom" points=""></polygon>
+            <path class="eg-frame" d="M20,18 L80,18 L50,78 Z M20,142 L80,142 L50,82 Z"></path>
+            <rect class="eg-neck" x="48" y="76" width="4" height="8"></rect>
+          </svg>
+        </div>
+        <div class="ekadashi-label">Ekadashi</div>
+        <div class="ekadashi-status" id="ekadashi-status">—</div>
+        <div class="ekadashi-countdown" id="ekadashi-countdown">—</div>
+        <div class="ekadashi-note">Approximate — based on exact tithi timing in UTC, not adjusted for sunrise or your local Panchang (observance can shift by a day depending on tradition). Confirm exact fasting/Parana times with your temple or community calendar.</div>
+      </div>
+    </div>
+  </div>
+
   <div class="site-stub wrap">
     <div class="site-stub-eyebrow">Wang' Kalam Agok Buk</div>
     <h1>Welcome.</h1>
@@ -1459,7 +1494,6 @@
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
   <button data-me-section="nutrition">Nutrition</button>
-  <button data-me-section="moon">Moon</button>
   <button data-me-section="fasting">Fasting</button>
 </div>
 
@@ -1794,38 +1828,6 @@
 <div class="weight-stat"><span class="lbl">Carbs</span><span class="val" id="cc-result-carbs">—</span></div>
 <div class="weight-stat"><span class="lbl">Fat</span><span class="val" id="cc-result-fat">—</span></div>
 </div>
-</div>
-</section>
-
-<!-- ================= MOON PHASE ================= -->
-<section class="me-section" id="tab-moon">
-<div class="day-head"><h2>Moon Phase</h2></div>
-<div class="day-focus">Where the moon is right now, and what's coming up</div>
-
-<div class="moon-today-card">
-  <div class="moon-today-icon" id="moon-today-icon">🌑</div>
-  <div class="moon-today-info">
-    <div class="moon-today-name" id="moon-today-name">—</div>
-    <div class="moon-today-illum" id="moon-today-illum">—</div>
-    <div class="moon-today-next" id="moon-today-next">—</div>
-  </div>
-</div>
-
-<div class="moon-strip" id="moon-strip"></div>
-
-<div class="ekadashi-card" id="ekadashi-card">
-  <div class="ekadashi-hourglass" id="ekadashi-hourglass">
-    <svg viewBox="0 0 100 160" width="72" height="115">
-      <polygon class="eg-sand-top" id="eg-sand-top" points=""></polygon>
-      <polygon class="eg-sand-bottom" id="eg-sand-bottom" points=""></polygon>
-      <path class="eg-frame" d="M20,18 L80,18 L50,78 Z M20,142 L80,142 L50,82 Z"></path>
-      <rect class="eg-neck" x="48" y="76" width="4" height="8"></rect>
-    </svg>
-  </div>
-  <div class="ekadashi-label">Ekadashi</div>
-  <div class="ekadashi-status" id="ekadashi-status">—</div>
-  <div class="ekadashi-countdown" id="ekadashi-countdown">—</div>
-  <div class="ekadashi-note">Approximate — based on exact tithi timing in UTC, not adjusted for sunrise or your local Panchang (observance can shift by a day depending on tradition). Confirm exact fasting/Parana times with your temple or community calendar.</div>
 </div>
 </section>
 
@@ -4919,7 +4921,6 @@ let previousLocation = null;
     period: document.getElementById('tab-period'),
     track: document.getElementById('tab-track'),
     nutrition: document.getElementById('tab-nutrition'),
-    moon: document.getElementById('tab-moon'),
     fasting: document.getElementById('tab-fasting')
   };
   const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting' };
@@ -5324,7 +5325,7 @@ async function checkEkadashiReminderAndNotify(){
   const startIso = info.start.toISOString();
   const dateStr = info.start.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
   const message = 'Reminder: ' + info.paksha + ' Paksha Ekadashi begins tomorrow (' + dateStr +
-    '). See the Moon Phase tab under Me for the exact time.';
+    '). See the home page banner for the exact time.';
 
   for (const member of members){
     const { error: claimErr } = await bnbClient

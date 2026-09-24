@@ -1310,6 +1310,18 @@ body{margin:0;}
   .outer-link{padding:11px 10px; text-align:left; border-radius:6px;}
 }
 
+/* ---- HOME: Moon Phase / Ekadashi banner, above the welcome stub ----
+   Reuses the .moon-today-card/.moon-strip/.ekadashi-card styling from
+   the Gym app's Me > Moon tab (that section moved here entirely — see
+   bnbLoadModule/me-section-switch comments), wrapped in .sched-scope
+   since those rules are scoped to it. Pure client-side calculation, no
+   login required, so it's fine to show on the public home page. */
+.home-moon-banner{background:var(--surface); border-bottom:1px solid var(--line); padding:34px 0 30px;}
+.home-moon-banner-head{margin-bottom:4px;}
+.home-moon-banner-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--accent);}
+.home-moon-banner-head h2{font-family:'Oswald',sans-serif; font-size:24px; margin:4px 0 0; text-transform:uppercase; letter-spacing:.02em; color:var(--text);}
+
 .site-stub{padding:80px 24px 100px; max-width:720px;}
 .site-stub-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.08em;
   text-transform:uppercase; color:var(--accent); margin-bottom:10px;}
