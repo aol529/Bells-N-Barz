@@ -1990,8 +1990,8 @@
 <div class="day-head"><h2>Live Session Log</h2></div>
 <div class="day-focus">Follow today's program or log freeform, set by set, while you're actually training — the same live-logging tool coaches use, just for your own workout.</div>
 
-<div class="admin-notice" id="mls-guest-notice" style="display:none;">You're logging as a guest on this device — your sets stay right here while you work out and you can save a PDF/.md/.txt copy any time, but nothing is kept as long-term history or charted. Sign in with a member account to keep a running log and progress graphs.</div>
-<div class="admin-notice" id="mls-signedin-notice" style="display:none;">Signed in as <strong id="mls-signedin-name"></strong> — sessions you save here are added to your history and progress graph below.</div>
+<div class="admin-notice" id="mls-guest-notice" style="display:none;">You're logging as a guest on this device — your sets are saved right here as you type, even if you reload the page, and you can export a PDF/.md/.txt copy any time. Nothing is kept as long-term history or charted. Sign in with a member account to keep a running log and progress graphs.</div>
+<div class="admin-notice" id="mls-signedin-notice" style="display:none;">Signed in as <strong id="mls-signedin-name"></strong> — your sets save automatically as you log them, and are added to your history and progress graph below.</div>
 
 <div class="side-layout stack-nav-below">
 <div class="subtab-bar side-nav" id="mls-day-tabs"></div>
@@ -2022,8 +2022,8 @@
     <button class="btn2" id="mls-save-txt">.txt</button>
     <button class="btn2" id="mls-save-odt">ODT</button>
     <button class="btn2" id="mls-print">Print / Save as PDF (browser)</button>
-    <button class="btn2 primary" id="mls-save-history" type="button" style="display:none;">Save to History</button>
     <button class="btn2 danger" id="mls-clear">Clear This Day's Live Log</button>
+    <span class="mls-save-status" id="mls-save-status"></span>
   </div>
 </div>
 </div>
@@ -2034,7 +2034,7 @@
 <thead><tr><th>Date</th><th>Day</th><th>Mode</th><th>Exercises</th><th>Notes</th><th></th></tr></thead>
 <tbody id="mls-history-body"></tbody>
 </table>
-<div class="sesh-entries-empty" id="mls-history-empty" style="display:none;">No saved sessions yet — use "Save to History" above once you finish a session.</div>
+<div class="sesh-entries-empty" id="mls-history-empty" style="display:none;">No sessions in your history yet — log a set in Day's Program or Freeform above and it's saved here automatically.</div>
 <div class="weight-clear-row"><button class="weight-clear-btn" id="mls-history-clear-btn" type="button">Clear all history</button></div>
 </div>
 
@@ -7996,43 +7996,99 @@ createIntervalTimer(
      each week, export-to-file if you want a copy — nothing is retained as
      long-term history for a guest. */
   const MLS_KEY = "bnb-member-livesession-v1";
-  const MLS_HISTORY_KEY = "bnb-member-livesession-history-v1";
+  const MLS_PENDING_KEY = "bnb-member-livesession-pending-v1";
   let mlsDay = (function(){
     const idx = new Date().getDay(); // 0=Sun..6=Sat
     return DAY_ORDER[idx===0 ? 6 : idx-1];
   })();
 
+  /* Resilience buffer: every edit is written to localStorage synchronously
+     (see saveMlsStore below), so typed-but-unsynced data survives a reload
+     or a dropped connection instead of vanishing with whatever was still
+     in-flight to Supabase. MLS_PENDING_KEY tracks whether the local copy
+     has edits Supabase hasn't confirmed yet, so a refresh from the server
+     never clobbers data the member just typed. */
   function loadMlsStore(){
-    // Instant start with whatever's cached locally isn't relevant anymore
-    // (no localStorage), so start empty; real data replaces it once
-    // Supabase responds (see refreshMlsStoreFromSupabase below).
+    try {
+      const raw = localStorage.getItem(MLS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e){ /* corrupt/unavailable — start fresh */ }
     return {};
   }
+  function persistMlsStoreLocal(){
+    try { localStorage.setItem(MLS_KEY, JSON.stringify(mlsStore)); }
+    catch(e){ /* storage unavailable (private mode, full, etc.) */ }
+  }
+  function isMlsPending(){
+    try { return localStorage.getItem(MLS_PENDING_KEY) === '1'; }
+    catch(e){ return false; }
+  }
+  function setMlsPending(flag){
+    try {
+      if (flag) localStorage.setItem(MLS_PENDING_KEY, '1');
+      else localStorage.removeItem(MLS_PENDING_KEY);
+    } catch(e){ /* storage unavailable */ }
+  }
+
+  let mlsSaveStatus = isMlsPending() ? 'offline' : 'idle'; // idle|saving|saved|offline
+  function setMlsSaveStatus(status){
+    mlsSaveStatus = status;
+    renderMlsSaveStatus();
+  }
+  function renderMlsSaveStatus(){
+    const el = document.getElementById('mls-save-status');
+    if (!el) return;
+    const label = { saving: 'Saving…', saved: 'All changes saved', offline: 'Not synced yet — saved on this device', idle: '' }[mlsSaveStatus] || '';
+    el.textContent = label;
+    el.className = 'mls-save-status' + (mlsSaveStatus ? ' is-' + mlsSaveStatus : '');
+  }
+
   async function refreshMlsStoreFromSupabase(){
     const owner = mlsSignedInMember();
     if (!owner) return; // nothing to load until someone is signed in
     const { data, error } = await bnbClient.from('mls_live_store').select('*').eq('owner_id', owner.id);
     if (error) { console.error('Supabase load mls_live_store failed:', error); return; }
+    if (isMlsPending()){
+      // This device has edits Supabase hasn't confirmed yet (e.g. it was
+      // offline when they were made) — push those instead of overwriting
+      // them with what might be stale server data.
+      pushMlsStoreToSupabase(owner);
+      return;
+    }
     if (data && data.length && data[0].data) {
       mlsStore = data[0].data;
+      persistMlsStoreLocal();
       if (typeof renderMlsDay === 'function') renderMlsDay();
     }
   }
+
+  let mlsSyncTimer = null;
+  let mlsHistoryAutoTimer = null;
   function saveMlsStore(){
+    persistMlsStoreLocal(); // instant, always succeeds — the sticky buffer
     const owner = mlsSignedInMember();
-    if (!owner) return; // guest with nobody signed in — nothing to persist server-side
-    (async () => {
-      try {
-        const { error } = await bnbClient.from('mls_live_store')
-          .upsert([{ owner_id: owner.id, data: mlsStore, updated_at: new Date().toISOString() }], { onConflict: 'owner_id' });
-        if (error) throw error;
-      } catch(e){
-        console.warn('Supabase save mls_live_store failed:', e);
-      }
-    })();
+    if (!owner) { setMlsSaveStatus('idle'); return; } // guest — local-only, nothing to sync
+    setMlsPending(true);
+    setMlsSaveStatus('saving');
+    clearTimeout(mlsSyncTimer);
+    mlsSyncTimer = setTimeout(() => pushMlsStoreToSupabase(owner), 600);
+    clearTimeout(mlsHistoryAutoTimer);
+    mlsHistoryAutoTimer = setTimeout(() => autoCommitMlsDayToHistory(), 2500);
+  }
+  async function pushMlsStoreToSupabase(owner){
+    try {
+      const { error } = await bnbClient.from('mls_live_store')
+        .upsert([{ owner_id: owner.id, data: mlsStore, updated_at: new Date().toISOString() }], { onConflict: 'owner_id' });
+      if (error) throw error;
+      setMlsPending(false);
+      setMlsSaveStatus('saved');
+    } catch(e){
+      console.warn('Supabase save mls_live_store failed:', e);
+      setMlsSaveStatus('offline');
+    }
   }
   let mlsStore = loadMlsStore();
-  refreshMlsStoreFromSupabase(); // async — replaces empty start once Supabase responds
+  refreshMlsStoreFromSupabase(); // async — reconciles with the server once it responds
   function mlsKey(...rest){ return rest.join(':'); }
 
   /* One-time migration: LOGSHEET used to be a separate tab/store with the
@@ -8315,7 +8371,6 @@ createIntervalTimer(
   function updateMlsIdentityUI(){
     const guestNotice = document.getElementById('mls-guest-notice');
     const signedInNotice = document.getElementById('mls-signedin-notice');
-    const saveHistoryBtn = document.getElementById('mls-save-history');
     const historySection = document.getElementById('mls-history-section');
     const graphSection = document.getElementById('mls-graph-section');
     if (!guestNotice) return;
@@ -8323,9 +8378,9 @@ createIntervalTimer(
     guestNotice.style.display = member ? 'none' : 'block';
     signedInNotice.style.display = member ? 'block' : 'none';
     if (member) document.getElementById('mls-signedin-name').textContent = member.name;
-    saveHistoryBtn.style.display = member ? '' : 'none';
     historySection.style.display = member ? '' : 'none';
     graphSection.style.display = member ? '' : 'none';
+    renderMlsSaveStatus();
     if (member){
       renderMlsHistoryTable();
       renderMlsGraphOptions();
@@ -8395,33 +8450,40 @@ createIntervalTimer(
   }
 
   /* Guests: export-to-file only, nothing retained beyond this device's live
-     slot. Signed-in members: same export, plus an explicit commit into their
-     own date-stamped history (reusing snapshotMlsDay so both save paths stay
-     in sync). */
-  function saveMlsSessionToHistory(day){
+     slot. Signed-in members: committing to history is automatic, not an
+     extra step — every time saveMlsStore settles (see the debounce there),
+     the current day's live log is upserted into that member's history for
+     today's date. Re-running this for the same member+day+date updates the
+     existing row instead of appending a new one, so editing a set after the
+     first auto-commit corrects today's entry rather than duplicating it. */
+  function mlsUuid(){
+    return crypto.randomUUID ? crypto.randomUUID() :
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+        const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
+      });
+  }
+  function autoCommitMlsDayToHistory(){
     const member = mlsSignedInMember();
-    if (!member) return;
+    if (!member) return; // guests: nothing server-side to commit to
+    const day = mlsDay;
     const snap = snapshotMlsDay(day);
     const exercises = snap.blocks.flatMap(b => b.exercises).filter(ex => ex.sets.some(s => s.wt || s.reps || s.done));
-    if (!exercises.length){ alert('Log at least one set before saving to history.'); return; }
-    const entry = {
-      id: (crypto.randomUUID ? crypto.randomUUID() :
-        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
-          const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
-        })),
-      memberId: member.id,
-      dateIso: new Date().toISOString().slice(0,10),
-      displayDate: snap.date || '',
-      day, mode: snap.mode, bw: snap.bw, notes: snap.notes,
-      exercises
-    };
+    if (!exercises.length) return; // nothing logged yet — don't create an empty history row
+    const dateIso = new Date().toISOString().slice(0,10);
     const history = loadMlsHistory();
-    history.push(entry);
-    saveMlsHistoryArr(history);
+    const existing = history.find(h => h.memberId === member.id && h.day === day && h.dateIso === dateIso);
+    const entry = {
+      id: existing ? existing.id : mlsUuid(),
+      memberId: member.id, dateIso, displayDate: snap.date || '',
+      day, mode: snap.mode, bw: snap.bw, notes: snap.notes, exercises
+    };
+    const nextHistory = existing
+      ? history.map(h => h.id === entry.id ? entry : h)
+      : history.concat([entry]);
+    saveMlsHistoryArr(nextHistory);
     renderMlsHistoryTable();
     renderMlsGraphOptions();
     renderMlsGraph();
-    alert('Session saved to your history.');
   }
 
   function mlsHistoryRowHtml(h){
@@ -8640,7 +8702,6 @@ createIntervalTimer(
     document.getElementById('mls-save-pdf').onclick = ()=> saveMlsAs('pdf');
     document.getElementById('mls-save-md').onclick = ()=> saveMlsAs('md');
     document.getElementById('mls-save-txt').onclick = ()=> saveMlsAs('txt');
-    document.getElementById('mls-save-history').onclick = ()=> saveMlsSessionToHistory(mlsDay);
 
     document.getElementById('mls-print').onclick = ()=>{
       document.querySelectorAll('.tab-panel').forEach(sec=>sec.classList.remove('active'));

@@ -1175,6 +1175,10 @@ button.t-ghost:hover{color:var(--text);border-color:var(--accent-dim);}
 .ls-notes{width:100%;min-height:60px;background:var(--surface);border:1px solid var(--line-soft);
   border-radius:2px;color:var(--text);padding:10px;font-size:13px;resize:vertical;font-family:inherit;margin-bottom:12px;}
 .ls-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;align-items:center;}
+.mls-save-status{font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;margin-left:auto;color:var(--muted);}
+.mls-save-status.is-saving{color:var(--muted);}
+.mls-save-status.is-saved{color:var(--accent);}
+.mls-save-status.is-offline{color:#c99a2e;}
 .cs-trainee-field input{border-color:var(--accent-dim);}
 .cs-trainee-field label{color:var(--accent);font-weight:700;}
 .cs-required-mark{color:var(--accent);}
