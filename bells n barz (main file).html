@@ -20,8 +20,23 @@
 <script>
 (function(){
   try {
-    var saved = localStorage.getItem('bnb-theme');
-    if (saved === 'light' || saved === 'royal') document.documentElement.setAttribute('data-theme', saved);
+    // Valentine's Day / Mother's Day / World Breast Cancer Day override
+    // anti-flash, same rule as the main theme-toggle script below — kept in
+    // sync with specialThemeForToday().
+    var now = new Date();
+    var isValentines = now.getMonth() === 1 && now.getDate() === 14;
+    var isPinkDay = now.getMonth() === 9 && now.getDate() === 15;
+    var mayFirst = new Date(now.getFullYear(), 4, 1);
+    var mothersDay = 1 + ((7 - mayFirst.getDay()) % 7) + 7;
+    var isMothersDay = now.getMonth() === 4 && now.getDate() === mothersDay;
+    if (isValentines || isMothersDay) {
+      document.documentElement.setAttribute('data-theme', 'red');
+    } else if (isPinkDay) {
+      document.documentElement.setAttribute('data-theme', 'pink');
+    } else {
+      var saved = localStorage.getItem('bnb-theme');
+      if (saved === 'light' || saved === 'royal') document.documentElement.setAttribute('data-theme', saved);
+    }
   } catch(e) { /* storage unavailable — default dark theme stands */ }
 })();
 </script>
@@ -4529,17 +4544,41 @@
 
   // 'dark' has no data-theme attribute at all (matches the CSS :root default),
   // so it's first in the cycle and also what an empty/missing attribute means.
+  // 'red' and 'pink' aren't part of the manual cycle — they only ever appear
+  // automatically (see specialThemeForToday below), so neither shows up on an
+  // ordinary day and clicking the toggle while one's showing just steps into
+  // 'dark' as normal.
   const THEMES = ['dark', 'light', 'royal'];
   const THEME_META = {
     dark:  { icon: '☾', label: 'Dark' },
     light: { icon: '☀', label: 'Light' },
-    royal: { icon: '♛', label: 'Royal' }
+    royal: { icon: '♛', label: 'Royal' },
+    red:   { icon: '❤', label: 'Red' },
+    pink:  { icon: '🎗', label: 'Pink' }
   };
+
+  // Valentine's Day (Feb 14) and Mother's Day (2nd Sunday of May — the
+  // convention most countries share; adjust here if this business observes
+  // a different date, e.g. the UK's movable Mothering Sunday) go red.
+  // World Breast Cancer Day (Oct 15, fixed every year) goes pink.
+  function mothersDay(year){
+    const d = new Date(year, 4, 1); // May 1
+    const firstSunday = 1 + ((7 - d.getDay()) % 7);
+    return new Date(year, 4, firstSunday + 7);
+  }
+  function specialThemeForToday(){
+    const now = new Date();
+    if (now.getMonth() === 1 && now.getDate() === 14) return 'red'; // Feb 14
+    if (now.getMonth() === 9 && now.getDate() === 15) return 'pink'; // Oct 15
+    const md = mothersDay(now.getFullYear());
+    if (now.getMonth() === md.getMonth() && now.getDate() === md.getDate()) return 'red';
+    return null;
+  }
 
   function currentTheme(){
     return html.getAttribute('data-theme') || 'dark';
   }
-  function applyTheme(theme){
+  function applyTheme(theme, persist){
     if (theme === 'dark') html.removeAttribute('data-theme');
     else html.setAttribute('data-theme', theme);
     const meta = THEME_META[theme];
@@ -4547,10 +4586,16 @@
     icon.textContent = meta.icon;
     const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
     btn.setAttribute('aria-label', 'Switch to ' + THEME_META[next].label + ' theme');
-    try { localStorage.setItem('bnb-theme', theme); } catch(e) { /* storage unavailable */ }
+    if (persist !== false){
+      try { localStorage.setItem('bnb-theme', theme); } catch(e) { /* storage unavailable */ }
+    }
   }
 
-  applyTheme(currentTheme());
+  // The seasonal theme is a display-only override for today's visit — it
+  // never overwrites the member's saved preference, so it quietly goes back
+  // to normal the day after without them having to switch back manually.
+  const special = specialThemeForToday();
+  applyTheme(special || currentTheme(), /* persist */ !special);
 
   btn.addEventListener('click', () => {
     const next = THEMES[(THEMES.indexOf(currentTheme()) + 1) % THEMES.length];
