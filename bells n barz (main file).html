@@ -35,7 +35,7 @@
       document.documentElement.setAttribute('data-theme', 'pink');
     } else {
       var saved = localStorage.getItem('bnb-theme');
-      if (saved === 'light' || saved === 'royal') document.documentElement.setAttribute('data-theme', saved);
+      if (saved === 'light' || saved === 'royal' || saved === 'red' || saved === 'pink') document.documentElement.setAttribute('data-theme', saved);
     }
   } catch(e) { /* storage unavailable — default dark theme stands */ }
 })();
@@ -4544,11 +4544,10 @@
 
   // 'dark' has no data-theme attribute at all (matches the CSS :root default),
   // so it's first in the cycle and also what an empty/missing attribute means.
-  // 'red' and 'pink' aren't part of the manual cycle — they only ever appear
-  // automatically (see specialThemeForToday below), so neither shows up on an
-  // ordinary day and clicking the toggle while one's showing just steps into
-  // 'dark' as normal.
-  const THEMES = ['dark', 'light', 'royal'];
+  // 'red' and 'pink' are pickable here too, but also apply themselves
+  // automatically on their own days regardless of what's saved (see
+  // specialThemeForToday below) without overwriting that saved choice.
+  const THEMES = ['dark', 'light', 'royal', 'red', 'pink'];
   const THEME_META = {
     dark:  { icon: '☾', label: 'Dark' },
     light: { icon: '☀', label: 'Light' },
