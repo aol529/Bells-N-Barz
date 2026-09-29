@@ -1675,9 +1675,14 @@
     // see them, e.g. staff) plus anything from the coaches directory
     // (sql/39) not already present, so a plain member sees the same
     // active-trainer list a staff session does, without ever needing
-    // direct row access to trainer accounts.
+    // direct row access to trainer accounts. Restricted to real UUIDs
+    // (length 36) — SEED_USERS' placeholder trainer rows ('u2', 't2', ...)
+    // use short fake ids that never match a real account's id, so during
+    // the brief window before refreshUsersFromSupabase() replaces seed
+    // data, they'd otherwise show up as duplicates alongside the same
+    // coach's real entry from the directory.
     getTrainers: function(){
-      const own = users.filter(function(u){ return u.status!=='suspended' && u.roles && u.roles.indexOf('trainer')!==-1; });
+      const own = users.filter(function(u){ return u.id && u.id.length === 36 && u.status!=='suspended' && u.roles && u.roles.indexOf('trainer')!==-1; });
       const ownIds = own.reduce(function(set, u){ set[u.id] = true; return set; }, {});
       const extra = coachesDirectory.filter(function(c){ return !ownIds[c.id]; });
       return own.concat(extra);
