@@ -1591,7 +1591,14 @@
 
     if (editingId){
       const idx = users.findIndex(x=>x.id===editingId);
-      users[idx] = Object.assign({id: editingId, createdAt: users[idx].createdAt, lastLogin: users[idx].lastLogin}, data);
+      // authId links this row to the member's real Supabase Auth account —
+      // the edit form has no field for it (nothing to edit), so it must be
+      // carried over explicitly here, the same as createdAt/lastLogin
+      // already are. Without this, editing ANY field on an existing member
+      // silently wipes auth_id on save, and that member can no longer log
+      // in — the app looks up their profile by auth_id after auth succeeds,
+      // finds nothing, and shows "no matching member profile was found."
+      users[idx] = Object.assign({id: editingId, authId: users[idx].authId, createdAt: users[idx].createdAt, lastLogin: users[idx].lastLogin}, data);
     } else {
       data.id = window.BNB_UUID();
       data.createdAt = new Date().toISOString().slice(0,10);
