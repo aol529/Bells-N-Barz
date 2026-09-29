@@ -951,10 +951,10 @@
       <div class="readonly-strip">
         <span class="ro-pill">Plan: <b>${esc(u.plan||'—')}</b></span>
         <span class="ro-pill">Status: <span class="status-pill ${esc(u.mstatus)}">${esc(u.mstatus)}</span></span>
-        <span class="ro-pill">Trainer: <b>${esc((u.trainerId && window.BNB_USERS && window.BNB_USERS.getName(u.trainerId)) || 'Unassigned')}</b></span>
+        <span class="ro-pill coach-pill">Your Coach: <select id="usr-p-trainer-id"></select></span>
         <span class="ro-pill">Member since: <b>${fmtDate(u.createdAt)}</b></span>
       </div>
-      <div class="field-hint" style="margin-bottom:18px;">Plan, status, and billing are managed by staff and shown here read-only. Everything below is yours to edit.</div>
+      <div class="field-hint" style="margin-bottom:18px;">Plan, status, and billing are managed by staff and shown here read-only. Pick or change your own coach any time from the list above. Everything below is yours to edit.</div>
 
       <div class="stat-block" id="usr-profile-stats"></div>
       <div class="checkin-btn-row">
@@ -1015,6 +1015,21 @@
       </details>
     `;
     document.getElementById('usr-p-experience').value = u.experience || 'beginner';
+
+    // Your Coach — a member picks any active trainer-role account
+    // straight from this dropdown; the server (sql/38) still enforces
+    // that the value can only be an actual active coach or blank, so
+    // this list is a convenience, not the real security boundary.
+    const trainerSel = document.getElementById('usr-p-trainer-id');
+    const trainers = window.BNB_USERS ? window.BNB_USERS.getTrainers() : [];
+    trainerSel.innerHTML = '<option value="">Unassigned</option>' +
+      trainers.map(t => `<option value="${escAttr(t.id)}">${esc(t.fullName)}</option>`).join('');
+    trainerSel.value = u.trainerId || '';
+    trainerSel.addEventListener('change', ()=>{
+      u.trainerId = trainerSel.value || null;
+      saveUsers();
+      showToast(u.trainerId ? 'Coach updated' : 'Coach unassigned');
+    });
     document.querySelectorAll('#usr-profile-tab-bar button').forEach(b=>{
       b.addEventListener('click', ()=>{
         document.querySelectorAll('#usr-profile-tab-bar button').forEach(x=>x.classList.toggle('active', x===b));
