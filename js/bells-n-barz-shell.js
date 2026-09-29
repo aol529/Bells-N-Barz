@@ -307,6 +307,13 @@ function switchTab(rawTab, scrollTop){
     if (rawTab === 'member'){
       document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     }
+    // Me is the only Member tile with its own nested tile row
+    // (me-section-switch: Weight/Period/Track/Nutrition/Fasting) — on
+    // every width, not just mobile, show that row in place of the outer
+    // Member tile row instead of stacking both. The MEMBER nav pill (or
+    // any other tile) clears this the same way it already clears
+    // member-content-mode above.
+    panel.classList.toggle('me-content-mode', tab === 'me');
   }
   // Same tile-home-screen treatment for Admin — landing via the top-nav
   // ADMIN pill (or a restored #admin hash) shows the Billing/Users/
