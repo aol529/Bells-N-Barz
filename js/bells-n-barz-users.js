@@ -243,6 +243,26 @@
     }
   }
 
+  /* ---- Points (sql/40) — the ledger IS the balance, so reading it is
+     just summing delta. Earning (check-in, streak bonus) and redeeming
+     both happen server-side; the client only ever reads the ledger and
+     calls redeem_points_for_credit(), never writes a balance directly. ---- */
+  async function fetchPointsLedger(userId){
+    const { data, error } = await bnbClient.from('points_ledger')
+      .select('delta, reason, created_at').eq('user_id', userId).order('created_at', { ascending: false });
+    if (error) { console.error('Supabase load points_ledger failed:', error); return []; }
+    return data || [];
+  }
+  async function redeemPointsForCredit(){
+    const { data, error } = await bnbClient.rpc('redeem_points_for_credit');
+    if (error) throw error;
+    return data; // new balance
+  }
+  async function adjustPointsAsStaff(userId, delta, reason){
+    const { error } = await bnbClient.rpc('admin_adjust_points', { p_user_id: userId, p_delta: delta, p_reason: reason });
+    if (error) throw error;
+  }
+
   // A plain member's RLS read access is "own row only" (see gym.sql), so
   // the `users` array above never contains anyone else — including
   // trainers — for a member session. This directory (sql/39) fills that
@@ -976,6 +996,15 @@
         <button class="btn2 primary small" id="usr-self-checkin-btn">Check In Today</button>
       </div>
 
+      <div class="points-block" id="usr-points-block">
+        <div class="points-head">
+          <div class="points-balance"><span id="usr-points-balance">…</span> <span class="lbl">points</span></div>
+          <button class="btn2 small" id="usr-points-redeem-btn" disabled>Redeem 500 for a free PT session</button>
+        </div>
+        <div class="field-hint" style="margin:6px 0 0;">Earn 10 for every check-in, plus bonuses at 7/30/90-day streaks. <a href="#" id="usr-points-explainer-link">How it works</a></div>
+        <div class="points-history" id="usr-points-history"></div>
+      </div>
+
       <details class="profile-accordion" id="usr-profile-accordion">
         <summary>Personal, Fitness &amp; Emergency Contact Details</summary>
         <div class="accordion-body">
@@ -1069,6 +1098,44 @@
     selfCheckinBtn.onclick = ()=>{
       if (logCheckin(u.id, TODAY)){ showToast('Checked in — see you on the floor!'); renderProfile(); }
     };
+
+    // Points (sql/40) — balance and history come from the ledger itself,
+    // fetched fresh each time so a just-earned or just-redeemed change
+    // always shows up, not from anything computed/cached client-side.
+    const POINTS_REDEEM_COST = 500;
+    const pointsBalanceEl = document.getElementById('usr-points-balance');
+    const pointsRedeemBtn = document.getElementById('usr-points-redeem-btn');
+    const pointsHistoryEl = document.getElementById('usr-points-history');
+    fetchPointsLedger(u.id).then(entries => {
+      const balance = entries.reduce((sum, e) => sum + e.delta, 0);
+      if (pointsBalanceEl) pointsBalanceEl.textContent = balance;
+      if (pointsRedeemBtn) pointsRedeemBtn.disabled = balance < POINTS_REDEEM_COST;
+      if (pointsHistoryEl){
+        pointsHistoryEl.innerHTML = entries.length ? entries.slice(0, 5).map(e =>
+          `<div class="points-row"><span>${esc(e.reason)}</span><span class="${e.delta<0?'neg':'pos'}">${e.delta>0?'+':''}${e.delta}</span></div>`
+        ).join('') : '<div class="empty-msg">No activity yet — check in to start earning.</div>';
+      }
+    });
+    const pointsExplainerLink = document.getElementById('usr-points-explainer-link');
+    if (pointsExplainerLink){
+      pointsExplainerLink.onclick = (e) => {
+        e.preventDefault();
+        if (typeof window.switchTab === 'function') window.switchTab('points');
+      };
+    }
+    if (pointsRedeemBtn){
+      pointsRedeemBtn.onclick = async () => {
+        pointsRedeemBtn.disabled = true;
+        try {
+          await redeemPointsForCredit();
+          showToast('Redeemed! +1 PT session credit');
+          renderProfile();
+        } catch (err) {
+          showToast(err.message || 'Could not redeem right now.');
+          pointsRedeemBtn.disabled = false;
+        }
+      };
+    }
 
     document.getElementById('usr-profile-save-btn').addEventListener('click', ()=>{
       u.fullName = document.getElementById('usr-p-fullname').value.trim() || u.fullName;
@@ -1299,6 +1366,36 @@
       sel.innerHTML = '<option value="">Unassigned</option>' +
         trainers.map(t => '<option value="'+t.id+'">'+esc(t.fullName)+'</option>').join('');
       sel.value = (u && u.trainerId) || '';
+    })();
+
+    (function(){
+      const balanceEl = document.getElementById('usr-f-points-balance');
+      const deltaInput = document.getElementById('usr-f-points-delta');
+      const reasonInput = document.getElementById('usr-f-points-reason');
+      const applyBtn = document.getElementById('usr-f-points-apply');
+      deltaInput.value = ''; reasonInput.value = '';
+      if (!u){ balanceEl.textContent = '—'; applyBtn.disabled = true; return; }
+      applyBtn.disabled = false;
+      balanceEl.textContent = '…';
+      fetchPointsLedger(u.id).then(entries => {
+        balanceEl.textContent = entries.reduce((sum, e) => sum + e.delta, 0);
+      });
+      applyBtn.onclick = async () => {
+        const delta = parseInt(deltaInput.value, 10);
+        if (!delta){ showToast('Enter a non-zero amount first.'); return; }
+        applyBtn.disabled = true;
+        try {
+          await adjustPointsAsStaff(u.id, delta, reasonInput.value.trim());
+          showToast('Points adjusted');
+          deltaInput.value = ''; reasonInput.value = '';
+          fetchPointsLedger(u.id).then(entries => {
+            balanceEl.textContent = entries.reduce((sum, e) => sum + e.delta, 0);
+          });
+        } catch (err) {
+          showToast(err.message || 'Could not adjust points.');
+        }
+        applyBtn.disabled = false;
+      };
     })();
 
     document.getElementById('usr-f-plan').value = u ? u.plan : '';

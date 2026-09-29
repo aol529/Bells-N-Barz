@@ -1373,6 +1373,21 @@
 <p class="field-hint" style="margin-top:16px;max-width:75ch;">The broader training program — the exercise selections, splits, and periodization choices in the Manual itself — reflects this gym's own curation and judgment. If specific programming decisions were adapted from a named source, coach, or course, add it here too; this list only covers what's independently verifiable from the outside.</p>
 </div>
 </section>
+<section class="tab-panel" id="tab-points">
+<div class="day-head"><h2>How Points Work</h2></div>
+<div class="day-focus">A small thank-you for showing up — earned automatically, tracked on My Profile, redeemable for a free session</div>
+<div class="section-block">
+<p class="lede">Points are separate from session credits. Credits are something you buy (a 10-Session Pack, etc.); points are something you earn just by showing up.</p>
+<table class="ref-table">
+<tr><th>Action</th><th>Points</th></tr>
+<tr><td>Check in for the day</td><td>+10</td></tr>
+<tr><td>7-day check-in streak</td><td>+50 bonus</td></tr>
+<tr><td>30-day check-in streak</td><td>+200 bonus</td></tr>
+<tr><td>90-day check-in streak</td><td>+500 bonus</td></tr>
+</table>
+<p class="field-hint" style="margin-top:16px;max-width:75ch;">Redeem 500 points any time on My Profile for a free 1-on-1 PT session credit — the same credits used for booking a trainer. Your balance and recent activity are shown right there too. Points are awarded the moment your check-in is recorded, and everything is verified on our end — nothing here can be sped up by editing anything in your browser.</p>
+</div>
+</section>
 <!-- ================= MEMBER ================= -->
 <section class="tab-panel" id="tab-member">
   <div class="day-head"><h2>Member — Training Tools</h2><span class="day-sub">Live session logging, interval timers, weight tracking, and progress</span></div>
@@ -2671,6 +2686,15 @@
           <div class="field-hint" style="margin-top:5px;">Members can also pick or change their own coach from My Profile — this overrides that.</div>
         </div>
       </div>
+      <div class="field">
+        <label>Points — Current Balance: <b id="usr-f-points-balance">…</b></label>
+        <div class="form-inline">
+          <input type="number" id="usr-f-points-delta" placeholder="e.g. 100 or -50" style="max-width:140px;">
+          <input type="text" id="usr-f-points-reason" placeholder="Reason (e.g. comped, correction)">
+          <button type="button" class="btn2 small" id="usr-f-points-apply">Apply</button>
+        </div>
+        <div class="field-hint" style="margin-top:5px;">Adjusts the member's points balance directly — logged with the reason above, same as any earned/redeemed points.</div>
+      </div>
     </div>
 
     <!-- ASSESSMENT TAB (repeating log — Initial Assessment, then Reassessments) -->
@@ -2858,7 +2882,7 @@
 </div>
 </div>
 <footer class="site">
-<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a> &nbsp;·&nbsp; <a href="#" id="log-footer-link" style="color:var(--muted); text-decoration:underline;">Revision Log</a> &nbsp;·&nbsp; <a href="#" id="credits-footer-link" style="color:var(--muted); text-decoration:underline;">Sources &amp; Credits</a></div>
+<div class="wrap">Bell(e)s n' Barz — Complete Training Manual · Movement Preparation System with Integrated Core Programming · v2.1, August 2 2026 &nbsp;·&nbsp; <a href="#" id="audit-footer-link" style="color:var(--muted); text-decoration:underline;">Program Audit</a> &nbsp;·&nbsp; <a href="#" id="log-footer-link" style="color:var(--muted); text-decoration:underline;">Revision Log</a> &nbsp;·&nbsp; <a href="#" id="credits-footer-link" style="color:var(--muted); text-decoration:underline;">Sources &amp; Credits</a> &nbsp;·&nbsp; <a href="#" id="points-footer-link" style="color:var(--muted); text-decoration:underline;">How Points Work</a></div>
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->

@@ -218,10 +218,20 @@ if (creditsFooterLink){
   });
 }
 
+/* ---------------- HOW POINTS WORK (footer link) ---------------- */
+// Same small-footer-link pattern as Revision Log/Credits above.
+const pointsFooterLink = document.getElementById('points-footer-link');
+if (pointsFooterLink){
+  pointsFooterLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('points');
+  });
+}
+
 const TAB_TITLES = {
   overview: 'Training Manual', mon: 'Training Manual', tue: 'Training Manual',
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
-  appendix: 'Appendix', glance: 'At a Glance',
+  appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
   session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges'
 };
