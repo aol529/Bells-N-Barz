@@ -243,6 +243,20 @@
     }
   }
 
+  // A plain member's RLS read access is "own row only" (see gym.sql), so
+  // the `users` array above never contains anyone else — including
+  // trainers — for a member session. This directory (sql/39) fills that
+  // gap with just enough to pick a coach: id/name/photo/active-status,
+  // via a SECURITY DEFINER function rather than opening up direct table
+  // access to trainer rows. getTrainers() below merges it in.
+  let coachesDirectory = [];
+  async function refreshCoachesDirectory(){
+    const { data, error } = await bnbClient.rpc('available_coaches');
+    if (error) { console.error('Supabase load available_coaches failed:', error); return; }
+    if (data) coachesDirectory = data.map(r => ({ id: r.id, fullName: r.full_name, avatar: r.avatar, status: r.status, roles: ['trainer'] }));
+  }
+  refreshCoachesDirectory();
+
   function saveUsers(){
     // Upsert rows ONE AT A TIME, not as a single batch. Under Row Level
     // Security, a batch upsert containing even one row the current session
@@ -539,6 +553,7 @@
     // least one fetch happens once we know who's actually signed in.
     if (selfId){
       refreshUsersFromSupabase();
+      refreshCoachesDirectory();
       refreshCheckinsFromSupabase();
       refreshAssessmentsFromSupabase();
     }
@@ -1559,7 +1574,17 @@
 
   window.BNB_USERS = {
     getAll: function(){ return users.slice(); },
-    getTrainers: function(){ return users.filter(function(u){ return u.status!=='suspended' && u.roles && u.roles.indexOf('trainer')!==-1; }); },
+    // Own-array trainers (full rows — populated whenever this session can
+    // see them, e.g. staff) plus anything from the coaches directory
+    // (sql/39) not already present, so a plain member sees the same
+    // active-trainer list a staff session does, without ever needing
+    // direct row access to trainer accounts.
+    getTrainers: function(){
+      const own = users.filter(function(u){ return u.status!=='suspended' && u.roles && u.roles.indexOf('trainer')!==-1; });
+      const ownIds = own.reduce(function(set, u){ set[u.id] = true; return set; }, {});
+      const extra = coachesDirectory.filter(function(c){ return !ownIds[c.id]; });
+      return own.concat(extra);
+    },
     getMembers: function(){ return users.filter(function(u){ return u.status!=='suspended' && u.roles && u.roles.indexOf('member')!==-1; }); },
     getById: function(id){ return users.find(function(u){ return u.id===id; }); },
     getName: function(id){ var u = users.find(function(x){ return x.id===id; }); return u ? u.fullName : null; },
