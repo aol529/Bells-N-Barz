@@ -1067,6 +1067,14 @@ function restoreInitialHash(){
                      || document.querySelector('#me-section-switch [data-me-section="' + initialSub + '"]');
         if (subBtn) subBtn.click();
       }
+    } else if (initial === 'blog'){
+      // A shared post link (#blog:<slug> — see the Share button in
+      // js/bells-n-barz-blog.js). The blog module loads lazily and may not
+      // have fetched its posts yet, so stash the slug for it to pick up
+      // itself (see tryRestorePendingSlug() there) rather than trying to
+      // open the post from here.
+      if (initialSub) window.__bnbPendingBlogSlug = initialSub;
+      if (typeof window.switchSite === 'function') window.switchSite('blog');
     }
   } finally {
     // Reveal the page now that the correct state (or, for a stale/invalid

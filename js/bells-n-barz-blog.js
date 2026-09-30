@@ -312,6 +312,7 @@
       postsSnapshot = posts.slice();
       if (typeof renderList === 'function') renderList();
       if (typeof renderAdmin === 'function') renderAdmin();
+      if (typeof tryRestorePendingSlug === 'function') tryRestorePendingSlug();
     }
   }
   function savePosts(){
@@ -607,6 +608,25 @@
     if (p){ p.views = (p.views||0) + 1; savePosts(); }
     renderPost();
     switchView('post');
+    // Reflects the open post in the URL (#blog:<slug>) so the address bar
+    // is actually shareable — see the Share button in renderPost() and
+    // restoreInitialHash()/tryRestorePendingPost() for the read side.
+    if (p) history.replaceState(null, '', '#blog:' + p.slug);
+  }
+
+  // A page load (or the shell's restoreInitialHash()) that starts on
+  // #blog:<slug> stashes the slug here before this module has even
+  // fetched its posts — retried once synchronously (seed data) and again
+  // once Supabase responds, since a real post's slug usually only exists
+  // in the Supabase-loaded set, not the legacy seed fallback.
+  function tryRestorePendingSlug(){
+    const slug = window.__bnbPendingBlogSlug;
+    if (!slug) return;
+    const match = posts.find(p => p.slug === slug && p.status === 'published');
+    if (match){
+      window.__bnbPendingBlogSlug = null;
+      openPost(match.id);
+    }
   }
 
   /* ---------------- SIDEBAR: TRENDING / NEWEST ---------------- */
@@ -702,12 +722,37 @@
       ${coverHtml}
       <div class="cat">${esc(p.category||'General')}</div>
       <h1>${esc(p.title)}</h1>
-      <div class="meta">${esc(p.author||'')} &nbsp;·&nbsp; ${fmtDate(p.date)}</div>
+      <div class="meta">
+        <span>${esc(p.author||'')} &nbsp;·&nbsp; ${fmtDate(p.date)}</span>
+        <button class="share-btn" id="post-share-btn" type="button">&#x2197; Share</button>
+      </div>
       <div class="post-body">${mdToHtml(p.body)}</div>
       ${tagsHtml ? `<div class="post-tags">${tagsHtml}</div>` : ''}
     `;
+
+    const shareBtn = document.getElementById('post-share-btn');
+    shareBtn.addEventListener('click', async ()=>{
+      const shareUrl = location.origin + location.pathname + '#blog:' + p.slug;
+      if (navigator.share){
+        try { await navigator.share({ title: p.title, text: p.excerpt||'', url: shareUrl }); }
+        catch(err){ /* user closed the share sheet without picking anything — not an error */ }
+        return;
+      }
+      // Desktop/unsupported-browser fallback: copy the link instead.
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        const original = shareBtn.textContent;
+        shareBtn.textContent = 'Link copied!';
+        setTimeout(()=> shareBtn.textContent = original, 2000);
+      } catch(err){
+        prompt('Copy this link:', shareUrl);
+      }
+    });
   }
-  document.getElementById('back-to-list').addEventListener('click', ()=>{ switchView('list'); renderList(); });
+  document.getElementById('back-to-list').addEventListener('click', ()=>{
+    switchView('list'); renderList();
+    history.replaceState(null, '', '#blog');
+  });
 
   /* ---------------- ADMIN TABLE ---------------- */
   let blogSort = { key: 'date', dir: 'desc' };
@@ -874,5 +919,6 @@
   renderMegatron();
   renderAdmin();
   renderMegatronAdmin();
+  tryRestorePendingSlug();
 
 })();
