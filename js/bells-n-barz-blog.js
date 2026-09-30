@@ -315,17 +315,28 @@
     }
   }
   function savePosts(){
-    const oldIds = new Set(postsSnapshot.map(x=>x.id));
+    // Only push rows that actually changed since the last save — diffing
+    // against postsSnapshot instead of re-upserting every real post every
+    // time. With enough posts, blindly re-uploading the whole table on
+    // every save (even a single view-count bump) fires a large burst of
+    // simultaneous requests that can intermittently fail together and
+    // trip the "Could not save" alert below for no real reason.
+    const oldById = new Map(postsSnapshot.map(x=>[x.id, x]));
     const newIds = new Set(posts.map(x=>x.id));
-    const removedIds = [...oldIds].filter(id => !newIds.has(id));
+    const removedIds = [...oldById.keys()].filter(id => !newIds.has(id));
+    const changedRows = posts
+      .filter(p => p.id && p.id.length === 36)
+      .filter(p => {
+        const old = oldById.get(p.id);
+        return !old || JSON.stringify(old) !== JSON.stringify(p);
+      })
+      .map(postToRow);
     postsSnapshot = posts.slice();
     (async () => {
-      const realRows = posts.filter(p => p.id && p.id.length === 36);
-      const rows = realRows.map(postToRow);
-      const results = await Promise.allSettled(rows.map(row => bnbClient.from('blog_posts').upsert([row])));
+      const results = await Promise.allSettled(changedRows.map(row => bnbClient.from('blog_posts').upsert([row])));
       await Promise.allSettled(removedIds.map(id => bnbClient.from('blog_posts').delete().eq('id', id)));
       const successCount = results.filter(r => r.status === 'fulfilled' && !(r.value && r.value.error)).length;
-      if (successCount === 0 && rows.length > 0){
+      if (successCount === 0 && changedRows.length > 0){
         alert('Could not save to database — check your connection or Supabase setup.');
       }
     })();
