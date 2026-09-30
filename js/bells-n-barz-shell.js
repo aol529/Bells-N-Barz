@@ -1592,5 +1592,11 @@ createIntervalTimer(
   });
 })();
 
+/* ---------------- AUTO-REFRESH ---------------- */
+// A tab left open for hours can drift from real data (roster changes,
+// new bookings, moon-phase/Ekadashi date rollover, etc.) — reload every
+// 2 hours so it stays current, same pattern as the Bible reading plan.
+setInterval(() => location.reload(), 2 * 60 * 60 * 1000);
+
 /* ---------------- WEIGHT TRACKER ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-weight.js (loaded on demand — see bnbLoadModule) -->
