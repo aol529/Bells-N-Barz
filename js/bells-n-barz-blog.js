@@ -610,7 +610,7 @@
   }
 
   /* ---------------- SIDEBAR: TRENDING / NEWEST ---------------- */
-  let sideSort = 'popular';
+  let sideSort = 'newest';
 
   function renderSideList(){
     const list = document.getElementById('side-post-list');
