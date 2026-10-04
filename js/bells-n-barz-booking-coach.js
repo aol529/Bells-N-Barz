@@ -482,6 +482,7 @@
       wireBody(adminBody, 'admin');
     }
     renderCoachBody();
+    fillRatingComments();
   }
 
   /* ---------------- COACH BODY (own tab now, was Schedule > Trainer) ---------------- */
@@ -500,6 +501,7 @@
       btn.addEventListener('click', ()=>{
         trainerSubTab = btn.getAttribute('data-subtab');
         renderCoachBody();
+        fillRatingComments();
       });
     });
     body.querySelectorAll('[data-action]').forEach(btn=>{
@@ -544,9 +546,11 @@
     html += subBtn('browse', memberSubTab, 'Browse & Book');
     html += subBtn('trainer', memberSubTab, 'Book a Trainer');
     html += subBtn('mine', memberSubTab, 'My Schedule');
+    html += subBtn('rate', memberSubTab, 'Rate Coaches');
     html += '</div>';
     if (memberSubTab === 'browse') html += memberBrowseHtml();
     else if (memberSubTab === 'trainer') html += memberBookTrainerHtml();
+    else if (memberSubTab === 'rate') html += memberRateHtml();
     else html += memberMineHtml();
     return html;
   }
@@ -599,6 +603,7 @@
     getSchedTrainers().forEach(t=> html += '<option value="'+t.id+'">'+t.name+'</option>');
     html += '</select></div></div>';
     const trainerId = document.getElementById('sched-mbt-trainer') ? document.getElementById('sched-mbt-trainer').value : (getSchedTrainers()[0]||{}).id;
+    html += '<div class="rating-inline">' + ratingSummaryLineHtml(trainerId) + '</div>';
     const openSlots = slots.filter(sl=>sl.trainerId===trainerId && sl.status==='open' && sl.date >= TODAY).sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
     if (!openSlots.length){ html += '<div class="empty-msg">No open 1-on-1 slots for this trainer right now.</div>'; return html; }
     html += '<table class="admin-table"><tr><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>';
@@ -639,6 +644,218 @@
   }
 
   /* ============================================================
+     COACH RATINGS (sql/41)
+     Members rate coaches they've had a past 1-on-1 with, across five
+     categories; the overall score is just the average of the five.
+     Individual rows are only ever readable by the member who wrote
+     them and by admins — coaches and other members get aggregates and
+     anonymous comments through RPCs, and only once a coach has 3+
+     ratings (enforced server-side, mirrored here only for wording).
+     ============================================================ */
+  const RATING_CATEGORIES = [
+    { key:'knowledge', label:'Knowledge' },
+    { key:'motivation', label:'Motivation' },
+    { key:'punctuality', label:'Punctuality' },
+    { key:'hygiene', label:'Hygiene' },
+    { key:'attire', label:'Attire' }
+  ];
+  const MIN_RATINGS_SHOWN = 3;
+  let ratingSummaries = {};   // coachId -> row from coach_rating_summaries()
+  let myRatings = {};         // coachId -> the logged-in member's own coach_ratings row
+  let adminRatings = null;    // every coach_ratings row (admins only); null until loaded
+  let ratingCommentsCache = {}; // coachId -> rows from coach_rating_comments()
+
+  function realSelf(){
+    return window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  }
+  function selfIsAdmin(){
+    const me = realSelf();
+    return !!(me && me.roles && me.roles.indexOf('admin') !== -1);
+  }
+
+  async function refreshCoachRatings(){
+    const me = realSelf();
+    if (!me) return;
+    const summaryRes = await bnbClient.rpc('coach_rating_summaries');
+    if (summaryRes.error) console.error('Supabase load coach_rating_summaries failed:', summaryRes.error);
+    else { ratingSummaries = {}; (summaryRes.data || []).forEach(r=> ratingSummaries[r.coach_id] = r); }
+
+    // Admins can read every row under RLS, so filter to their own here
+    // rather than relying on the policy to do it.
+    const mineRes = await bnbClient.from('coach_ratings').select('*').eq('client_id', me.id);
+    if (mineRes.error) console.error('Supabase load own coach_ratings failed:', mineRes.error);
+    else { myRatings = {}; (mineRes.data || []).forEach(r=> myRatings[r.coach_id] = r); }
+
+    if (selfIsAdmin()){
+      const allRes = await bnbClient.from('coach_ratings').select('*').order('updated_at', { ascending: false });
+      if (allRes.error) console.error('Supabase load all coach_ratings failed:', allRes.error);
+      else adminRatings = allRes.data || [];
+    }
+    ratingCommentsCache = {};
+    renderBody();
+  }
+
+  function overallOf(r){
+    return RATING_CATEGORIES.reduce((sum, c)=> sum + Number(r[c.key]), 0) / RATING_CATEGORIES.length;
+  }
+  function starsHtml(value){
+    const full = Math.round(Number(value) || 0);
+    let s = '';
+    for (let i = 1; i <= 5; i++) s += i <= full ? '★' : '☆';
+    return '<span class="rating-stars">' + s + '</span>';
+  }
+  function ratingSummaryLineHtml(coachId){
+    const s = ratingSummaries[coachId];
+    if (!s || !s.rating_count) return '<span class="field-hint">No ratings yet</span>';
+    if (s.overall === null) return '<span class="field-hint">' + s.rating_count + ' rating' + (s.rating_count===1?'':'s') + ' so far — averages show from ' + MIN_RATINGS_SHOWN + '</span>';
+    return starsHtml(s.overall) + ' <b>' + Number(s.overall).toFixed(1) + '</b> <span class="field-hint">(' + s.rating_count + ' ratings)</span>';
+  }
+  function ratingBreakdownHtml(coachId){
+    const s = ratingSummaries[coachId];
+    if (!s || s.overall === null) return '';
+    let html = '<div class="rating-breakdown">';
+    RATING_CATEGORIES.forEach(c=>{
+      const v = Number(s[c.key]);
+      html += '<div class="rating-bar-row"><span class="rating-bar-label">' + c.label + '</span>' +
+        '<span class="rating-bar"><span style="width:' + (v / 5 * 100) + '%"></span></span>' +
+        '<span class="rating-bar-num">' + v.toFixed(1) + '</span></div>';
+    });
+    return html + '</div>';
+  }
+
+  // Coaches this member can rate — a past, confirmed 1-on-1. Same rule as has_trained_with() in sql/41, which is the real
+  // check; this just decides which forms to show.
+  function coachesTrainedWith(memberId){
+    const ids = {};
+    ptBookings.forEach(p=>{
+      if (p.userId !== memberId || p.status !== 'confirmed') return;
+      const sl = slots.find(x=>x.id===p.slotId);
+      if (sl && sl.trainerId === p.trainerId && sl.date <= TODAY) ids[p.trainerId] = true;
+    });
+    return Object.keys(ids);
+  }
+
+  function memberRateHtml(){
+    const me = realSelf();
+    let html = '<div class="section-sub-head"><h3>Your Coaches</h3></div>';
+    html += '<div class="field-hint" style="margin:-6px 0 14px;">Coaches see the averages and comments, never who wrote them. One rating per coach — come back and update it any time.</div>';
+
+    if (!me || me.id !== selfMemberId){
+      html += '<div class="empty-msg">Ratings can only be given by the member themselves, from their own login.</div>';
+    } else {
+      const coachIds = coachesTrainedWith(selfMemberId);
+      if (!coachIds.length){
+        html += '<div class="empty-msg">After your first 1-on-1 session with a coach, you can rate them here.</div>';
+      } else {
+        html += '<div class="rate-grid">';
+        coachIds.forEach(cid=>{
+          const mine = myRatings[cid];
+          html += '<div class="rate-card" data-coach="' + cid + '"' +
+            RATING_CATEGORIES.map(c=> ' data-' + c.key + '="' + (mine ? mine[c.key] : '') + '"').join('') + '>';
+          html += '<div class="rate-card-head"><b>' + esc(trainerName(cid)) + '</b><span class="field-hint">' +
+            (mine ? 'Last updated ' + fmtDate(mine.updated_at.slice(0, 10)) : 'Not rated yet') + '</span></div>';
+          RATING_CATEGORIES.forEach(c=>{
+            const v = mine ? mine[c.key] : 0;
+            html += '<div class="rate-row"><span class="rate-label">' + c.label + '</span><span class="rate-stars-input">';
+            for (let i = 1; i <= 5; i++){
+              html += '<button type="button" class="rate-star' + (i <= v ? ' on' : '') + '" data-cat="' + c.key + '" data-val="' + i + '" aria-label="' + c.label + ' ' + i + ' of 5">★</button>';
+            }
+            html += '</span></div>';
+          });
+          html += '<div class="field"><label>Comment (optional)</label><textarea rows="2" maxlength="500" placeholder="What stands out — good or bad?">' + esc(mine && mine.comment) + '</textarea></div>';
+          if (mine && mine.comment_hidden) html += '<div class="field-hint">Your comment was hidden by staff. Editing it will resubmit it.</div>';
+          html += '<button class="btn2 primary" data-action="save-rating" data-id="' + cid + '">' + (mine ? 'Update Rating' : 'Submit Rating') + '</button>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+    }
+
+    html += '<div class="section-sub-head"><h3>All Coaches</h3></div>';
+    const trainers = getSchedTrainers();
+    if (!trainers.length) return html + '<div class="empty-msg">No coaches yet.</div>';
+    html += '<div class="rate-grid">';
+    trainers.forEach(t=>{
+      html += '<div class="rate-card"><div class="rate-card-head"><b>' + esc(t.name) + '</b><span>' + ratingSummaryLineHtml(t.id) + '</span></div>' +
+        ratingBreakdownHtml(t.id) + '<div class="rating-comments" data-comments-for="' + t.id + '"></div></div>';
+    });
+    return html + '</div>';
+  }
+
+  function trainerRatingsHtml(){
+    const s = ratingSummaries[selfTrainerId];
+    let html = '<div class="field-hint" style="margin-bottom:14px;">Ratings are anonymous — you see averages and comments, never who left them. Averages and comments appear once you have ' + MIN_RATINGS_SHOWN + ' ratings.</div>';
+    if (!s || !s.rating_count) return html + '<div class="empty-msg">No ratings yet. Clients can rate you after a 1-on-1 session.</div>';
+    html += '<div class="rate-card"><div class="rate-card-head"><b>Overall</b><span>' + ratingSummaryLineHtml(selfTrainerId) + '</span></div>' +
+      ratingBreakdownHtml(selfTrainerId) + '<div class="rating-comments" data-comments-for="' + selfTrainerId + '"></div></div>';
+    return html;
+  }
+
+  function adminRatingsHtml(){
+    if (!selfIsAdmin()) return '<div class="empty-msg">Only admins can see individual ratings.</div>';
+    if (adminRatings === null) return '<div class="empty-msg">Loading ratings…</div>';
+    if (!adminRatings.length) return '<div class="empty-msg">No ratings yet.</div>';
+    let html = '<div class="field-hint" style="margin-bottom:14px;">Admin-only view — client names are never shown to coaches. Hiding a comment removes it from what coaches and members see; the stars still count.</div>';
+    html += '<table class="admin-table"><tr><th>Coach</th><th>Client</th>' +
+      RATING_CATEGORIES.map(c=> '<th>' + c.label.slice(0, 5) + '</th>').join('') +
+      '<th>Overall</th><th>Comment</th><th>Updated</th><th></th></tr>';
+    adminRatings.forEach(r=>{
+      html += '<tr><td>' + esc(trainerName(r.coach_id)) + '</td><td>' + esc(memberName(r.client_id)) + '</td>' +
+        RATING_CATEGORIES.map(c=> '<td>' + r[c.key] + '</td>').join('') +
+        '<td>' + overallOf(r).toFixed(1) + '</td>' +
+        '<td class="' + (r.comment_hidden ? 'rating-comment-hidden' : '') + '">' + (r.comment ? esc(r.comment) : '—') + '</td>' +
+        '<td>' + fmtDate(r.updated_at.slice(0, 10)) + '</td><td>' +
+        (r.comment ? '<div class="row-actions"><button data-action="toggle-rating-hidden" data-id="' + r.id + '">' + (r.comment_hidden ? 'Unhide' : 'Hide') + '</button></div>' : '') +
+        '</td></tr>';
+    });
+    return html + '</table>';
+  }
+
+  // Comments come from a separate RPC per coach, so they're filled in
+  // after the surrounding HTML renders rather than blocking it.
+  function fillRatingComments(){
+    document.querySelectorAll('[data-comments-for]').forEach(async el=>{
+      const coachId = el.getAttribute('data-comments-for');
+      const s = ratingSummaries[coachId];
+      if (!s || s.overall === null) return;
+      if (!ratingCommentsCache[coachId]){
+        const { data, error } = await bnbClient.rpc('coach_rating_comments', { p_coach_id: coachId });
+        if (error){ console.error('Supabase load coach_rating_comments failed:', error); return; }
+        ratingCommentsCache[coachId] = data || [];
+      }
+      const rows = ratingCommentsCache[coachId];
+      el.innerHTML = rows.length ? rows.map(r=>
+        '<div class="rating-comment">' + starsHtml(r.overall) + ' <span class="field-hint">' + esc(fmtMonth(r.month)) + '</span><div>' + esc(r.comment) + '</div></div>'
+      ).join('') : '';
+    });
+  }
+  function fmtMonth(d){
+    return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month:'short', year:'numeric' });
+  }
+
+  async function saveCoachRating(coachId, card){
+    const params = { p_coach_id: coachId };
+    for (const c of RATING_CATEGORIES){
+      const v = Number(card.getAttribute('data-' + c.key));
+      if (!v){ toast('Rate all five categories first.'); return; }
+      params['p_' + c.key] = v;
+    }
+    params.p_comment = card.querySelector('textarea').value;
+    const { error } = await bnbClient.rpc('rate_coach', params);
+    if (error){ toast(error.message || 'Could not save rating.'); return; }
+    toast('Rating saved — thank you!');
+    refreshCoachRatings();
+  }
+  async function toggleRatingHidden(ratingId){
+    const r = (adminRatings || []).find(x=>x.id===ratingId);
+    if (!r) return;
+    const { error } = await bnbClient.rpc('admin_set_rating_hidden', { p_rating_id: ratingId, p_hidden: !r.comment_hidden });
+    if (error){ toast(error.message || 'Could not update comment.'); return; }
+    toast(r.comment_hidden ? 'Comment visible again' : 'Comment hidden');
+    refreshCoachRatings();
+  }
+
+  /* ============================================================
      TRAINER VIEW
      ============================================================ */
   function trainerViewHtml(){
@@ -649,9 +866,11 @@
     html += subBtn('roster', trainerSubTab, 'My Roster');
     html += subBtn('classes', trainerSubTab, 'My Classes');
     html += subBtn('slots', trainerSubTab, 'My 1-on-1 Slots');
+    html += subBtn('ratings', trainerSubTab, 'My Ratings');
     html += '</div>';
     if (trainerSubTab === 'roster') html += trainerRosterHtml();
     else if (trainerSubTab === 'classes') html += trainerClassesHtml();
+    else if (trainerSubTab === 'ratings') html += trainerRatingsHtml();
     else html += trainerSlotsHtml();
     return html;
   }
@@ -1139,10 +1358,12 @@
     html += subBtn('sessions', adminSubTab, 'Sessions');
     html += subBtn('pt', adminSubTab, '1-on-1 Oversight');
     html += subBtn('load', adminSubTab, 'Trainer Load');
+    html += subBtn('ratings', adminSubTab, 'Coach Ratings');
     html += '</div>';
     if (adminSubTab === 'classes') html += adminClassesHtml();
     else if (adminSubTab === 'sessions') html += adminSessionsHtml();
     else if (adminSubTab === 'pt') html += adminPtHtml();
+    else if (adminSubTab === 'ratings') html += adminRatingsHtml();
     else html += adminTrainerLoadHtml();
     return html;
   }
@@ -1277,7 +1498,12 @@
     toast('Booking cancelled.');
     renderBody();
   }
-  function memberBookSlot(slotId){
+  // Booking and cancelling go through book_pt_slot() / cancel_pt_booking()
+  // (sql/42), which do the booking row, slot status, and credit change in
+  // one server-side transaction — members can't write those directly. The
+  // checks below are just for a quicker, friendlier message; the server
+  // repeats every one of them.
+  async function memberBookSlot(slotId){
     const sl = slots.find(x=>x.id===slotId); if (!sl || sl.status !== 'open') { toast('That slot is no longer available.'); return; }
     const start = timeToMinutes(sl.startTime), end = start + Number(sl.duration);
     const overlap = ptBookings.some(p=>{
@@ -1289,43 +1515,40 @@
     });
     if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
 
+    const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
+    if (credits <= 0){ toast('No session credits left. Buy a package or redeem points to book.'); return; }
+
     const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
     if (me && Number(me.balance) > 0){
       if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
     }
 
-    // Warn, don't block, on zero credits — same "trust the coach's judgment"
-    // pattern the rest of this app uses (nothing else here hard-enforces
-    // money or inventory either). A comped session or a sync issue shouldn't
-    // become a wall you have to fight through mid-booking.
-    const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
-    if (credits <= 0){
-      if (!confirm('You have 0 session credits. Book this session anyway?')) return;
+    const { data: left, error } = await bnbClient.rpc('book_pt_slot', { p_slot_id: slotId, p_member_id: selfMemberId });
+    if (error){ toast(error.message || 'Could not book that slot.'); refreshSlotsFromSupabase(); return; }
+    if (window.BNB_USERS) window.BNB_USERS.setCreditsFromServer(selfMemberId, left);
+    toast('1-on-1 session booked! ' + left + ' credit' + (left===1?'':'s') + ' remaining.');
+    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
+    renderIdentityRow();
+    renderBody();
+  }
+  async function cancelPtBooking(ptId){
+    const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
+    const { data: refunded, error } = await bnbClient.rpc('cancel_pt_booking', { p_booking_id: ptId });
+    if (error){ toast(error.message || 'Could not cancel that session.'); return; }
+    if (refunded && window.BNB_USERS){
+      window.BNB_USERS.setCreditsFromServer(p.userId, window.BNB_USERS.getCredits(p.userId) + 1);
     }
-
-    sl.status = 'booked';
-    saveSlots();
-    ptBookings.push({ id: uid('pt'), slotId, trainerId: sl.trainerId, userId: selfMemberId, status:'confirmed', bookedAt: new Date().toISOString(), notes:'' });
-    savePtBookings();
-
-    if (credits > 0 && window.BNB_USERS){
-      window.BNB_USERS.deductCredit(selfMemberId);
-      const left = credits - 1;
-      toast('1-on-1 session booked! ' + left + ' credit' + (left===1?'':'s') + ' remaining.');
-    } else {
-      toast('1-on-1 session booked!');
-    }
+    toast(refunded ? '1-on-1 session cancelled — credit refunded.' : '1-on-1 session cancelled. No refund within 24 hours of the session.');
+    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
     renderIdentityRow();
     renderBody();
   }
   function memberCancelPt(ptId){
     const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
-    p.status = 'cancelled';
-    savePtBookings();
     const sl = slots.find(x=>x.id===p.slotId);
-    if (sl) { sl.status = 'open'; saveSlots(); }
-    toast('1-on-1 session cancelled.');
-    renderBody();
+    const hoursAhead = sl ? (new Date(sl.date + 'T' + sl.startTime) - Date.now()) / 3600000 : Infinity;
+    if (hoursAhead <= 24 && !confirm('This session is less than 24 hours away, so your credit won\'t be refunded. Cancel anyway?')) return;
+    cancelPtBooking(ptId);
   }
 
   function addSlot(trainerId, date, startTime, duration){
@@ -1341,14 +1564,8 @@
   function blockSlot(id){ const sl = slots.find(x=>x.id===id); if (sl){ sl.status='blocked'; saveSlots(); renderBody(); } }
   function unblockSlot(id){ const sl = slots.find(x=>x.id===id); if (sl){ sl.status='open'; saveSlots(); renderBody(); } }
   function deleteSlot(id){ slots = slots.filter(x=>x.id!==id); saveSlots(); renderBody(); }
-  function cancelPtTrainer(ptId){
-    const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
-    p.status = 'cancelled'; savePtBookings();
-    const sl = slots.find(x=>x.id===p.slotId);
-    if (sl){ sl.status='open'; saveSlots(); }
-    toast('1-on-1 session cancelled.');
-    renderBody();
-  }
+  // A coach/staff cancel always refunds a spent credit (sql/42).
+  function cancelPtTrainer(ptId){ cancelPtBooking(ptId); }
 
   function saveClass(){
     const name = document.getElementById('sched-class-name').value.trim();
@@ -1511,6 +1728,21 @@
         else if (action === 'unblock-slot') unblockSlot(id);
         else if (action === 'delete-slot') deleteSlot(id);
         else if (action === 'cancel-pt-trainer') cancelPtTrainer(id);
+        else if (action === 'save-rating') saveCoachRating(id, btn.closest('.rate-card'));
+        else if (action === 'toggle-rating-hidden') toggleRatingHidden(id);
+      });
+    });
+
+    // Star inputs only update the card's data-* attributes and the lit
+    // stars in place — no re-render, so a half-typed comment survives.
+    body.querySelectorAll('.rate-star').forEach(star=>{
+      star.addEventListener('click', ()=>{
+        const card = star.closest('.rate-card');
+        const cat = star.getAttribute('data-cat'), val = Number(star.getAttribute('data-val'));
+        card.setAttribute('data-' + cat, val);
+        card.querySelectorAll('.rate-star[data-cat="' + cat + '"]').forEach(s=>{
+          s.classList.toggle('on', Number(s.getAttribute('data-val')) <= val);
+        });
       });
     });
 
@@ -1561,13 +1793,16 @@
   renderIdentityRow();
   renderCoachIdentityRow();
   renderBody();
+  refreshCoachRatings();
 
-  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); };
+  // Ratings are refetched on every tab open (not just page load) since
+  // the module loads before sign-in, when there's no one to fetch for.
+  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); };
   // Booking/Roster data refreshes on its own whenever a schedule action fires,
   // but Billing invoice changes (e.g. marking one paid) don't call back into
   // this module — so the Dashboard's "unpaid invoices" line can go stale
   // otherwise. Re-render just the dashboard piece whenever the COACH tab
   // itself is opened, which is cheap and catches that case.
-  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); };
+  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); };
 
 })();

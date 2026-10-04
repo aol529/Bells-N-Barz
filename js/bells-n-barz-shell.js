@@ -899,6 +899,19 @@ async function loadNotificationList(){
   });
 }
 
+/* ---- Coach rating nudge (members, computed on open) ----
+   Same "no real scheduler" approach as the checks above, but all the
+   logic — who's due, and the 30-day cooldown — lives server-side in
+   nudge_coach_ratings() (sql/41), since notifications are otherwise
+   staff-insert-only. */
+async function checkCoachRatingNudge(){
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  if (!me || !me.roles || me.roles.indexOf('member') === -1) return;
+  const { error } = await bnbClient.rpc('nudge_coach_ratings');
+  if (error) { console.warn('Supabase coach rating nudge failed:', error); return; }
+  refreshUnreadCount();
+}
+
 function refreshNotificationBell(signedIn){
   if (!notifBell) return;
   notifBell.style.display = signedIn ? '' : 'none';
@@ -911,6 +924,7 @@ function refreshNotificationBell(signedIn){
   refreshUnreadCount();
   checkBirthdaysAndNotify();
   checkEkadashiReminderAndNotify();
+  checkCoachRatingNudge();
   // Only real polling loop in this codebase (confirmed none existed
   // before) — justified because a notification feature that only
   // updates on login/logout would feel broken while just sitting open.

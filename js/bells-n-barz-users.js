@@ -1740,16 +1740,14 @@
       if (typeof renderAdmin === 'function') renderAdmin();
       return true;
     },
-    // Deducts one session credit when a 1-on-1 is booked. Returns false (and
-    // deducts nothing) if the member has none — Booking then just warns
-    // instead of blocking, rather than going negative.
-    deductCredit: function(id){
+    // Mirrors a credit count the server already changed (book_pt_slot /
+    // cancel_pt_booking in sql/42) into the local copy. Deliberately does
+    // NOT call saveUsers(): the database is already right, and a member's
+    // own row save would be rejected anyway for touching `credits`.
+    setCreditsFromServer: function(id, n){
       var idx = users.findIndex(function(u){ return u.id===id; });
       if (idx === -1) return false;
-      var cur = Number(users[idx].credits||0);
-      if (cur <= 0) return false;
-      users[idx].credits = cur - 1;
-      saveUsers();
+      users[idx].credits = Math.max(0, Number(n||0));
       if (typeof renderAdmin === 'function') renderAdmin();
       return true;
     },
