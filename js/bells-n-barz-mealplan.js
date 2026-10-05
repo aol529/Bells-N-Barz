@@ -393,9 +393,84 @@
   }
 
   /* ============================================================
+     SHOPPING (sql/47)
+     The member's own shopping list: starts from their coach's plan
+     grocery list (or the diet they're trying), they tick items off and
+     note what each cost, and the week's total is shown against their
+     weekly food budget. Their coach can read it, not change it.
+     ============================================================ */
+  const kes = n => 'KES ' + Math.round(Number(n) || 0).toLocaleString();
+  // "KES 3,000", "3000", "3k", "Ksh 2,500 a week" -> a number, or null.
+  function parseBudget(text){
+    const m = String(text || '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)\s*(k)?/i);
+    if (!m) return null;
+    return Math.round(Number(m[1]) * (m[2] ? 1000 : 1));
+  }
+  // "Protein: eggs, beans\nFruit: bananas" -> [{ name, category }]
+  function parseGroceries(text){
+    const out = [];
+    String(text || '').split('\n').map(l=> l.trim()).filter(Boolean).forEach(line=>{
+      const i = line.indexOf(':');
+      const category = i > 0 ? line.slice(0, i).trim() : 'Other';
+      (i > 0 ? line.slice(i + 1) : line).split(/[,;·]/).map(x=> x.trim()).filter(Boolean)
+        .forEach(name=> out.push({ name, category }));
+    });
+    return out;
+  }
+  function newId(){ return (crypto.randomUUID && crypto.randomUUID()) || ('i' + Date.now() + Math.random().toString(16).slice(2)); }
+  function todayIso(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function shoppingTotals(list){
+    const items = list.items || [];
+    const spent = items.reduce((t, i)=> t + (Number(i.price) || 0), 0);
+    return { spent, ticked: items.filter(i=> i.checked).length, count: items.length };
+  }
+  function budgetBarHtml(list){
+    const t = shoppingTotals(list), b = Number(list.budget_kes) || 0;
+    if (!b) return '<div class="shop-budget-line">' + kes(t.spent) + ' spent this week · <span class="field-hint">set a weekly budget to track it</span></div>';
+    const pct = Math.min(100, Math.round(t.spent / b * 100)), over = t.spent > b;
+    return '<div class="shop-budget-line' + (over ? ' over' : '') + '"><b>' + kes(t.spent) + '</b> of ' + kes(b) + ' — ' +
+      (over ? '<b>' + kes(t.spent - b) + ' over budget</b>' : kes(b - t.spent) + ' left') + '</div>' +
+      '<div class="shop-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><span style="width:' + pct + '%"></span></div>';
+  }
+
+  function shoppingHtml(list, sources){
+    const items = list.items || [];
+    const cats = [];
+    items.forEach(i=>{ if (!cats.includes(i.category)) cats.push(i.category); });
+    const t = shoppingTotals(list);
+    let html = '<div class="day-focus">This week’s shopping · since ' + fmtDate(list.week_start || todayIso()) + '</div>' +
+      '<div class="shop-budget"><label class="shop-budget-input" for="shop-budget">Weekly food budget (KES)' +
+      '<input type="number" class="mp-input" id="shop-budget" min="0" step="50" value="' + esc(list.budget_kes == null ? '' : list.budget_kes) + '" placeholder="e.g. 3000"></label>' +
+      '<div id="shop-totals">' + budgetBarHtml(list) + '</div></div>';
+    if (sources.length){
+      html += '<div class="mp-actions shop-sources">' + sources.map(src=>
+        '<button type="button" class="btn2" data-shop-add-from="' + esc(src.key) + '">+ Add from ' + esc(src.label) + '</button>').join('') + '</div>';
+    }
+    if (!items.length){
+      html += '<div class="empty-msg">Your list is empty. ' + (sources.length ? 'Add your coach’s grocery list above, or' : '') + ' add items below.</div>';
+    } else {
+      html += '<div class="field-hint shop-count">' + t.ticked + ' of ' + t.count + ' ticked off · type what each item cost as you buy it</div>';
+      html += cats.map(cat=> '<div class="shop-cat"><h4>' + esc(cat) + '</h4>' + items.filter(i=> i.category === cat).map(i=>
+        '<div class="shop-item' + (i.checked ? ' done' : '') + '">' +
+          '<label class="shop-check"><input type="checkbox" data-shop-check="' + esc(i.id) + '"' + (i.checked ? ' checked' : '') + '> <span>' + esc(i.name) + '</span></label>' +
+          '<input type="number" class="mp-input shop-price" min="0" step="10" inputmode="numeric" placeholder="KES" aria-label="Price of ' + esc(i.name) + ' (KES)" data-shop-price="' + esc(i.id) + '" value="' + esc(i.price == null ? '' : i.price) + '">' +
+          '<button type="button" class="btn2 shop-del" data-shop-del="' + esc(i.id) + '" aria-label="Remove ' + esc(i.name) + '">✕</button>' +
+        '</div>').join('') + '</div>').join('');
+    }
+    const catOptions = Array.from(new Set(cats.concat(['Protein', 'Whole grains & starch', 'Vegetables', 'Fruit', 'Other'])));
+    html += '<form class="shop-add" id="shop-add-form"><input type="text" class="mp-input" id="shop-add-name" placeholder="Add an item, e.g. tomatoes" maxlength="80" aria-label="Item to add">' +
+      '<select class="mp-input" id="shop-add-cat" aria-label="Group">' + catOptions.map(c=> '<option>' + esc(c) + '</option>').join('') + '</select>' +
+      '<button type="submit" class="btn2 primary">Add</button></form>';
+    html += '<div class="mp-actions"><button type="button" class="btn2" id="shop-new-week">Start a new week</button>' +
+      '<span class="field-hint">Clears the ticks and prices, keeps the list.</span></div>';
+    html += '<div class="field-hint">Your coach can see your list and spending, so they can adjust your plan if it costs more than you can afford.</div>';
+    return html;
+  }
+
+  /* ============================================================
      MEMBER VIEW
      ============================================================ */
-  let memberPage = 'coach'; // 'coach' | 'how' | 'diets' — which page
+  let memberPage = 'coach'; // 'coach' | 'how' | 'shop' | 'diets' — which page
   let dietOpenId = null, dietVariantId = null; // Try a diet: which diet / option is open
   let memberViewerId = null;
   let memberMode = null; // null = auto, 'edit' = editing the questionnaire
@@ -423,6 +498,7 @@
       (d.intake ? '<button type="button" data-mp-page="coach" class="' + (memberPage === 'coach' ? 'active' : '') + '">Coach\u2019s plan</button>' +
         '' : '') +
       '<button type="button" data-mp-page="how" class="' + (memberPage === 'how' ? 'active' : '') + '">How it works</button>' +
+      '<button type="button" data-mp-page="shop" class="' + (memberPage === 'shop' ? 'active' : '') + '">Shopping</button>' +
       (showDiets ? '<button type="button" data-mp-page="diets" class="' + (memberPage === 'diets' ? 'active' : '') + '">Try a diet</button>' : '') + '</div>';
     const wirePageTabs = ()=> memberBody.querySelectorAll('[data-mp-page]').forEach(b=> b.addEventListener('click', ()=>{
       memberPage = b.getAttribute('data-mp-page'); memberMode = null; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -467,6 +543,64 @@
         if (!confirm('Stop trying ' + diet.name + '?')) return;
         try { await S.stopTrial(); } catch (err){ toast(err.message); return; }
         toast('Stopped. Your coach has been told.'); rerender();
+      });
+      return;
+    }
+
+    if (memberPage === 'shop'){
+      const answers = d.intake ? d.intake.answers : {};
+      const saved = S.getShopping(me.id);
+      const list = saved ? JSON.parse(JSON.stringify(saved))
+        : { items: [], budget_kes: parseBudget(answers.budget), week_start: todayIso() };
+      const trial = S.getTrial(me.id);
+      const diet = trial && window.MP_DIETS && window.MP_DIETS.get(trial.diet_id);
+      const sources = [];
+      if (d.plan && d.plan.content && d.plan.content.grocery) sources.push({ key: 'plan', label: 'your coach’s plan', text: d.plan.content.grocery });
+      if (diet && diet.groceries) sources.push({ key: 'diet', label: diet.name, text: diet.groceries });
+      memberBody.innerHTML = head + pageTabs + shoppingHtml(list, sources);
+      wirePageTabs();
+      const save = ()=> S.saveShopping(list).catch(err=> toast(err.message));
+      const find = id => list.items.find(i=> i.id === id);
+      const refreshTotals = ()=>{ document.getElementById('shop-totals').innerHTML = budgetBarHtml(list); };
+      memberBody.querySelectorAll('[data-shop-add-from]').forEach(b=> b.addEventListener('click', ()=>{
+        const src = sources.find(x=> x.key === b.getAttribute('data-shop-add-from'));
+        const have = new Set(list.items.map(i=> i.name.toLowerCase()));
+        const added = parseGroceries(src.text).filter(g=> !have.has(g.name.toLowerCase()));
+        added.forEach(g=> list.items.push({ id: newId(), name: g.name, category: g.category, checked: false, price: null }));
+        save(); toast(added.length ? 'Added ' + added.length + ' item' + (added.length === 1 ? '' : 's') + '.' : 'Everything from ' + src.label + ' is already on your list.');
+        renderMember();
+      }));
+      memberBody.querySelectorAll('[data-shop-check]').forEach(cb=> cb.addEventListener('change', ()=>{
+        const it = find(cb.getAttribute('data-shop-check')); it.checked = cb.checked;
+        cb.closest('.shop-item').classList.toggle('done', cb.checked);
+        const t = shoppingTotals(list); const c = memberBody.querySelector('.shop-count');
+        if (c) c.textContent = t.ticked + ' of ' + t.count + ' ticked off · type what each item cost as you buy it';
+        save();
+      }));
+      memberBody.querySelectorAll('[data-shop-price]').forEach(inp=> inp.addEventListener('input', ()=>{
+        const it = find(inp.getAttribute('data-shop-price'));
+        it.price = inp.value === '' ? null : Math.max(0, Number(inp.value));
+        if (it.price != null && !it.checked){ it.checked = true; const cb = memberBody.querySelector('[data-shop-check="' + it.id + '"]'); if (cb){ cb.checked = true; cb.closest('.shop-item').classList.add('done'); } }
+        refreshTotals(); save();
+      }));
+      memberBody.querySelectorAll('[data-shop-del]').forEach(b=> b.addEventListener('click', ()=>{
+        list.items = list.items.filter(i=> i.id !== b.getAttribute('data-shop-del')); save(); renderMember();
+      }));
+      document.getElementById('shop-budget').addEventListener('input', e=>{
+        list.budget_kes = e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value))); refreshTotals(); save();
+      });
+      document.getElementById('shop-add-form').addEventListener('submit', e=>{
+        e.preventDefault();
+        const name = document.getElementById('shop-add-name').value.trim();
+        if (!name) return;
+        list.items.push({ id: newId(), name, category: document.getElementById('shop-add-cat').value, checked: false, price: null });
+        save(); renderMember();
+      });
+      document.getElementById('shop-new-week').addEventListener('click', ()=>{
+        if (!confirm('Start a new week? This clears your ticks and prices but keeps the items.')) return;
+        list.items.forEach(i=>{ i.checked = false; i.price = null; });
+        list.week_start = todayIso();
+        save(); toast('New week started.'); renderMember();
       });
       return;
     }
@@ -638,6 +772,13 @@
     let html = '<div class="mp-detail-head"><h3>' + esc(nameOf(memberId)) + '</h3>' +
       '<span class="field-hint">Questionnaire sent ' + fmtDate(d.intake.submitted_at) +
       (d.intake.updated_at !== d.intake.submitted_at ? ', updated ' + fmtDate(d.intake.updated_at) : '') + '</span></div>';
+    const shopping = S.getShopping(memberId);
+    if (shopping && (shopping.items || []).length){
+      const st = shoppingTotals(shopping), b = Number(shopping.budget_kes) || 0;
+      html += '<div class="field-hint shop-coach-line">Shopping since ' + fmtDate(shopping.week_start) + ': ' + kes(st.spent) + ' spent' +
+        (b ? ' of a ' + kes(b) + ' weekly budget' + (st.spent > b ? ' — <b class="shop-over">over by ' + kes(st.spent - b) + '</b>' : '') : '') +
+        ' · ' + st.ticked + ' of ' + st.count + ' items bought</div>';
+    }
     const trial = S.getTrial(memberId);
     if (trial) html += '<div class="admin-notice diet-active">Trying <b>' + esc(trial.diet_name) + '</b>' + (trial.variant_label ? ' (' + esc(trial.variant_label) + ')' : '') +
       ' since ' + fmtDate(trial.started_at) + ' — alongside your plan. Their check-ins show which diet they were on.</div>';

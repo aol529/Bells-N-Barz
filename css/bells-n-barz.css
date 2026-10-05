@@ -2253,3 +2253,28 @@ header.site{
 .diet-view-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
 .diet-view-summary{font-size:15px; color:var(--muted); max-width:75ch; margin:6px 0 10px;}
 
+
+/* ---------- Meal Plan: Shopping list + weekly budget (sql/47) ---------- */
+.shop-budget{display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 20px; background:var(--surface); border:1px solid var(--line-soft); padding:12px 14px; margin-bottom:14px;}
+.shop-budget-input{display:flex; flex-direction:column; gap:4px; font-size:11px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.05em; color:var(--muted-2);}
+.shop-budget-input .mp-input{width:140px; font-size:15px;}
+#shop-totals{flex:1; min-width:220px;}
+.shop-budget-line{font-size:14px; margin-bottom:6px;}
+.shop-budget-line.over, .shop-over{color:#e0736a;}
+.shop-bar{height:8px; background:var(--surface-2); border-radius:4px; overflow:hidden;}
+.shop-bar span{display:block; height:100%; background:var(--accent);}
+.shop-budget-line.over + .shop-bar span{background:#e0736a;}
+.shop-sources{margin:0 0 10px;}
+.shop-count{margin:0 0 8px;}
+.shop-cat{margin-bottom:12px;}
+.shop-cat h4{font-family:'IBM Plex Mono',monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); margin:0 0 6px;}
+.shop-item{display:grid; grid-template-columns:minmax(0,1fr) 110px auto; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line-soft);}
+.shop-check{display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer; font-size:15px;}
+.shop-check input{width:20px; height:20px; accent-color:var(--accent); flex-shrink:0;}
+.shop-check span{overflow-wrap:anywhere;}
+.shop-item.done .shop-check span{text-decoration:line-through; color:var(--muted);}
+.shop-price{padding:6px 8px !important; text-align:right; font-variant-numeric:tabular-nums;}
+.shop-del{padding:5px 9px;}
+.shop-add{display:grid; grid-template-columns:minmax(0,1fr) 170px auto; gap:8px; margin:12px 0;}
+@media (max-width:520px){ .shop-add{grid-template-columns:minmax(0,1fr) auto;} .shop-add select{grid-column:1 / -1; grid-row:2;} .shop-item{grid-template-columns:minmax(0,1fr) 90px auto;} }
+.shop-coach-line{margin:-4px 0 10px;}

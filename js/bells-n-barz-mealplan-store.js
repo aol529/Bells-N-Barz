@@ -9,8 +9,9 @@
      Who can read or write what is enforced by RLS (sql/45, sql/46), not
      here. Notifications are sent by database triggers.
      ============================================================ */
-  const cache = { intake: {}, plans: {}, checkins: {}, goals: {}, trials: {}, dietEdits: {}, visibleIntakes: [] };
+  const cache = { intake: {}, plans: {}, checkins: {}, goals: {}, trials: {}, shopping: {}, dietEdits: {}, visibleIntakes: [] };
 
+  let shoppingTimer = null;
   function me(){ return window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf(); }
   function fail(error, fallback){
     console.error('Supabase meal plan error:', error);
@@ -19,12 +20,13 @@
   }
 
   async function loadMember(memberId){
-    const [intake, plan, checkins, goals, trial] = await Promise.all([
+    const [intake, plan, checkins, goals, trial, shopping] = await Promise.all([
       bnbClient.from('meal_plan_intake').select('*').eq('member_id', memberId).maybeSingle(),
       bnbClient.from('meal_plans').select('*').eq('member_id', memberId).maybeSingle(),
       bnbClient.from('meal_plan_checkins').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
       bnbClient.from('nutrition_goals').select('*').eq('user_id', memberId).maybeSingle(),
-      bnbClient.from('diet_trials').select('*').eq('member_id', memberId).maybeSingle()
+      bnbClient.from('diet_trials').select('*').eq('member_id', memberId).maybeSingle(),
+      bnbClient.from('meal_plan_shopping').select('*').eq('member_id', memberId).maybeSingle()
     ]);
     const err = intake.error || plan.error || checkins.error;
     if (err){ console.error('Supabase load meal plan data failed:', err); return false; }
@@ -33,6 +35,7 @@
     cache.checkins[memberId] = checkins.data || [];
     cache.goals[memberId] = (goals && goals.data) || null;
     cache.trials[memberId] = (trial && !trial.error && trial.data) || null;
+    cache.shopping[memberId] = (shopping && !shopping.error && shopping.data) || null;
     return true;
   }
 
@@ -69,6 +72,7 @@
     getGoals(id){ return cache.goals[id] || null; },
     getTrial(id){ return cache.trials[id] || null; },
     getDietEdits(dietId){ return cache.dietEdits[dietId] || null; },
+    getShopping(id){ return cache.shopping[id] || null; },
     visibleIntakes(){ return cache.visibleIntakes.slice(); },
     coachPlans(){ return (cache.coachPlans || []).slice(); },
     coachCheckins(){ return (cache.coachCheckins || []).slice(); },
@@ -87,6 +91,24 @@
       const m = me(); if (!m) throw new Error('Please sign in.');
       const { error } = await bnbClient.from('meal_plans').upsert({ member_id: memberId, coach_id: m.id, content });
       if (error) fail(error, /row-level security/i.test(error.message || '') ? 'Only this member’s coach or an admin can write their plan.' : null);
+    },
+
+    // Shopping list (sql/47): the member's own. Updates the cache at once
+    // so ticking feels instant; the write to Supabase is debounced so a
+    // burst of ticks sends one save.
+    saveShopping(list){
+      const m = me(); if (!m) throw new Error('Please sign in.');
+      cache.shopping[m.id] = Object.assign({}, list, { member_id: m.id });
+      clearTimeout(shoppingTimer);
+      return new Promise((resolve, reject)=>{
+        shoppingTimer = setTimeout(async ()=>{
+          const row = cache.shopping[m.id];
+          const { error } = await bnbClient.from('meal_plan_shopping').upsert({
+            member_id: m.id, items: row.items, budget_kes: row.budget_kes, week_start: row.week_start });
+          if (error){ try { fail(error); } catch(e){ reject(e); return; } }
+          resolve();
+        }, 600);
+      });
     },
 
     async startTrial(diet, variant){

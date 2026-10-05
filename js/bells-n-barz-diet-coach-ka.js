@@ -305,6 +305,9 @@
     tags: ['Plant-first', 'One main meal', 'Lose weight', 'Gain muscle'],
     variants: VARIANTS,
     weekCaution: WEEK_CAUTION,
+    // Starter shopping list for members trying this diet (Me > Meal Plan >
+    // Shopping), one "Category: item, item" line per group.
+    groceries: 'Protein: eggs, mala or plain yoghurt, milk, beans, ndengu, groundnuts, omena, chicken\nWhole grains & starch: whole-maize flour (unga wa dona), brown rice, oats, sweet potatoes, matoke\nVegetables: sukuma wiki, cabbage, spinach, tomatoes, onions, carrots\nFruit: bananas, oranges, pawpaw, pineapple, avocado\nOther: peanut butter, tea leaves (ginger, lemon, moringa), iodized salt, cooking oil',
     precheck: '**Before you try this diet, talk to your coach first if:**\n- you have diabetes or blood-sugar problems — long gaps and fruit sugar can swing your levels\n- you\u2019re pregnant or breastfeeding\n- you take regular medication\n- you\u2019ve ever had a difficult relationship with food or an eating disorder — an eating rhythm like this isn\u2019t right for everyone\n- you\u2019re under 18\n- you\u2019re underweight or already slim (a BMI under about 20) and want to lose more\n- you have a food allergy or intolerance — especially eggs, peanuts or milk (see **Allergies and intolerances** below)',
     how: HOW,
     reference: REFERENCE,

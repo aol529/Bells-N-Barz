@@ -22,7 +22,7 @@
 (function(){
   const S = window.MP_STORE;
   const bases = [];
-  const EDITABLE = ['name', 'summary', 'tags', 'published', 'precheck', 'variants', 'weekCaution', 'how', 'reference'];
+  const EDITABLE = ['name', 'summary', 'tags', 'published', 'precheck', 'variants', 'weekCaution', 'groceries', 'how', 'reference'];
 
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function fmtDate(iso){ return new Date(iso).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }); }
@@ -248,7 +248,8 @@
         '<td><button type="button" class="btn2 diet-row-del" data-row-del="' + ri + '" aria-label="Delete row">✕</button></td></tr>').join('') +
       '</table></div><div class="mp-actions" style="margin-top:6px;"><button type="button" class="btn2" data-row-add>+ Add row</button></div>' +
       '<div class="mp-q"><label class="mp-q-label">Footnote under this week</label><textarea class="mp-input" rows="2" data-vf="footnote">' + esc(v.footnote) + '</textarea></div>' +
-      '<div class="mp-q"><label class="mp-q-label">Caution under every week</label><textarea class="mp-input" rows="2" data-f="weekCaution">' + esc(d.weekCaution) + '</textarea></div></div>';
+      '<div class="mp-q"><label class="mp-q-label">Caution under every week</label><textarea class="mp-input" rows="2" data-f="weekCaution">' + esc(d.weekCaution) + '</textarea></div>' +
+      '<div class="mp-q"><label class="mp-q-label">Shopping list for this diet <span class="field-hint">(one line per group, e.g. "Protein: eggs, beans" — members can add it to their Shopping page)</span></label><textarea class="mp-input" rows="5" data-f="groceries">' + esc(d.groceries) + '</textarea></div></div>';
 
     const how = d.how;
     html += '<div class="diet-edit-section"><h3>How this diet works</h3>' +
