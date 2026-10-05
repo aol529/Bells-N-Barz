@@ -12,6 +12,7 @@
   const cache = { intake: {}, plans: {}, checkins: {}, goals: {}, trials: {}, shopping: {}, dietEdits: {}, visibleIntakes: [] };
 
   let shoppingTimer = null;
+  let pendingShopping = null; // { memberId, row } waiting to be written
   function me(){ return window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf(); }
   function fail(error, fallback){
     console.error('Supabase meal plan error:', error);
@@ -35,7 +36,10 @@
     cache.checkins[memberId] = checkins.data || [];
     cache.goals[memberId] = (goals && goals.data) || null;
     cache.trials[memberId] = (trial && !trial.error && trial.data) || null;
-    cache.shopping[memberId] = (shopping && !shopping.error && shopping.data) || null;
+    // A list with an unsaved change wins over the database copy, so a
+    // re-render right after ticking/adding never loses the change.
+    cache.shopping[memberId] = (pendingShopping && pendingShopping.memberId === memberId) ? pendingShopping.row
+      : ((shopping && !shopping.error && shopping.data) || null);
     return true;
   }
 
@@ -98,13 +102,16 @@
     // burst of ticks sends one save.
     saveShopping(list){
       const m = me(); if (!m) throw new Error('Please sign in.');
-      cache.shopping[m.id] = Object.assign({}, list, { member_id: m.id });
+      const row = JSON.parse(JSON.stringify(Object.assign({}, list, { member_id: m.id })));
+      cache.shopping[m.id] = row;
+      pendingShopping = { memberId: m.id, row };
       clearTimeout(shoppingTimer);
       return new Promise((resolve, reject)=>{
         shoppingTimer = setTimeout(async ()=>{
-          const row = cache.shopping[m.id];
+          const toSave = pendingShopping.row;
           const { error } = await bnbClient.from('meal_plan_shopping').upsert({
-            member_id: m.id, items: row.items, budget_kes: row.budget_kes, week_start: row.week_start });
+            member_id: m.id, items: toSave.items, budget_kes: toSave.budget_kes, week_start: toSave.week_start });
+          if (pendingShopping && pendingShopping.row === toSave) pendingShopping = null; // nothing newer queued
           if (error){ try { fail(error); } catch(e){ reject(e); return; } }
           resolve();
         }, 600);
