@@ -818,47 +818,54 @@ async function checkBirthdaysAndNotify(){
   refreshUnreadCount();
 }
 
-/* ---- Ekadashi reminder (staff, computed on open) ----
-   Same "no real scheduler" limitation as checkBirthdaysAndNotify()
-   above, plus one more wrinkle: the reminder goes out as an Inbox
-   direct message (sql/14-inbox.sql's send_direct_message()), which has
-   no "system sender" concept — it's sent FROM whichever staff account
-   happens to trigger this, which could be a different staff member
-   each time depending on who's got the app open. That means a simple
-   "did *I* already send this" check (like the birthday one uses)
-   isn't enough — a different staff member opening the app later that
-   same day would send a second copy. ekadashi_reminders_sent
-   (sql/15-ekadashi-reminders.sql) is the cross-session, cross-staff
-   fix: a (member_id, ekadashi_start) primary key claimed via insert
-   right before the send, so whichever session gets there first "wins"
-   and every later attempt — same staff reloading, or a different staff
-   member entirely — hits the conflict and skips. */
-async function checkEkadashiReminderAndNotify(){
+/* ---- Lunar reminders: Ekadashi + New Moon (computed on open) ----
+   No real scheduler exists here (same limitation as
+   checkBirthdaysAndNotify() above), so whoever opens the app inside the
+   24 hours before an event sends its reminder through
+   send_lunar_reminders() (sql/43): a staff session reminds every active
+   member, a member session reminds just themselves. Each reminder shows
+   in the bell with its own text and lands in the Inbox as a message.
+   The server claims one slot per member/event, so it never matters how
+   many sessions — or whose — get here first. */
+function nextNewMoon(fromDate){
+  // New moon = the Moon-Sun conjunction, i.e. the end of tithi 30
+  // (Amavasya) — same Meeus-based tithi math the Ekadashi timer uses,
+  // far more precise than the moon-phase widget's synodic approximation.
+  const amavasyaStart = tithiAt(fromDate) === 30 ? fromDate : findTithiTransition(fromDate, t => t === 30, false);
+  return amavasyaStart ? findTithiTransition(amavasyaStart, t => t === 30, true) : null;
+}
+function fmtReminderWhen(date){
+  return date.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }) +
+    ' at ' + date.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
+async function checkLunarRemindersAndNotify(){
   const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
-  if (!me || !isStaff()) return;
-  const info = nextEkadashi(new Date());
-  if (info.ongoing || !info.start) return; // only a "tomorrow" reminder, not a same-day one
-  const msUntilStart = info.start.getTime() - Date.now();
-  if (msUntilStart <= 0 || msUntilStart > 24 * 60 * 60 * 1000) return; // outside the 24h-before window
+  if (!me) return;
+  const now = new Date();
+  const events = [];
 
-  const members = (window.BNB_USERS.getMembers && window.BNB_USERS.getMembers()) || [];
-  if (!members.length) return;
-  const startIso = info.start.toISOString();
-  const dateStr = info.start.toLocaleDateString(undefined, {weekday:'long', month:'short', day:'numeric'});
-  const message = 'Reminder: ' + info.paksha + ' Paksha Ekadashi begins tomorrow (' + dateStr +
-    '). See the home page banner for the exact time.';
-
-  for (const member of members){
-    const { error: claimErr } = await bnbClient
-      .from('ekadashi_reminders_sent')
-      .insert([{ member_id: member.id, ekadashi_start: startIso }]);
-    if (claimErr){
-      if (claimErr.code !== '23505') console.warn('Supabase claim Ekadashi reminder slot failed:', claimErr);
-      continue; // '23505' = already claimed (by this staff member or another) — expected, not an error
-    }
-    const { error: sendErr } = await bnbClient.rpc('send_direct_message', { p_recipient_id: member.id, p_body: message });
-    if (sendErr) console.warn('Supabase send Ekadashi reminder failed:', sendErr);
+  const ek = nextEkadashi(now);
+  if (!ek.ongoing && ek.start){
+    events.push({ kind: 'ekadashi', start: ek.start,
+      message: 'Reminder: ' + ek.paksha + ' Paksha Ekadashi begins ' + fmtReminderWhen(ek.start) + '.' });
   }
+  const newMoon = nextNewMoon(now);
+  if (newMoon){
+    events.push({ kind: 'new_moon', start: newMoon,
+      message: 'Reminder: New moon (Amavasya) is ' + fmtReminderWhen(newMoon) + '.' });
+  }
+
+  let sentAny = false;
+  for (const ev of events){
+    const msUntil = ev.start.getTime() - now.getTime();
+    if (msUntil <= 0 || msUntil > 24 * 60 * 60 * 1000) continue;
+    const { data, error } = await bnbClient.rpc('send_lunar_reminders', {
+      p_kind: ev.kind, p_event_start: ev.start.toISOString(), p_message: ev.message
+    });
+    if (error) { console.warn('Supabase send ' + ev.kind + ' reminder failed:', error); continue; }
+    if (data > 0) sentAny = true;
+  }
+  if (sentAny) refreshUnreadCount();
 }
 
 async function refreshUnreadCount(){
@@ -925,7 +932,7 @@ function refreshNotificationBell(signedIn){
   }
   refreshUnreadCount();
   checkBirthdaysAndNotify();
-  checkEkadashiReminderAndNotify();
+  checkLunarRemindersAndNotify();
   checkCoachRatingNudge();
   // Only real polling loop in this codebase (confirmed none existed
   // before) — justified because a notification feature that only
