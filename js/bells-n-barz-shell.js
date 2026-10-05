@@ -163,13 +163,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges'];
+const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges','mealplan'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', mealplan: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -235,7 +235,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges', mealplan: 'Meal Plan'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -262,6 +262,7 @@ function switchTab(rawTab, scrollTop){
     accountability: 'accountability',
     messages: 'messages',
     inbox: 'inbox',
+    mealplan: 'mealplan',
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
@@ -363,6 +364,8 @@ function switchTab(rawTab, scrollTop){
   if (tab === 'messages' && typeof window.bnbMessagesOnTabShown === 'function') window.bnbMessagesOnTabShown();
   // Inbox: same reasoning as Messages above.
   if (tab === 'inbox' && typeof window.bnbInboxOnTabShown === 'function') window.bnbInboxOnTabShown();
+  // Meal Plan: refetch on tab-open so a plan the coach just saved shows up.
+  if (tab === 'mealplan' && typeof window.bnbMealPlanOnTabShown === 'function') window.bnbMealPlanOnTabShown();
   // Reports reads from invoices/payments/checkins/bookings, all of which can
   // change elsewhere while staff isn't looking — always refetch on tab-open
   // rather than showing whatever numbers happened to load the first time.
@@ -395,7 +398,8 @@ let previousLocation = null;
     program: document.getElementById('coach-section-program'),
     roster: document.getElementById('coach-section-roster'),
     session: document.getElementById('coach-section-session'),
-    messages: document.getElementById('coach-section-messages')
+    messages: document.getElementById('coach-section-messages'),
+    mealplans: document.getElementById('coach-section-mealplans')
   };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -411,6 +415,15 @@ let previousLocation = null;
       // 'coach' tab, leaving every reload stuck back on Dashboard.
       history.replaceState(null, '', '#coach:' + key);
       if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
+      if (key === 'mealplans' && typeof bnbLoadModule === 'function'){
+        bnbLoadModule('mealplan').then(() => {
+          if (typeof window.bnbMealPlanCoachOnShown === 'function') window.bnbMealPlanCoachOnShown();
+        }).catch(err => {
+          console.error(err);
+          const t = document.getElementById('t-toast');
+          if (t){ t.textContent = 'Failed to load this section — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+        });
+      }
       if (key === 'messages'){
         if (typeof bnbLoadModule === 'function'){
           bnbLoadModule('messages').then(() => {

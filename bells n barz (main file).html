@@ -126,6 +126,7 @@
     accountability: { file: 'js/bells-n-barz-accountability.js' },
     messages:     { file: 'js/bells-n-barz-messages.js' },
     inbox:        { file: 'js/bells-n-barz-inbox.js' },
+    mealplan:     { file: 'js/bells-n-barz-mealplan.js' },
     reports:      { file: 'js/bells-n-barz-reports.js' }
   };
   const BNB_MODULE_PROMISES = {};
@@ -1401,6 +1402,7 @@
     <button class="plate" data-tab="messages">Messages</button>
     <button class="plate" data-tab="schedule">Booking</button>
     <button class="plate" data-tab="challenges">Challenges</button>
+    <button class="plate" data-tab="mealplan">Meal Plan</button>
   </div>
 
 <!-- ================= TIME ================= -->
@@ -2005,6 +2007,11 @@
 <div id="messages-body"></div>
 </section>
 
+<!-- ================= MEAL PLAN (member side; coach side is Coach > Meal Plans) ================= -->
+<section class="member-section" id="tab-mealplan">
+<div id="mealplan-body"></div>
+</section>
+
 <!-- ================= BOOKING (moved under Member) ================= -->
 <section class="member-section" id="tab-schedule">
   <div class="day-head"><h2>Booking — Classes &amp; 1-on-1 Sessions</h2><span class="day-sub">Book classes and trainer slots</span></div>
@@ -2434,6 +2441,7 @@
     <button data-coach-section="roster">Roster &amp; Availability</button>
     <button data-coach-section="session">Live Session</button>
     <button data-coach-section="messages">Messages</button>
+    <button data-coach-section="mealplans">Meal Plans</button>
   </div>
 
   <div class="coach-section active" id="coach-section-dashboard">
@@ -2530,6 +2538,11 @@
   <div class="coach-section" id="coach-section-messages">
     <div class="admin-notice">Every message here is visible to all coaches/admins — this is a shared inbox, not a private line to one specific trainer.</div>
     <div id="coach-messages-body"></div>
+  </div>
+
+  <div class="coach-section" id="coach-section-mealplans">
+    <div class="admin-notice">Questionnaires, plans and check-ins for your own clients (members whose coach is you). Health answers are private — only the member, their coach, and admins can see them.</div>
+    <div id="coach-mealplans-body"></div>
   </div>
   </div>
 </section>
