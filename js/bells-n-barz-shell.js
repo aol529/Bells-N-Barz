@@ -10,14 +10,15 @@
   // 'red' and 'pink' are pickable here too, but also apply themselves
   // automatically on their own days regardless of what's saved (see
   // specialThemeForToday below) without overwriting that saved choice.
-  const THEMES = ['dark', 'light', 'royal', 'red', 'pink', 'green'];
+  const THEMES = ['dark', 'light', 'royal', 'red', 'pink', 'green', 'blue'];
   const THEME_META = {
     dark:  { icon: '☾', label: 'Dark' },
     light: { icon: '☀', label: 'Light' },
     royal: { icon: '♛', label: 'Royal' },
     red:   { icon: '❤', label: 'Red' },
     pink:  { icon: '🎗', label: 'Pink' },
-    green: { icon: '❦', label: 'Green' }
+    green: { icon: '❦', label: 'Green' },
+    blue:  { icon: '◆', label: 'Blue' }
   };
 
   // Valentine's Day (Feb 14) and Mother's Day (2nd Sunday of May — the
