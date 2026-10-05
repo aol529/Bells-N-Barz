@@ -35,7 +35,7 @@
       document.documentElement.setAttribute('data-theme', 'pink');
     } else {
       var saved = localStorage.getItem('bnb-theme');
-      if (saved === 'light' || saved === 'royal' || saved === 'red' || saved === 'pink') document.documentElement.setAttribute('data-theme', saved);
+      if (saved === 'light' || saved === 'royal' || saved === 'red' || saved === 'pink' || saved === 'green') document.documentElement.setAttribute('data-theme', saved);
     }
   } catch(e) { /* storage unavailable — default dark theme stands */ }
 })();
