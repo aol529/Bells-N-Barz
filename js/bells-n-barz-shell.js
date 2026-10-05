@@ -163,13 +163,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges','mealplan'];
+const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', mealplan: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -235,7 +235,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges', mealplan: 'Meal Plan'
+  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -262,7 +262,6 @@ function switchTab(rawTab, scrollTop){
     accountability: 'accountability',
     messages: 'messages',
     inbox: 'inbox',
-    mealplan: 'mealplan',
     schedule: 'bookingCoach',
     coach: 'bookingCoach',
     sessions: 'bookingCoach',
@@ -364,8 +363,6 @@ function switchTab(rawTab, scrollTop){
   if (tab === 'messages' && typeof window.bnbMessagesOnTabShown === 'function') window.bnbMessagesOnTabShown();
   // Inbox: same reasoning as Messages above.
   if (tab === 'inbox' && typeof window.bnbInboxOnTabShown === 'function') window.bnbInboxOnTabShown();
-  // Meal Plan: refetch on tab-open so a plan the coach just saved shows up.
-  if (tab === 'mealplan' && typeof window.bnbMealPlanOnTabShown === 'function') window.bnbMealPlanOnTabShown();
   // Reports reads from invoices/payments/checkins/bookings, all of which can
   // change elsewhere while staff isn't looking — always refetch on tab-open
   // rather than showing whatever numbers happened to load the first time.
@@ -455,14 +452,19 @@ let previousLocation = null;
     period: document.getElementById('tab-period'),
     track: document.getElementById('tab-track'),
     nutrition: document.getElementById('tab-nutrition'),
-    fasting: document.getElementById('tab-fasting')
+    fasting: document.getElementById('tab-fasting'),
+    mealplan: document.getElementById('tab-mealplan')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
       if (ME_SECTION_TO_MODULE[key] && typeof bnbLoadModule === 'function'){
-        bnbLoadModule(ME_SECTION_TO_MODULE[key]).catch(err => {
+        bnbLoadModule(ME_SECTION_TO_MODULE[key]).then(() => {
+          // Meal Plan refetches every time it's opened, so a plan the
+          // coach just saved shows up without a reload.
+          if (key === 'mealplan' && typeof window.bnbMealPlanOnTabShown === 'function') window.bnbMealPlanOnTabShown();
+        }).catch(err => {
           console.error(err);
           const t = document.getElementById('t-toast');
           if (t){ t.textContent = 'Failed to load this section — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
@@ -926,7 +928,13 @@ async function loadNotificationList(){
       await refreshUnreadCount();
       if (link && typeof window.switchSite === 'function' && typeof window.switchTab === 'function'){
         window.switchSite('gym');
-        window.switchTab(link);
+        // A few links point at a sub-section inside a tab rather than a
+        // tab of its own — e.g. Meal Plan lives inside Me (sql/45's
+        // notifications use link_tab 'mealplan').
+        const SUB_SECTION_LINKS = { mealplan: ['me', '#me-section-switch [data-me-section="mealplan"]'] };
+        const sub = SUB_SECTION_LINKS[link];
+        window.switchTab(sub ? sub[0] : link);
+        if (sub){ const b = document.querySelector(sub[1]); if (b) b.click(); }
       }
     });
   });

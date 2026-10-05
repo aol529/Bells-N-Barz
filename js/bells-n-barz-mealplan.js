@@ -398,7 +398,7 @@
 
     const rows = intakes.data || [];
     if (!rows.length){
-      coachBody.innerHTML = '<div class="empty-msg">No questionnaires yet. When one of your clients fills in theirs (Members → Meal Plan), it shows up here and you get a notification.</div>';
+      coachBody.innerHTML = '<div class="empty-msg">No questionnaires yet. When one of your clients fills in theirs (Me → Meal Plan), it shows up here and you get a notification.</div>';
       return;
     }
     const planAt = {}; (plans.data || []).forEach(p=> planAt[p.member_id] = p.updated_at);
