@@ -818,11 +818,11 @@ async function checkBirthdaysAndNotify(){
   refreshUnreadCount();
 }
 
-/* ---- Lunar reminders: Ekadashi + New Moon (computed on open) ----
+/* ---- Lunar reminders: Ekadashi, New Moon, Full Moon (computed on open) ----
    No real scheduler exists here (same limitation as
    checkBirthdaysAndNotify() above), so whoever opens the app inside the
    24 hours before an event sends its reminder through
-   send_lunar_reminders() (sql/43): a staff session reminds every active
+   send_lunar_reminders() (sql/43, full moon added in sql/44): a staff session reminds every active
    member, a member session reminds just themselves. Each reminder shows
    in the bell with its own text and lands in the Inbox as a message.
    The server claims one slot per member/event, so it never matters how
@@ -833,6 +833,12 @@ function nextNewMoon(fromDate){
   // far more precise than the moon-phase widget's synodic approximation.
   const amavasyaStart = tithiAt(fromDate) === 30 ? fromDate : findTithiTransition(fromDate, t => t === 30, false);
   return amavasyaStart ? findTithiTransition(amavasyaStart, t => t === 30, true) : null;
+}
+function nextFullMoon(fromDate){
+  // Full moon = the Moon-Sun opposition, i.e. the end of tithi 15
+  // (Purnima) — the same approach as nextNewMoon() above.
+  const purnimaStart = tithiAt(fromDate) === 15 ? fromDate : findTithiTransition(fromDate, t => t === 15, false);
+  return purnimaStart ? findTithiTransition(purnimaStart, t => t === 15, true) : null;
 }
 function fmtReminderWhen(date){
   return date.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }) +
@@ -853,6 +859,11 @@ async function checkLunarRemindersAndNotify(){
   if (newMoon){
     events.push({ kind: 'new_moon', start: newMoon,
       message: 'Reminder: New moon (Amavasya) is ' + fmtReminderWhen(newMoon) + '.' });
+  }
+  const fullMoon = nextFullMoon(now);
+  if (fullMoon){
+    events.push({ kind: 'full_moon', start: fullMoon,
+      message: 'Reminder: Full moon (Purnima) is ' + fmtReminderWhen(fullMoon) + '.' });
   }
 
   let sentAny = false;
