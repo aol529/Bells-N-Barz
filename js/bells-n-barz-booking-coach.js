@@ -403,6 +403,7 @@
     catch(e){ return (getSchedTrainers()[0]||{}).id; }
   })();
   let memberSubTab = 'browse';
+  let memberTrainerId = null; // Book a Trainer's selected trainer
   let trainerSubTab = 'roster';
   let adminSubTab = 'classes';
   let classFilter = 'all';
@@ -599,10 +600,16 @@
   }
 
   function memberBookTrainerHtml(){
+    // The chosen trainer lives in memberTrainerId rather than being read
+    // back off the old <select> — every change re-renders this whole
+    // view, and a rebuilt <select> with no `selected` option would show
+    // the first trainer's name above a different trainer's slots.
+    const trainers = getSchedTrainers();
+    if (!trainers.some(t=>t.id===memberTrainerId)) memberTrainerId = (trainers[0]||{}).id;
+    const trainerId = memberTrainerId;
     let html = '<div class="form-inline"><div class="field"><label>Trainer</label><select id="sched-mbt-trainer">';
-    getSchedTrainers().forEach(t=> html += '<option value="'+t.id+'">'+t.name+'</option>');
+    trainers.forEach(t=> html += '<option value="'+t.id+'"'+(t.id===trainerId?' selected':'')+'>'+esc(t.name)+'</option>');
     html += '</select></div></div>';
-    const trainerId = document.getElementById('sched-mbt-trainer') ? document.getElementById('sched-mbt-trainer').value : (getSchedTrainers()[0]||{}).id;
     html += '<div class="rating-inline">' + ratingSummaryLineHtml(trainerId) + '</div>';
     const openSlots = slots.filter(sl=>sl.trainerId===trainerId && sl.status==='open' && sl.date >= TODAY).sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
     if (!openSlots.length){ html += '<div class="empty-msg">No open 1-on-1 slots for this trainer right now.</div>'; return html; }
@@ -1709,7 +1716,7 @@
     });
 
     const mbtSel = body.querySelector('#sched-mbt-trainer');
-    if (mbtSel) mbtSel.addEventListener('change', renderBody);
+    if (mbtSel) mbtSel.addEventListener('change', ()=>{ memberTrainerId = mbtSel.value; renderBody(); });
 
     body.querySelectorAll('[data-action]').forEach(btn=>{
       const action = btn.getAttribute('data-action');
