@@ -1,23 +1,27 @@
 (function(){
   /* ============================================================
-     MEAL PLANS (sql/45)
+     MEAL PLANS (sql/45, sql/46)
      Built from the gym's meal-plan guide: the member fills in the
      intake questionnaire, their coach writes the plan, and the member
      checks in every 2-3 weeks so the coach can adjust it. Calorie and
-     macro targets aren't recalculated here — they come from the
-     member's saved Nutrition calculator goals (nutrition_goals), which
-     already implements the guide's Mifflin-St Jeor + macro steps.
+     macro targets come from the member's saved Nutrition calculator
+     goals (nutrition_goals), which already implements the guide's
+     Mifflin-St Jeor + macro steps.
 
-     Who sees what is enforced by RLS in sql/45, not here: the member,
-     their assigned coach, and admins only.
+     Also brought over from the Meal Plan Sandbox: the How it works page,
+     Try a diet (+ Coach > My diets). (AI suggestions were left out for
+     now — the sandbox still has them.) Data goes through MP_STORE
+     (js/bells-n-barz-mealplan-store.js); who sees what is enforced by
+     RLS: the member, their assigned coach, and admins only.
      ============================================================ */
   const memberBody = document.getElementById('mealplan-body');
   const coachBody = document.getElementById('coach-mealplans-body');
   if (!memberBody && !coachBody) return;
 
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function self(){ return window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf(); }
-  function nameOf(id){ return (window.BNB_USERS && window.BNB_USERS.getName(id)) || 'Member'; }
+  const S = window.MP_STORE;
+  function self(){ return S.me(); }
+  function nameOf(id){ const u = S.user(id); return u ? u.fullName : 'Member'; }
   function toast(msg){
     const t = document.getElementById('t-toast');
     if (!t) return;
@@ -196,13 +200,24 @@
 
   function lines(s){ return String(s || '').split('\n').map(x=>x.trim()).filter(Boolean); }
 
-  function planViewHtml(plan){
+  // opts.collapsible: each block becomes a <details>, closed by default,
+  // whose summary shows the title, item count and a one-line preview —
+  // used on the AI page, where the plan is long and is mostly skimmed.
+  function planViewHtml(plan, opts){
+    const collapsible = !!(opts && opts.collapsible);
     const c = plan.content || {};
     let html = '';
     PLAN_FIELDS.forEach(f=>{
       const v = c[f.id];
       if (!v || !String(v).trim()) return;
-      html += '<div class="mp-plan-block"><h4>' + esc(f.label) + '</h4>';
+      if (collapsible){
+        const items = lines(v);
+        const count = (f.list || f.grocery) ? ' <span class="mp-count">' + items.length + '</span>' : '';
+        html += '<details class="mp-plan-block mp-fold"><summary><span class="mp-fold-title">' + esc(f.label) + count + '</span>' +
+          '<span class="mp-fold-preview">' + esc(items[0] || '') + '</span></summary>';
+      } else {
+        html += '<div class="mp-plan-block"><h4>' + esc(f.label) + '</h4>';
+      }
       if (f.list){
         html += '<ul>' + lines(v).map(x=> '<li>' + esc(x) + '</li>').join('') + '</ul>';
       } else if (f.grocery){
@@ -215,9 +230,9 @@
       } else {
         html += '<p>' + esc(v).replace(/\n/g, '<br>') + '</p>';
       }
-      html += '</div>';
+      html += collapsible ? '</details>' : '</div>';
     });
-    return html || '<div class="empty-msg">Your coach hasn’t added anything to the plan yet.</div>';
+    return html ? '<div class="mp-plan-grid">' + html + '</div>' : '<div class="empty-msg">Your coach hasn’t added anything to the plan yet.</div>';
   }
 
   function targetsHtml(goals, forCoach){
@@ -244,10 +259,10 @@
   function checkinListHtml(rows){
     if (!rows.length) return '<div class="empty-msg">No check-ins yet.</div>';
     return '<table class="admin-table"><tr><th>Date</th><th>Weight</th>' +
-      CHECKIN_SCALES.map(s=> '<th>' + esc(s.id === 'ease' ? 'Ease' : s.label) + '</th>').join('') + '<th>Notes</th></tr>' +
+      CHECKIN_SCALES.map(s=> '<th>' + esc(s.id === 'ease' ? 'Ease' : s.label) + '</th>').join('') + '<th>Diet</th><th>Notes</th></tr>' +
       rows.map(r=> '<tr><td>' + fmtDate(r.created_at) + '</td><td>' + (r.weight_kg != null ? esc(r.weight_kg) + ' kg' : '—') + '</td>' +
         CHECKIN_SCALES.map(s=> '<td>' + r[s.id] + '/5</td>').join('') +
-        '<td>' + (r.notes ? esc(r.notes) : '—') + '</td></tr>').join('') + '</table>';
+        '<td>' + (r.diet ? esc(r.diet) : 'Coach\u2019s plan') + '</td><td>' + (r.notes ? esc(r.notes) : '—') + '</td></tr>').join('') + '</table>';
   }
   function checkinFormHtml(){
     let html = '<form class="mp-form" id="mp-checkin-form"><div class="mp-q"><label class="mp-q-label" for="mp-ci-weight">Current weight (kg, optional)</label>' +
@@ -265,36 +280,205 @@
 
   /* ---------------- DATA ---------------- */
   async function loadFor(memberId){
-    const [intake, plan, checkins, goals] = await Promise.all([
-      bnbClient.from('meal_plan_intake').select('*').eq('member_id', memberId).maybeSingle(),
-      bnbClient.from('meal_plans').select('*').eq('member_id', memberId).maybeSingle(),
-      bnbClient.from('meal_plan_checkins').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
-      bnbClient.from('nutrition_goals').select('*').eq('user_id', memberId).maybeSingle()
-    ]);
-    [intake, plan, checkins].forEach(r=>{ if (r.error) console.error('Supabase load meal plan data failed:', r.error); });
+    const ok = await S.loadMember(memberId);
     return {
-      intake: intake.data || null,
-      plan: plan.data || null,
-      checkins: checkins.data || [],
-      goals: (goals && goals.data) || null,
-      error: intake.error || plan.error || checkins.error
+      intake: S.getIntake(memberId),
+      plan: S.getPlan(memberId),
+      checkins: S.getCheckins(memberId),
+      goals: S.getGoals(memberId),
+      error: ok ? null : 'load failed'
     };
+  }
+
+  // The guide's steps 2-3 (Mifflin-St Jeor -> activity factor -> goal
+  // adjustment -> protein by bodyweight, fat ~30%, carbs the rest),
+  // from the questionnaire answers. A starting point for the coach to
+  // tweak, not a final number — "her real-world results over 2-3 weeks
+  // matter more than the formula."
+  function suggestTargets(a){
+    const age = Number(a.age), h = Number(a.height_cm), w = Number(a.weight_kg);
+    if (!age || !h || !w || !a.sex) return null;
+    const exercise = String(a.exercise || '').trim();
+    const trains = !!exercise;
+    // "Gym 4x/week", "3 times a week", "5 days" -> sessions per week.
+    // 3+ sessions is "moderately active" even with a desk job; fewer (or
+    // unstated) is "lightly active".
+    const perWeek = (exercise.match(/(\d+)\s*(x|×|times|days|sessions)/i) || [])[1];
+    const bmr = 10 * w + 6.25 * h - 5 * age + (a.sex === 'Male' ? 5 : -161);
+    const factor = a.job_activity === 'Physically demanding' ? 1.725
+      : a.job_activity === 'On my feet some of the day' ? 1.55
+      : !trains ? 1.2
+      : Number(perWeek) >= 3 ? 1.55 : 1.375;
+    const goals = a.goals || [];
+    let cal = bmr * factor;
+    if (goals.includes('Lose fat')) cal -= 500;
+    else if (goals.includes('Build muscle')) cal += 250;
+    cal = Math.round(cal / 10) * 10;
+    const protein = Math.round(w * (trains ? 1.8 : 1.2));
+    const fat = Math.round(cal * 0.30 / 9);
+    const carbs = Math.max(0, Math.round((cal - protein * 4 - fat * 9) / 4));
+    return { target_calories: cal, target_protein_g: protein, target_carbs_g: carbs, target_fat_g: fat };
+  }
+
+  /* ============================================================
+     HOW IT WORKS (member-facing explanation)
+     The gym's meal-plan guide (lappy/prof-meal-plan-Ndombii/
+     Meal_Plan_Guide(1).docx) is written for coaches; this is the same
+     seven steps reworded for the member, so they know what happens to
+     their answers and why the plan looks the way it does. Where their
+     questionnaire has the numbers, step 2 shows their own calculation.
+     ============================================================ */
+  function yourNumbersHtml(a){
+    const t = a && suggestTargets(a);
+    if (!t) return '';
+    const age = Number(a.age), h = Number(a.height_cm), w = Number(a.weight_kg);
+    const bmr = Math.round(10 * w + 6.25 * h - 5 * age + (a.sex === 'Male' ? 5 : -161));
+    return '<div class="mp-plan-block mp-your-numbers"><h4>With your answers</h4><p>' +
+      esc(a.sex) + ', ' + esc(age) + ', ' + esc(h) + ' cm, ' + esc(w) + ' kg → about <b>' + bmr.toLocaleString() + ' kcal</b> a day at rest. ' +
+      'With your activity and goal, a starting point of roughly <b>' + t.target_calories.toLocaleString() + ' kcal</b>: ' +
+      t.target_protein_g + ' g protein, ' + t.target_carbs_g + ' g carbs, ' + t.target_fat_g + ' g fat. ' +
+      'Your coach may set it differently — they know you, the formula doesn\u2019t.</p></div>';
+  }
+
+  function howItWorksHtml(answers){
+    const step = (n, title, body) => '<div class="mp-how-step"><div class="mp-how-num">' + n + '</div><div><h3>' + title + '</h3>' + body + '</div></div>';
+    return '<div class="day-focus">How your meal plan works</div>' +
+      '<p class="mp-how-lede">Your plan isn\u2019t a generic diet sheet. Your coach builds it around you in seven steps, then adjusts it as you go. Here\u2019s what happens, and why.</p>' +
+
+      step(1, 'You tell us about you',
+        '<p>The questionnaire covers your goals, how active you are, your health, the foods you love and won\u2019t eat, your budget, cooking time, and who you eat with. ' +
+        'The most useful part is <b>what you eat on a normal day right now</b> — the best plan usually adjusts the habits you already have rather than replacing them, so be honest; there are no wrong answers.</p>' +
+        '<p>Only your coach and the gym admin can see your answers. Prefer paper? <a href="docs/Meal_Plan_Questionnaire.pdf" target="_blank" rel="noopener">Download the printable questionnaire</a>.</p>') +
+
+      step(2, 'We estimate how much energy you need',
+        '<p>Your coach starts from a standard formula (Mifflin-St Jeor) that uses your weight, height, age and sex to estimate what your body burns at rest, then multiplies it by how active you are — from 1.2 if you mostly sit, up to 1.725 if you\u2019re very active.</p>' +
+        '<p>Then it\u2019s adjusted for your goal: about 300–500 kcal less a day for gradual fat loss, or 200–300 kcal more for building muscle. ' +
+        'These are estimates. <b>How your body actually responds over 2–3 weeks matters more than the formula</b>, which is why step 7 exists.</p>' +
+        yourNumbersHtml(answers)) +
+
+      step(3, 'We balance protein, fat and carbs',
+        '<ul><li><b>Protein</b> — about 1.6–2.2 g per kg of body weight if you train, or about 1.2 g/kg if you\u2019re less active. It keeps you full and protects muscle.</li>' +
+        '<li><b>Fat</b> — about a quarter to a third of your calories.</li>' +
+        '<li><b>Carbs</b> — the rest, mostly from whole grains, fruit, vegetables, beans and starchy staples.</li></ul>' +
+        '<p>Don\u2019t want to count anything? You don\u2019t have to. Use the <b>plate method</b>: half the plate vegetables, a quarter protein, a quarter starch, plus a little healthy fat.</p>' +
+        '<div class="mp-plate" role="img" aria-label="Plate method: half vegetables, a quarter protein, a quarter starch">' +
+          '<svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"/>' +
+          '<path d="M60 60 L60 4 A56 56 0 0 0 60 116 Z" fill="rgba(var(--accent-3-rgb),.55)"/>' +
+          '<path d="M60 60 L60 4 A56 56 0 0 1 116 60 Z" fill="rgba(var(--accent-rgb),.6)"/>' +
+          '<path d="M60 60 L116 60 A56 56 0 0 1 60 116 Z" fill="rgba(var(--accent-rgb),.28)"/></svg>' +
+          '<ul class="mp-plate-key"><li><span class="k veg"></span>½ vegetables</li><li><span class="k pro"></span>¼ protein</li><li><span class="k sta"></span>¼ starch</li><li>+ a little healthy fat</li></ul></div>') +
+
+      step(4, 'We build your meals',
+        '<p>First, a meal pattern that fits your day — for example 3 meals and 1 snack. Then every meal is built from four parts:</p>' +
+        '<ul><li><b>A protein</b> — eggs, chicken, fish, beans, lentils, yoghurt, beef</li>' +
+        '<li><b>A carb or starch</b> — rice, potatoes, oats, bread, whole grains</li>' +
+        '<li><b>Vegetables and/or fruit</b></li>' +
+        '<li><b>A bit of fat</b> — oil, avocado, nuts, seeds</li></ul>') +
+
+      step(5, 'A week that repeats',
+        '<p>You won\u2019t get 21 different meals to cook — people stick with plans that repeat. Expect 2–3 breakfast options, 3–4 lunches, 4–5 dinners and a few snacks, rotated through the week. ' +
+        'Leftovers are planned on purpose (cook once, eat twice), and you get a grocery list grouped by category.</p>') +
+
+      step(6, 'Room to be flexible',
+        '<p>A rigid plan tends to fail by week two, so yours includes simple swaps (chicken ↔ fish ↔ beans, rice ↔ potatoes), a plan for eating out, and room for the foods you enjoy.</p>') +
+
+      step(7, 'Check in, then adjust',
+        '<p>Every 2–3 weeks you send a quick check-in: your weight, energy, hunger, digestion, and how easy the plan is to follow. ' +
+        'Your coach uses it to adjust portions or calories in small steps — so the plan keeps fitting you, not the formula.</p>') +
+
+      '<div class="admin-notice mp-refer"><b>When a dietitian helps too.</b> If you have diabetes or kidney disease, are pregnant or breastfeeding, have had a difficult relationship with food, or take medication that diet can affect, your coach will suggest also working with a registered dietitian. ' +
+      'You can still get help with general healthy-eating structure here — it\u2019s about getting you the right support, not turning you away.</div>' +
+
+''
   }
 
   /* ============================================================
      MEMBER VIEW
      ============================================================ */
+  let memberPage = 'coach'; // 'coach' | 'how' | 'diets' — which page
+  let dietOpenId = null, dietVariantId = null; // Try a diet: which diet / option is open
+  let memberViewerId = null;
   let memberMode = null; // null = auto, 'edit' = editing the questionnaire
 
   async function renderMember(){
     if (!memberBody) return;
     const me = self();
     if (!me){ memberBody.innerHTML = '<div class="empty-msg">Sign in to start your meal plan.</div>'; return; }
+    // A different person opened the page (View as): start them on their
+    // own plan/questionnaire, not on whatever page the last person left open.
+    if (memberViewerId !== me.id){ memberViewerId = me.id; memberPage = 'coach'; memberMode = null; dietOpenId = null; dietVariantId = null; }
     memberBody.innerHTML = '<div class="empty-msg">Loading…</div>';
     const d = await loadFor(me.id);
     if (d.error){ memberBody.innerHTML = '<div class="empty-msg">Couldn’t load your meal plan — check your connection and try again.</div>'; return; }
 
     const head = '<div class="day-head"><h2>Meal Plan</h2></div>';
+    // Private draft page: only exists for the owner's account, and only
+    // if the git-ignored js/coach-ka-draft.js is present.
+    // "Try a diet" tab only when this viewer can see at least one diet
+    // (drafts are visible to their owner only — see js/diets.js).
+    await S.loadDiets();
+    const showDiets = !!(window.MP_DIETS && window.MP_DIETS.visibleTo(me).length);
+    if (memberPage === 'diets' && !showDiets) memberPage = 'coach';
+    const pageTabs = '<div class="sched-sub mp-page-tabs">' +
+      (d.intake ? '<button type="button" data-mp-page="coach" class="' + (memberPage === 'coach' ? 'active' : '') + '">Coach\u2019s plan</button>' +
+        '' : '') +
+      '<button type="button" data-mp-page="how" class="' + (memberPage === 'how' ? 'active' : '') + '">How it works</button>' +
+      (showDiets ? '<button type="button" data-mp-page="diets" class="' + (memberPage === 'diets' ? 'active' : '') + '">Try a diet</button>' : '') + '</div>';
+    const wirePageTabs = ()=> memberBody.querySelectorAll('[data-mp-page]').forEach(b=> b.addEventListener('click', ()=>{
+      memberPage = b.getAttribute('data-mp-page'); memberMode = null; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
+
+    if (memberPage === 'diets'){
+      const answers = d.intake ? d.intake.answers : null;
+      const trial = S.getTrial(me.id);
+      const diet = dietOpenId && window.MP_DIETS.visibleTo(me).find(x=> x.id === dietOpenId);
+      memberBody.innerHTML = head + pageTabs + (diet
+        ? window.MP_DIETS.detailHtml(diet, me, answers, trial, dietVariantId)
+        : window.MP_DIETS.listHtml(me, trial));
+      wirePageTabs();
+      const rerender = ()=>{ renderMember(); };
+      memberBody.querySelectorAll('[data-diet-open]').forEach(b=> b.addEventListener('click', ()=>{
+        dietOpenId = b.getAttribute('data-diet-open'); dietVariantId = null; rerender(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      }));
+      const editOwn = memberBody.querySelector('[data-diet-edit-own]');
+      if (editOwn) editOwn.addEventListener('click', ()=>{
+        window.MP_DIETS.startEditing(editOwn.getAttribute('data-diet-edit-own'));
+        coachSection = 'diets';
+        if (typeof window.switchTab === 'function') window.switchTab('coach');
+        const tile = document.querySelector('#coach-section-switch [data-coach-section="mealplans"]');
+        if (tile) tile.click();
+      });
+      const back = memberBody.querySelector('[data-diet-back]');
+      if (back) back.addEventListener('click', ()=>{ dietOpenId = null; dietVariantId = null; rerender(); });
+      memberBody.querySelectorAll('[data-diet-variant]').forEach(b=> b.addEventListener('click', ()=>{
+        dietVariantId = b.getAttribute('data-diet-variant'); rerender();
+      }));
+      const start = memberBody.querySelector('[data-diet-start]');
+      if (start) start.addEventListener('click', async ()=>{
+        const shown = memberBody.querySelector('[data-diet-variant].active');
+        const variant = diet.variants.find(v=> v.id === (shown && shown.getAttribute('data-diet-variant')));
+        try { await S.startTrial(diet, variant); } catch (err){ toast(err.message); return; }
+        dietVariantId = null;
+        toast('You\u2019re trying ' + diet.name + (variant ? ' — ' + variant.label : '') + '. Your coach has been told.');
+        rerender();
+      });
+      const stop = memberBody.querySelector('[data-diet-stop]');
+      if (stop) stop.addEventListener('click', async ()=>{
+        if (!confirm('Stop trying ' + diet.name + '?')) return;
+        try { await S.stopTrial(); } catch (err){ toast(err.message); return; }
+        toast('Stopped. Your coach has been told.'); rerender();
+      });
+      return;
+    }
+
+    if (memberPage === 'how'){
+      memberBody.innerHTML = head + pageTabs + howItWorksHtml(d.intake ? d.intake.answers : null) +
+        (d.intake ? '' : '<div class="mp-actions"><button type="button" class="btn2 primary" id="mp-start-questionnaire">Start the questionnaire</button></div>');
+      wirePageTabs();
+      const start = document.getElementById('mp-start-questionnaire');
+      if (start) start.addEventListener('click', ()=>{ memberPage = 'coach'; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      return;
+    }
 
     if (!d.intake || memberMode === 'edit'){
       const prefill = d.intake ? d.intake.answers : {
@@ -303,21 +487,22 @@
         height_cm: (d.goals && d.goals.height_cm) || me.height || '',
         weight_kg: (d.goals && d.goals.weight_kg) || me.weight || ''
       };
-      memberBody.innerHTML = head +
+      memberBody.innerHTML = head + (d.intake ? '' : pageTabs) +
         '<div class="day-focus">' + (d.intake ? 'Update your answers' : 'Step 1 — tell your coach about you') + '</div>' +
         '<div class="admin-notice">Fill in as much as you can. Your answers help your coach build a plan that fits your goals, tastes and daily routine. Only your coach and the gym admin can see them.' +
-        (me.trainerId ? '' : ' <b>You don’t have a coach assigned yet</b> — pick one on your Profile so they can see this; until then it goes to the gym admin.') + '</div>' +
+        (me.trainerId ? ' Your coach: <b>' + esc(nameOf(me.trainerId)) + '</b>.' : ' <b>You don’t have a coach assigned yet</b> — until then it goes to the admin.') + '</div>' +
         questionnaireFormHtml(prefill) +
         (d.intake ? '<div class="mp-actions"><button type="button" class="btn2" id="mp-cancel-edit">Cancel</button></div>' : '');
+      wirePageTabs();
       const form = document.getElementById('mp-intake-form');
       form.addEventListener('submit', async (e)=>{
         e.preventDefault();
         const btn = form.querySelector('button[type=submit]');
         btn.disabled = true;
         const answers = readQuestionnaire(form);
-        const { error } = await bnbClient.from('meal_plan_intake').upsert({ member_id: me.id, answers });
+        try { await S.saveIntake(answers); }
+        catch (err){ btn.disabled = false; toast(err.message); return; }
         btn.disabled = false;
-        if (error){ console.error('Supabase save meal_plan_intake failed:', error); toast('Could not save — check your connection and try again.'); return; }
         memberMode = null;
         toast(d.intake ? 'Answers updated — your coach has been told.' : 'Sent to your coach!');
         renderMember();
@@ -330,6 +515,7 @@
 
     let html = head;
     if (referralFlags(d.intake.answers).some(f=> f.strong)) html += '<div class="admin-notice mp-refer">' + REFER_NOTE + '</div>';
+    html += pageTabs;
 
     if (!d.plan){
       html += '<div class="day-focus">Step 2 — your coach is building your plan</div>' +
@@ -352,6 +538,7 @@
       '<div class="mp-actions"><button type="button" class="btn2" id="mp-edit-intake">Update my answers</button></div></details>';
     memberBody.innerHTML = html;
 
+    wirePageTabs();
     document.getElementById('mp-edit-intake').addEventListener('click', ()=>{ memberMode = 'edit'; renderMember(); });
     const ciForm = document.getElementById('mp-checkin-form');
     if (ciForm) ciForm.addEventListener('submit', async (e)=>{
@@ -367,9 +554,9 @@
       row.notes = document.getElementById('mp-ci-notes').value.trim() || null;
       const btn = ciForm.querySelector('button[type=submit]');
       btn.disabled = true;
-      const { error } = await bnbClient.from('meal_plan_checkins').insert(row);
+      try { delete row.member_id; await S.addCheckin(row); }
+      catch (err){ btn.disabled = false; toast(err.message); return; }
       btn.disabled = false;
-      if (error){ console.error('Supabase save meal_plan_checkins failed:', error); toast('Could not send — check your connection and try again.'); return; }
       toast('Check-in sent to your coach.');
       renderMember();
     });
@@ -379,6 +566,7 @@
      COACH VIEW
      ============================================================ */
   let coachSelected = null;
+  let coachSection = 'clients'; // 'clients' | 'diets' (My diets — only for coaches who wrote one)
   let coachTab = 'answers'; // 'answers' | 'plan' | 'checkins'
 
   async function renderCoach(){
@@ -387,18 +575,32 @@
     if (!me){ coachBody.innerHTML = ''; return; }
     coachBody.innerHTML = '<div class="empty-msg">Loading…</div>';
 
+    await S.loadDiets();
+    // Coaches who've written a diet also get "My diets" (the editor).
+    const ownsDiets = !!(window.MP_DIETS && window.MP_DIETS.ownedBy(me).length);
+    if (!ownsDiets) coachSection = 'clients';
+    const sectionTabs = ownsDiets ? '<div class="sched-sub mp-coach-sections">' +
+      '<button type="button" data-coach-sec="clients" class="' + (coachSection === 'clients' ? 'active' : '') + '">Clients\u2019 meal plans</button>' +
+      '<button type="button" data-coach-sec="diets" class="' + (coachSection === 'diets' ? 'active' : '') + '">My diets</button></div>' : '';
+    const wireSections = ()=> coachBody.querySelectorAll('[data-coach-sec]').forEach(b=> b.addEventListener('click', ()=>{
+      coachSection = b.getAttribute('data-coach-sec'); renderCoach(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
+    if (coachSection === 'diets'){
+      coachBody.innerHTML = sectionTabs + '<div id="mp-diet-editor"></div>';
+      wireSections();
+      window.MP_DIETS.renderEditor(document.getElementById('mp-diet-editor'), me, toast);
+      return;
+    }
+
     // RLS already limits these to the caller's own clients (or everyone,
     // for an admin) — no client-side filtering needed.
-    const [intakes, plans, checkins] = await Promise.all([
-      bnbClient.from('meal_plan_intake').select('member_id, answers, submitted_at, updated_at').order('updated_at', { ascending: false }),
-      bnbClient.from('meal_plans').select('member_id, updated_at'),
-      bnbClient.from('meal_plan_checkins').select('member_id, created_at').order('created_at', { ascending: false })
-    ]);
-    if (intakes.error){ console.error('Supabase load meal_plan_intake failed:', intakes.error); coachBody.innerHTML = '<div class="empty-msg">Couldn’t load meal plans.</div>'; return; }
-
-    const rows = intakes.data || [];
+    if (!(await S.loadCoachList())){ coachBody.innerHTML = sectionTabs + '<div class="empty-msg">Couldn\u2019t load meal plans.</div>'; wireSections(); return; }
+    const rows = S.visibleIntakes();
+    const plans = { data: S.coachPlans() };
+    const checkins = { data: S.coachCheckins() };
     if (!rows.length){
-      coachBody.innerHTML = '<div class="empty-msg">No questionnaires yet. When one of your clients fills in theirs (Me → Meal Plan), it shows up here and you get a notification.</div>';
+      coachBody.innerHTML = sectionTabs + '<div class="empty-msg">No questionnaires yet. When one of your clients fills in theirs (Me → Meal Plan), it shows up here and you get a notification.</div>';
+      wireSections();
       return;
     }
     const planAt = {}; (plans.data || []).forEach(p=> planAt[p.member_id] = p.updated_at);
@@ -416,7 +618,8 @@
       '<button type="button" class="mp-client' + (r.member_id === coachSelected ? ' active' : '') + '" data-member="' + r.member_id + '">' +
       '<span>' + esc(nameOf(r.member_id)) + (referralFlags(r.answers).some(f=> f.strong) ? ' <span class="mp-flag-dot" title="Consider a dietitian referral">⚑</span>' : '') + '</span>' + status(r) + '</button>'
     ).join('') + '</div><div class="mp-client-detail" id="mp-coach-detail"><div class="empty-msg">Loading…</div></div></div>';
-    coachBody.innerHTML = html;
+    coachBody.innerHTML = sectionTabs + html;
+    wireSections();
     coachBody.querySelectorAll('.mp-client').forEach(b=> b.addEventListener('click', ()=>{
       coachSelected = b.getAttribute('data-member'); renderCoach();
     }));
@@ -435,6 +638,9 @@
     let html = '<div class="mp-detail-head"><h3>' + esc(nameOf(memberId)) + '</h3>' +
       '<span class="field-hint">Questionnaire sent ' + fmtDate(d.intake.submitted_at) +
       (d.intake.updated_at !== d.intake.submitted_at ? ', updated ' + fmtDate(d.intake.updated_at) : '') + '</span></div>';
+    const trial = S.getTrial(memberId);
+    if (trial) html += '<div class="admin-notice diet-active">Trying <b>' + esc(trial.diet_name) + '</b>' + (trial.variant_label ? ' (' + esc(trial.variant_label) + ')' : '') +
+      ' since ' + fmtDate(trial.started_at) + ' — alongside your plan. Their check-ins show which diet they were on.</div>';
     if (flags.length){
       const strong = flags.some(f=> f.strong);
       html += '<div class="admin-notice mp-refer"><b>' + (strong ? 'Consider referring to a registered dietitian:' : 'Worth checking:') + '</b><ul>' +
@@ -451,11 +657,11 @@
       html += checkinListHtml(d.checkins);
     } else {
       const c = (d.plan && d.plan.content) || {};
-      html += '<div class="mp-sub-head">Daily targets</div>' + targetsHtml(d.goals, true) +
+      html += '<div class="mp-sub-head" style="margin-top:0;">Daily targets</div>' + targetsHtml(d.goals, true) +
         '<form class="mp-form" id="mp-plan-form">' +
-        PLAN_FIELDS.map(f=> '<div class="mp-q"><label class="mp-q-label" for="mp-p-' + f.id + '">' + esc(f.label) + '</label>' +
+        '<div class="mp-editor-grid">' + PLAN_FIELDS.map(f=> '<div class="mp-q' + (f.id === 'pattern' ? ' mp-wide' : '') + '"><label class="mp-q-label" for="mp-p-' + f.id + '">' + esc(f.label) + '</label>' +
           '<div class="field-hint mp-q-hint">' + esc(f.hint) + '</div>' +
-          '<textarea class="mp-input" id="mp-p-' + f.id + '" name="' + f.id + '" rows="' + f.rows + '">' + esc(c[f.id]) + '</textarea></div>').join('') +
+          '<textarea class="mp-input" id="mp-p-' + f.id + '" name="' + f.id + '" rows="' + f.rows + '">' + esc(c[f.id]) + '</textarea></div>').join('') + '</div>' +
         '<div class="mp-actions"><button type="submit" class="btn2 primary">' + (d.plan ? 'Save & notify member' : 'Send plan to member') + '</button>' +
         (d.plan ? '<span class="field-hint">Last saved ' + fmtDate(d.plan.updated_at) + '</span>' : '') + '</div></form>';
     }
@@ -471,9 +677,9 @@
       PLAN_FIELDS.forEach(f=>{ content[f.id] = form.querySelector('[name="' + f.id + '"]').value.trim(); });
       const btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
-      const { error } = await bnbClient.from('meal_plans').upsert({ member_id: memberId, coach_id: self().id, content });
+      try { await S.savePlan(memberId, content); }
+      catch (err){ btn.disabled = false; toast(err.message); return; }
       btn.disabled = false;
-      if (error){ console.error('Supabase save meal_plans failed:', error); toast(error.message && /row-level security/i.test(error.message) ? 'Only this member’s coach or an admin can write their plan.' : 'Could not save — check your connection and try again.'); return; }
       toast('Plan saved — ' + nameOf(memberId) + ' has been notified.');
       renderCoach();
     });

@@ -126,7 +126,11 @@
     accountability: { file: 'js/bells-n-barz-accountability.js' },
     messages:     { file: 'js/bells-n-barz-messages.js' },
     inbox:        { file: 'js/bells-n-barz-inbox.js' },
-    mealplan:     { file: 'js/bells-n-barz-mealplan.js' },
+    // Meal Plan loads its data layer, the diets module and each diet first.
+    mealplanStore: { file: 'js/bells-n-barz-mealplan-store.js' },
+    diets:        { file: 'js/bells-n-barz-diets.js', deps: ['mealplanStore'] },
+    dietCoachKa:  { file: 'js/bells-n-barz-diet-coach-ka.js', deps: ['diets'] },
+    mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa'] },
     reports:      { file: 'js/bells-n-barz-reports.js' }
   };
   const BNB_MODULE_PROMISES = {};

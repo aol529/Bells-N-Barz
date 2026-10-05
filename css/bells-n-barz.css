@@ -2125,3 +2125,131 @@ header.site{
 .sched-scope .mp-detail-head{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
 .sched-scope .mp-detail-head h3{margin:0; font-size:18px;}
 .sched-scope .mp-coach-tabs{margin-bottom:16px;}
+
+/* ============================================================
+   MEAL PLAN additions brought over from the Meal Plan Sandbox:
+   How it works, Try a diet,
+   My diets editor and display view, two-column coach layout.
+   ============================================================ */
+/* ---------- How it works page ---------- */
+.mp-how-lede{font-size:15px; color:var(--muted); max-width:70ch; margin:0 0 22px;}
+.mp-how-step{display:grid; grid-template-columns:44px 1fr; gap:14px; padding:18px 0; border-top:1px solid var(--line-soft);}
+.mp-how-step h3{font-size:18px; margin:4px 0 8px;}
+.mp-how-step p, .mp-how-step li{font-size:14.5px; line-height:1.6; max-width:70ch;}
+.mp-how-step p{margin:0 0 10px;}
+.mp-how-step ul{margin:0 0 10px; padding-left:20px;}
+.mp-how-step a{color:var(--accent);}
+.mp-how-num{width:36px; height:36px; border-radius:50%; border:1px solid var(--accent-dim); color:var(--accent); display:flex; align-items:center; justify-content:center; font-family:'Oswald',sans-serif; font-size:18px;}
+.mp-your-numbers{border-left:3px solid var(--accent); margin-top:6px;}
+.mp-plate{display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin:8px 0 4px;}
+.mp-plate-key{list-style:none; padding:0; margin:0;}
+.mp-plate-key li{display:flex; align-items:center; gap:8px; font-size:13.5px; margin:4px 0;}
+.mp-plate-key .k{width:12px; height:12px; border-radius:2px; display:inline-block;}
+.mp-plate-key .veg{background:rgba(var(--accent-3-rgb),.55);}
+.mp-plate-key .pro{background:rgba(var(--accent-rgb),.6);}
+.mp-plate-key .sta{background:rgba(var(--accent-rgb),.28);}
+@media (max-width:640px){ .mp-how-step{grid-template-columns:1fr; gap:6px;} }
+
+/* ---------- Diet reference sections ---------- */
+.ka-private{border-left-color:#e0736a;}
+.mp-ka-tab{border-style:dashed !important;}
+.ka-section summary{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:16px;}
+.ka-section h4{font-size:14px; color:var(--accent); margin:18px 0 8px; font-family:'IBM Plex Mono',monospace;}
+.ka-section p, .ka-section li{font-size:14.5px; line-height:1.6; max-width:75ch;}
+.ka-section ul, .ka-section ol{padding-left:20px;}
+.ka-rule{padding:4px 0 10px; border-bottom:1px solid var(--line-soft); margin-bottom:10px;}
+.ka-rule:last-child{border-bottom:none;}
+.ka-rule h4{margin-top:8px;}
+.ka-review, .ka-review-inline{background:rgba(var(--accent-3-rgb),.10); border:1px dashed var(--accent-3); color:var(--text); font-size:13px; line-height:1.55; padding:9px 12px; margin:10px 0; border-radius:2px;}
+.ka-review b{color:var(--accent-3); font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin-right:6px;}
+.ka-review-inline{display:inline; padding:1px 6px; margin:0;}
+.ka-table td{font-size:13px;}
+.ka-small{font-size:13px !important; color:var(--muted); margin-top:8px;}
+
+/* ---------- Coach view: less scrolling (wide screens only) ----------
+   Two columns for the long tabs, and the client list + tab row stay in
+   view so switching tabs never needs a scroll back up. Phones keep the
+   single column. */
+@media (min-width:900px){
+  #coach-section-mealplans .mp-coach-layout{grid-template-columns:220px 1fr;}
+  #coach-section-mealplans .mp-client-list{position:sticky; top:12px;}
+  #coach-section-mealplans .mp-coach-tabs{position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; margin:0 0 14px; border-bottom:1px solid var(--line-soft);}
+  #coach-section-mealplans .mp-answers{columns:2; column-gap:28px;}
+  #coach-section-mealplans .mp-answers .mp-a, #coach-section-mealplans .mp-answers .mp-day-table{break-inside:avoid;}
+  #coach-section-mealplans .mp-answers .mp-section-head{break-after:avoid; margin-top:0; padding-top:12px; border-top:none;}
+  #coach-section-mealplans .mp-answers .mp-a{margin-bottom:9px;}
+  #coach-section-mealplans .mp-plan-grid{columns:2; column-gap:12px;}
+  #coach-section-mealplans .mp-plan-grid .mp-plan-block{margin:0 0 12px; break-inside:avoid;}
+  #coach-section-mealplans .mp-ai-top-actions{margin:0 0 14px;}
+  #coach-section-mealplans .mp-editor-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px;}
+  #coach-section-mealplans .mp-editor-grid .mp-wide{grid-column:1 / -1;}
+  #coach-section-mealplans .mp-form{max-width:none;}
+  #coach-section-mealplans .mp-q{margin-bottom:12px;}
+  #coach-section-mealplans .mp-sub-head{margin:16px 0 10px;}
+  #coach-section-mealplans .day-focus{margin-bottom:16px; padding-bottom:12px;}
+}
+@media (min-width:900px){
+  #coach-section-mealplans .day-head h2{font-size:26px;}
+  #coach-section-mealplans > .admin-notice{margin-bottom:14px; padding:8px 12px;}
+  #coach-section-mealplans .mp-plan-block{padding:10px 12px;}
+  #coach-section-mealplans .mp-plan-block h4{margin-bottom:5px;}
+  #coach-section-mealplans .mp-plan-block li, #coach-section-mealplans .mp-plan-block p, #coach-section-mealplans .mp-grocery div{font-size:13.5px; line-height:1.45;}
+  #coach-section-mealplans .mp-plan-block li{margin:1px 0;}
+  #coach-section-mealplans .mp-targets > div{padding:8px;}
+}
+
+/* ---------- Try a diet ---------- */
+.diet-cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;}
+.diet-card{background:var(--surface); border:1px solid var(--line-soft); padding:16px; display:flex; flex-direction:column; gap:8px;}
+.diet-card.trying{border-color:var(--accent);}
+.diet-card-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap;}
+.diet-card h3{font-size:19px;}
+.diet-card p{margin:0; font-size:14px; color:var(--muted); line-height:1.5;}
+.diet-card .btn2{align-self:flex-start; margin-top:auto;}
+.diet-private{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#e0736a; text-transform:uppercase;}
+.diet-tags{display:flex; flex-wrap:wrap; gap:6px;}
+.diet-tags span{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; border:1px solid var(--line); color:var(--muted); padding:2px 7px; border-radius:20px;}
+.diet-active{border-left-color:var(--accent);}
+.diet-active .btn2{margin-left:8px; padding:4px 10px;}
+.diet-back{margin-bottom:14px;}
+.diet-trial-bar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line-soft); padding:10px 14px; font-size:14px;}
+.diet-trial-bar span{flex:1; min-width:220px;}
+.diet-variant-intro{font-size:14px; color:var(--muted); margin:0 0 10px;}
+.diet-week th[scope=row]{text-align:left; color:var(--text); font-family:'IBM Plex Sans',sans-serif; font-size:13px; text-transform:none; letter-spacing:0; white-space:nowrap;}
+.diet-week td{font-size:13px;}
+.diet-footnote{margin-bottom:6px;}
+
+/* ---------- My diets (coach editor) ---------- */
+.mp-coach-sections{margin-bottom:18px;}
+.diet-edit-section{background:var(--surface); border:1px solid var(--line-soft); padding:14px 16px; margin-bottom:14px;}
+.diet-edit-section > h3{font-size:16px; margin-bottom:12px;}
+.diet-publish{margin-top:4px;}
+.diet-week-edit{overflow-x:auto;}
+.diet-week-edit td{padding:3px;}
+.diet-cell{min-width:90px; padding:6px 8px !important; font-size:13px !important;}
+.diet-row-del{padding:4px 8px;}
+.diet-step-edit{border-top:1px solid var(--line-soft); padding:12px 0;}
+.diet-step-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+.diet-step-head .mp-input{flex:1;}
+.diet-step-head .btn2{padding:5px 9px;}
+.diet-step-opts{margin-top:8px;}
+.diet-edit-bar{position:sticky; bottom:0; display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--bg); border-top:1px solid var(--line); padding:12px 0;}
+
+.diet-owner-bar{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:rgba(var(--accent-rgb),.08); border:1px dashed var(--accent-dim); padding:8px 12px; margin-bottom:12px; font-size:13.5px;}
+.diet-format-help{margin:-4px 0 10px; line-height:1.8;}
+.diet-format-help code, .admin-notice code{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--surface-2); border:1px solid var(--line-soft); padding:0 4px; border-radius:2px; color:var(--text);}
+.diet-ref-body > summary{cursor:pointer; font-size:13px; color:var(--accent); margin:2px 0 8px;}
+.diet-ref-split{display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;}
+.diet-ref-text{font-family:'IBM Plex Mono',monospace !important; font-size:12.5px !important; line-height:1.5;}
+.diet-ref-preview{background:var(--bg); border:1px solid var(--line-soft); padding:8px 12px; max-height:420px; overflow:auto; font-size:13.5px;}
+.diet-ref-preview p, .diet-ref-preview li{font-size:13.5px;}
+@media (max-width:900px){ .diet-ref-split{grid-template-columns:1fr;} }
+/* ---------- My diets: display view ---------- */
+.diet-card-click{cursor:pointer; transition:border-color .15s;}
+.diet-card-click:hover, .diet-card-click:focus-visible{border-color:var(--accent);}
+.diet-card-open{margin-top:auto; font-family:'IBM Plex Mono',monospace; font-size:12px; text-transform:uppercase; color:var(--accent);}
+.diet-view-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:8px;}
+.diet-view-title{font-size:28px;}
+.diet-view-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.diet-view-summary{font-size:15px; color:var(--muted); max-width:75ch; margin:6px 0 10px;}
+
