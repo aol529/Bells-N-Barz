@@ -143,17 +143,17 @@
   const NEED_ANSWERS = '<div class="mp-targets mp-targets-empty">Fill in age, sex, height and weight in your questionnaire to see your own numbers here.</div>';
   const r50 = x => Math.round(x / 50) * 50;
   // Maintenance estimate shared by both guides: Mifflin-St Jeor x an
-  // activity factor read from training days per week (and job).
+  // activity factor read from training days per week (and job) — the
+  // app's shared formula (js/bells-n-barz-targets.js), so maintenance
+  // here matches Food Log and Meal Plan. The diet's own targets build
+  // on it below.
   function estimate(a){
     const age = Number(a && a.age), h = Number(a && a.height_cm), w = Number(a && a.weight_kg);
     if (!age || !h || !w || !a.sex) return null;
-    const exercise = String(a.exercise || '');
-    const perWeek = Number((exercise.match(/(\d+)\s*(x|×|times|days|sessions)/i) || [])[1]) || (exercise.trim() ? 2 : 0);
-    let factor = perWeek >= 6 ? 1.725 : perWeek >= 3 ? 1.55 : perWeek >= 1 ? 1.375 : 1.2;
-    if (a.job_activity === 'Physically demanding') factor = Math.min(1.9, factor + 0.175);
-    const activity = factor >= 1.725 ? 'Very active' : factor >= 1.55 ? 'Active' : factor >= 1.375 ? 'Lightly active' : 'Sedentary';
-    const bmr = 10 * w + 6.25 * h - 5 * age + (a.sex === 'Male' ? 5 : -161);
-    return { age, h, w, perWeek, factor, activity, bmr, tdee: bmr * factor };
+    const T = window.BNB_TARGETS;
+    const act = T.activityFromAnswers(a);
+    const bmr = T.bmr(a.sex === 'Male' ? 'male' : 'female', w, h, age);
+    return { age, h, w, perWeek: act.perWeek, factor: act.factor, activity: act.label, bmr, tdee: bmr * act.factor };
   }
 
   // Option A: a moderate deficit (~400-500 kcal), never below a safe

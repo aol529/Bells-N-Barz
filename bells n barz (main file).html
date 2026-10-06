@@ -108,7 +108,9 @@
     bmi:          { file: 'js/bells-n-barz-bmi.js', deps: ['weight'] },
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
-    nutrition:    { file: 'js/bells-n-barz-nutrition.js' },
+    // One calorie/macro formula shared by Food Log, Meal Plan and the diets.
+    targets:      { file: 'js/bells-n-barz-targets.js' },
+    nutrition:    { file: 'js/bells-n-barz-nutrition.js', deps: ['targets'] },
     fasting:      { file: 'js/bells-n-barz-fasting.js' },
     blog:         { file: 'js/bells-n-barz-blog.js' },
     gallery:      { file: 'js/bells-n-barz-gallery.js' },
@@ -127,7 +129,7 @@
     messages:     { file: 'js/bells-n-barz-messages.js' },
     inbox:        { file: 'js/bells-n-barz-inbox.js' },
     // Meal Plan loads its data layer, the diets module and each diet first.
-    mealplanStore: { file: 'js/bells-n-barz-mealplan-store.js' },
+    mealplanStore: { file: 'js/bells-n-barz-mealplan-store.js', deps: ['targets'] },
     diets:        { file: 'js/bells-n-barz-diets.js', deps: ['mealplanStore'] },
     dietCoachKa:  { file: 'js/bells-n-barz-diet-coach-ka.js', deps: ['diets'] },
     mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa'] },
@@ -1523,7 +1525,7 @@
   <button data-me-section="weight" class="active">Weight</button>
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
-  <button data-me-section="nutrition">Nutrition</button>
+  <button data-me-section="nutrition">Food Log</button>
   <button data-me-section="mealplan">Meal Plan</button>
   <button data-me-section="fasting">Fasting</button>
 </div>
@@ -1767,10 +1769,10 @@
 <div class="weight-chart-empty" id="track-history-empty" style="display:none;">No sessions logged for this exercise yet.</div>
 </div>
 </section>
-<!-- ================= NUTRITION ================= -->
+<!-- ================= FOOD LOG (section key stays 'nutrition') ================= -->
 <section class="me-section" id="tab-nutrition">
-<div class="day-head"><h2>Nutrition — Daily Log</h2></div>
-<div class="day-focus">Log a daily calorie/macro summary and watch the trend, not any single day</div>
+<div class="day-head"><h2>Food Log</h2></div>
+<div class="day-focus">Log what you ate each day and watch the trend, not any single day</div>
 
 <div class="weight-stats" id="nutrition-goal-summary" style="display:none;margin-bottom:20px;">
   <div class="weight-stat"><span class="lbl">Calories Today</span><span class="val" id="ngs-calories">—</span></div>
@@ -1778,6 +1780,7 @@
   <div class="weight-stat"><span class="lbl">Carbs Today</span><span class="val" id="ngs-carbs">—</span></div>
   <div class="weight-stat"><span class="lbl">Fat Today</span><span class="val" id="ngs-fat">—</span></div>
 </div>
+<div class="field-hint" id="nutrition-goal-source" style="display:none;margin:-12px 0 20px;"></div>
 <div class="field-hint" id="nutrition-goal-empty" style="margin-bottom:20px;">Set your calorie &amp; macro goals in the calculator below to see today's progress here.</div>
 
 <div class="weight-grid">
@@ -1832,7 +1835,8 @@
 <!-- ---- Calorie & Macro Calculator: set-once goals feeding the summary above ---- -->
 <div class="weight-chart-card" id="calorie-counter-card" style="margin-top:22px;">
 <h3>Calorie &amp; Macro Calculator</h3>
-<p class="weight-hint" style="margin-top:0;">Mifflin-St Jeor formula: sets a daily calorie and macro target from your stats, goal, and activity level — feeds the summary at the top of this page.</p>
+<p class="weight-hint" style="margin-top:0;">Mifflin-St Jeor formula: sets a daily calorie and macro target from your stats, goal, and activity level — feeds the summary at the top of this page. Meal Plan uses the same formula.</p>
+<div class="admin-notice" id="cc-coach-note" style="display:none;"></div>
 <div class="weight-form" id="cc-form">
 <div class="weight-form-row">
 <div><label for="cc-sex">Sex</label><select id="cc-sex"><option value="male">Male</option><option value="female">Female</option></select></div>
@@ -1864,6 +1868,7 @@
 <div class="weight-stat"><span class="lbl">Carbs</span><span class="val" id="cc-result-carbs">—</span></div>
 <div class="weight-stat"><span class="lbl">Fat</span><span class="val" id="cc-result-fat">—</span></div>
 </div>
+<p class="weight-hint" id="cc-note" style="display:none;"></p>
 </div>
 </section>
 
@@ -1934,7 +1939,7 @@
 <!-- ---- 5:2 mode: pick 2 fasting days/week, cap calories on those days ---- -->
 <div id="fasting-522-panel" style="display:none;">
 
-<p class="field-hint">Eat normally 5 days a week; on 2 non-consecutive days, cap intake around 500–600 calories (the classic FastDiet split). Calories are logged through the Nutrition tab — this just tracks which days count and whether you stayed under your cap.</p>
+<p class="field-hint">Eat normally 5 days a week; on 2 non-consecutive days, cap intake around 500–600 calories (the classic FastDiet split). Calories are logged in Food Log — this just tracks which days count and whether you stayed under your cap.</p>
 
 <div class="fasting-522-days" id="fasting-522-days">
   <button data-weekday="0">Sun</button>

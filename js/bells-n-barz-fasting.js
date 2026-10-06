@@ -380,7 +380,7 @@
       const cal = data && data.calories != null ? data.calories : null;
       statusPhase522.textContent = 'Today Is a Fasting Day';
       if (cal == null){
-        statusMeta522.textContent = 'No calories logged yet today — cap is ' + settings.weeklyCalorieCap + ' cal. Log it in the Nutrition tab.';
+        statusMeta522.textContent = 'No calories logged yet today — cap is ' + settings.weeklyCalorieCap + ' cal. Log it in Food Log.';
       } else if (cal <= settings.weeklyCalorieCap){
         statusMeta522.textContent = cal + ' cal logged — under your ' + settings.weeklyCalorieCap + ' cal cap.';
       } else {

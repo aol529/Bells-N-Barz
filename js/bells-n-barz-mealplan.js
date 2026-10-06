@@ -3,10 +3,12 @@
      MEAL PLANS (sql/45, sql/46)
      Built from the gym's meal-plan guide: the member fills in the
      intake questionnaire, their coach writes the plan, and the member
-     checks in every 2-3 weeks so the coach can adjust it. Calorie and
-     macro targets come from the member's saved Nutrition calculator
-     goals (nutrition_goals), which already implements the guide's
-     Mifflin-St Jeor + macro steps.
+     checks in every 2-3 weeks so the coach can adjust it. The coach sets
+     the daily calorie/macro targets in the plan (content.targets); until
+     they do, the member's own Food Log calculator goals (nutrition_goals)
+     are shown. Both use the shared formula in js/bells-n-barz-targets.js.
+     Food Log (Me) shows today's eating against the same targets, and the
+     coach sees the member's last two weeks of Food Log in Check-ins.
 
      Also brought over from the Meal Plan Sandbox: the How it works page,
      Try a diet (+ Coach > My diets). (AI suggestions were left out for
@@ -235,18 +237,64 @@
     return html ? '<div class="mp-plan-grid">' + html + '</div>' : '<div class="empty-msg">Your coach hasn’t added anything to the plan yet.</div>';
   }
 
-  function targetsHtml(goals, forCoach){
-    if (!goals){
+  // The daily targets in force: the coach's (saved with the plan), else
+  // the member's own Food Log calculator goals, else none.
+  function planTargets(d){
+    const t = d.plan && d.plan.content && d.plan.content.targets;
+    if (t && t.calories) return Object.assign({ source: 'coach' }, t);
+    if (d.goals) return { source: 'calc', calories: d.goals.target_calories, protein_g: d.goals.target_protein_g, carbs_g: d.goals.target_carbs_g, fat_g: d.goals.target_fat_g };
+    return null;
+  }
+  function targetsHtml(d, forCoach){
+    const t = planTargets(d);
+    if (!t){
       return '<div class="mp-targets mp-targets-empty">' + (forCoach
-        ? 'No calorie/macro targets saved yet — the member sets these with the calculator in Me → Nutrition.'
-        : 'No daily targets yet. Set them with the calculator in Me → Nutrition, or just use the plate method: half vegetables, a quarter protein, a quarter starch, plus a little healthy fat.') + '</div>';
+        ? 'No calorie/macro targets yet — set them below.'
+        : 'No daily targets yet. Your coach sets them with your plan; until then you can use the calculator in Me → Food Log, or just use the plate method: half vegetables, a quarter protein, a quarter starch, plus a little healthy fat.') + '</div>';
     }
-    return '<div class="mp-targets">' +
-      '<div><span class="mp-t-num">' + goals.target_calories + '</span><span class="mp-t-lbl">kcal / day</span></div>' +
-      '<div><span class="mp-t-num">' + goals.target_protein_g + 'g</span><span class="mp-t-lbl">protein</span></div>' +
-      '<div><span class="mp-t-num">' + goals.target_carbs_g + 'g</span><span class="mp-t-lbl">carbs</span></div>' +
-      '<div><span class="mp-t-num">' + goals.target_fat_g + 'g</span><span class="mp-t-lbl">fat</span></div>' +
-      '</div>';
+    const cell = (v, unit, lbl) => '<div><span class="mp-t-num">' + (v != null && v !== '' ? esc(v) + unit : '—') + '</span><span class="mp-t-lbl">' + lbl + '</span></div>';
+    return '<div class="mp-targets">' + cell(t.calories, '', 'kcal / day') + cell(t.protein_g, 'g', 'protein') + cell(t.carbs_g, 'g', 'carbs') + cell(t.fat_g, 'g', 'fat') + '</div>' +
+      '<div class="field-hint mp-targets-src">' + (t.source === 'coach'
+        ? (forCoach ? 'Set by the coach with this plan.' : 'Set by your coach. Food Log shows each day against these.')
+        : (forCoach ? 'From the member\u2019s own Food Log calculator — set your own below to replace them.' : 'From your own Food Log calculator — your coach can replace them.')) + '</div>';
+  }
+
+  const TARGET_FIELDS = [
+    { id:'calories', label:'Calories (kcal/day)', max:10000 },
+    { id:'protein_g', label:'Protein (g)', max:1000 },
+    { id:'carbs_g', label:'Carbs (g)', max:2000 },
+    { id:'fat_g', label:'Fat (g)', max:1000 }
+  ];
+  const targetsLine = t => t.calories.toLocaleString() + ' kcal · ' + t.protein_g + ' g protein · ' + t.carbs_g + ' g carbs · ' + t.fat_g + ' g fat';
+
+  /* ---------------- FOOD LOG (coach view) ----------------
+     The member's own Me > Food Log entries for the last two weeks, next
+     to their check-ins, so the coach can compare the plan with what they
+     actually ate. Read-only; RLS allows the member's coach and admins. */
+  function foodLogHtml(rows, t){
+    const days = S.FOOD_LOG_DAYS;
+    let html = '<div class="mp-sub-head" style="margin-top:0;">Food Log · last ' + days + ' days</div>';
+    if (!rows.length) return html + '<div class="empty-msg">Nothing logged in Me \u2192 Food Log in the last ' + days + ' days.</div>';
+    const avg = key => {
+      const v = rows.map(r=> r[key]).filter(x=> x != null).map(Number);
+      return v.length ? Math.round(v.reduce((a, b)=> a + b, 0) / v.length) : null;
+    };
+    const vs = (key, tKey, unit) => {
+      const a = avg(key);
+      if (a == null) return '—';
+      return a.toLocaleString() + unit + (t && t[tKey] ? ' <span class="field-hint">/ ' + Number(t[tKey]).toLocaleString() + unit + '</span>' : '');
+    };
+    html += '<div class="field-hint" style="margin:-4px 0 10px;">Logged ' + rows.length + ' of ' + days + ' days. Averages on logged days' + (t ? ', against the targets' : '') + ':</div>' +
+      '<div class="mp-targets mp-foodlog-avg">' +
+      '<div><span class="mp-t-num">' + vs('calories', 'calories', '') + '</span><span class="mp-t-lbl">kcal / day</span></div>' +
+      '<div><span class="mp-t-num">' + vs('protein_g', 'protein_g', 'g') + '</span><span class="mp-t-lbl">protein</span></div>' +
+      '<div><span class="mp-t-num">' + vs('carbs_g', 'carbs_g', 'g') + '</span><span class="mp-t-lbl">carbs</span></div>' +
+      '<div><span class="mp-t-num">' + vs('fat_g', 'fat_g', 'g') + '</span><span class="mp-t-lbl">fat</span></div></div>';
+    const cell = (v, unit) => v != null ? esc(Number(v).toLocaleString()) + unit : '—';
+    html += '<details class="mp-details"><summary>Each day</summary><table class="admin-table"><tr><th>Date</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Water</th><th>Notes</th></tr>' +
+      rows.map(r=> '<tr><td>' + fmtDate(r.date + 'T12:00:00') + '</td><td>' + cell(r.calories, '') + '</td><td>' + cell(r.protein_g, 'g') + '</td><td>' + cell(r.carbs_g, 'g') + '</td><td>' +
+        cell(r.fat_g, 'g') + '</td><td>' + cell(r.water_ml, ' ml') + '</td><td>' + (r.notes ? esc(r.notes) : '—') + '</td></tr>').join('') + '</table></details>';
+    return html;
   }
 
   /* ---------------- CHECK-INS ---------------- */
@@ -290,34 +338,14 @@
     };
   }
 
-  // The guide's steps 2-3 (Mifflin-St Jeor -> activity factor -> goal
-  // adjustment -> protein by bodyweight, fat ~30%, carbs the rest),
-  // from the questionnaire answers. A starting point for the coach to
-  // tweak, not a final number — "her real-world results over 2-3 weeks
-  // matter more than the formula."
+  // The guide's steps 2-3 from the questionnaire answers, using the
+  // app's shared formula (js/bells-n-barz-targets.js — the same one as
+  // the Food Log calculator). A starting point for the coach to tweak,
+  // not a final number — "her real-world results over 2-3 weeks matter
+  // more than the formula."
   function suggestTargets(a){
-    const age = Number(a.age), h = Number(a.height_cm), w = Number(a.weight_kg);
-    if (!age || !h || !w || !a.sex) return null;
-    const exercise = String(a.exercise || '').trim();
-    const trains = !!exercise;
-    // "Gym 4x/week", "3 times a week", "5 days" -> sessions per week.
-    // 3+ sessions is "moderately active" even with a desk job; fewer (or
-    // unstated) is "lightly active".
-    const perWeek = (exercise.match(/(\d+)\s*(x|×|times|days|sessions)/i) || [])[1];
-    const bmr = 10 * w + 6.25 * h - 5 * age + (a.sex === 'Male' ? 5 : -161);
-    const factor = a.job_activity === 'Physically demanding' ? 1.725
-      : a.job_activity === 'On my feet some of the day' ? 1.55
-      : !trains ? 1.2
-      : Number(perWeek) >= 3 ? 1.55 : 1.375;
-    const goals = a.goals || [];
-    let cal = bmr * factor;
-    if (goals.includes('Lose fat')) cal -= 500;
-    else if (goals.includes('Build muscle')) cal += 250;
-    cal = Math.round(cal / 10) * 10;
-    const protein = Math.round(w * (trains ? 1.8 : 1.2));
-    const fat = Math.round(cal * 0.30 / 9);
-    const carbs = Math.max(0, Math.round((cal - protein * 4 - fat * 9) / 4));
-    return { target_calories: cal, target_protein_g: protein, target_carbs_g: carbs, target_fat_g: fat };
+    const t = window.BNB_TARGETS.fromAnswers(a);
+    return t && { calories: t.calories, protein_g: t.protein_g, carbs_g: t.carbs_g, fat_g: t.fat_g, note: t.note };
   }
 
   /* ============================================================
@@ -332,11 +360,11 @@
     const t = a && suggestTargets(a);
     if (!t) return '';
     const age = Number(a.age), h = Number(a.height_cm), w = Number(a.weight_kg);
-    const bmr = Math.round(10 * w + 6.25 * h - 5 * age + (a.sex === 'Male' ? 5 : -161));
+    const bmr = Math.round(window.BNB_TARGETS.bmr(a.sex === 'Male' ? 'male' : 'female', w, h, age));
     return '<div class="mp-plan-block mp-your-numbers"><h4>With your answers</h4><p>' +
       esc(a.sex) + ', ' + esc(age) + ', ' + esc(h) + ' cm, ' + esc(w) + ' kg → about <b>' + bmr.toLocaleString() + ' kcal</b> a day at rest. ' +
-      'With your activity and goal, a starting point of roughly <b>' + t.target_calories.toLocaleString() + ' kcal</b>: ' +
-      t.target_protein_g + ' g protein, ' + t.target_carbs_g + ' g carbs, ' + t.target_fat_g + ' g fat. ' +
+      'With your activity and goal, a starting point of roughly <b>' + t.calories.toLocaleString() + ' kcal</b>: ' +
+      t.protein_g + ' g protein, ' + t.carbs_g + ' g carbs, ' + t.fat_g + ' g fat. ' + (t.note ? esc(t.note) + ' ' : '') +
       'Your coach may set it differently — they know you, the formula doesn\u2019t.</p></div>';
   }
 
@@ -656,7 +684,7 @@
         '<div class="empty-msg">Your answers are with your coach (sent ' + fmtDate(d.intake.submitted_at) + '). You’ll get a notification when your plan is ready.</div>';
     } else {
       html += '<div class="day-focus">Your plan · updated ' + fmtDate(d.plan.updated_at) + (d.plan.coach_id ? ' by ' + esc(nameOf(d.plan.coach_id)) : '') + '</div>' +
-        '<div class="mp-sub-head">Daily targets</div>' + targetsHtml(d.goals, false) +
+        '<div class="mp-sub-head">Daily targets</div>' + targetsHtml(d, false) +
         planViewHtml(d.plan);
 
       const last = d.checkins[0];
@@ -795,11 +823,25 @@
     if (coachTab === 'answers'){
       html += answersHtml(d.intake.answers);
     } else if (coachTab === 'checkins'){
-      html += checkinListHtml(d.checkins);
+      html += foodLogHtml(S.getFoodLog(memberId), planTargets(d)) +
+        '<div class="mp-sub-head">Check-ins</div>' + checkinListHtml(d.checkins);
     } else {
       const c = (d.plan && d.plan.content) || {};
-      html += '<div class="mp-sub-head" style="margin-top:0;">Daily targets</div>' + targetsHtml(d.goals, true) +
-        '<form class="mp-form" id="mp-plan-form">' +
+      const t = c.targets || {};
+      // Two starting points the coach can copy in: the formula applied to
+      // the questionnaire, and the member's own Food Log calculator.
+      const sug = suggestTargets(d.intake.answers);
+      const own = d.goals && { calories: d.goals.target_calories, protein_g: d.goals.target_protein_g, carbs_g: d.goals.target_carbs_g, fat_g: d.goals.target_fat_g };
+      const refs = [];
+      if (sug) refs.push('<div>From their answers: ' + targetsLine(sug) + (sug.note ? ' (' + esc(sug.note) + ')' : '') + ' <button type="button" class="btn2 mp-fill" data-mp-fill="sug">Use these</button></div>');
+      if (own) refs.push('<div>Their own Food Log calculator: ' + targetsLine(own) + ' <button type="button" class="btn2 mp-fill" data-mp-fill="own">Use these</button></div>');
+      html += '<form class="mp-form" id="mp-plan-form">' +
+        '<div class="mp-sub-head" style="margin-top:0;">Daily targets</div>' +
+        '<div class="field-hint mp-q-hint">The member sees these in their plan, and Food Log tracks each day against them. Leave calories blank to use the member\u2019s own calculator numbers.</div>' +
+        '<div class="mp-target-inputs">' + TARGET_FIELDS.map(f=> '<div class="mp-q"><label class="mp-q-label" for="mp-t-' + f.id + '">' + f.label + '</label>' +
+          '<input type="number" class="mp-input mp-num" id="mp-t-' + f.id + '" name="t-' + f.id + '" min="0" max="' + f.max + '" step="1" value="' + esc(t[f.id] != null ? t[f.id] : '') + '"></div>').join('') + '</div>' +
+        (refs.length ? '<div class="field-hint mp-target-refs">' + refs.join('') + '</div>' : '') +
+        '<div class="mp-sub-head">The plan</div>' +
         '<div class="mp-editor-grid">' + PLAN_FIELDS.map(f=> '<div class="mp-q' + (f.id === 'pattern' ? ' mp-wide' : '') + '"><label class="mp-q-label" for="mp-p-' + f.id + '">' + esc(f.label) + '</label>' +
           '<div class="field-hint mp-q-hint">' + esc(f.hint) + '</div>' +
           '<textarea class="mp-input" id="mp-p-' + f.id + '" name="' + f.id + '" rows="' + f.rows + '">' + esc(c[f.id]) + '</textarea></div>').join('') + '</div>' +
@@ -812,10 +854,24 @@
       coachTab = b.getAttribute('data-mp-tab'); renderCoachDetail();
     }));
     const form = document.getElementById('mp-plan-form');
+    if (form) form.querySelectorAll('[data-mp-fill]').forEach(b=> b.addEventListener('click', ()=>{
+      const src = b.getAttribute('data-mp-fill') === 'sug' ? suggestTargets(d.intake.answers)
+        : { calories: d.goals.target_calories, protein_g: d.goals.target_protein_g, carbs_g: d.goals.target_carbs_g, fat_g: d.goals.target_fat_g };
+      TARGET_FIELDS.forEach(f=>{ form.querySelector('[name="t-' + f.id + '"]').value = src[f.id]; });
+    }));
     if (form) form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const content = {};
       PLAN_FIELDS.forEach(f=>{ content[f.id] = form.querySelector('[name="' + f.id + '"]').value.trim(); });
+      const targets = {};
+      for (const f of TARGET_FIELDS){
+        const v = form.querySelector('[name="t-' + f.id + '"]').value;
+        const n = v === '' ? null : Math.round(Number(v));
+        if (n != null && !(n >= 0 && n <= f.max)){ toast(f.label + ' doesn\u2019t look right.'); return; }
+        targets[f.id] = n;
+      }
+      if (targets.calories) content.targets = targets;
+      else if (TARGET_FIELDS.some(f=> targets[f.id] != null)){ toast('Add the calories too, or clear the targets.'); return; }
       const btn = form.querySelector('button[type=submit]');
       btn.disabled = true;
       try { await S.savePlan(memberId, content); }

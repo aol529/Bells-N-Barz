@@ -9,7 +9,8 @@
      Who can read or write what is enforced by RLS (sql/45, sql/46), not
      here. Notifications are sent by database triggers.
      ============================================================ */
-  const cache = { intake: {}, plans: {}, checkins: {}, goals: {}, trials: {}, shopping: {}, dietEdits: {}, visibleIntakes: [] };
+  const cache = { intake: {}, plans: {}, checkins: {}, goals: {}, trials: {}, shopping: {}, foodLog: {}, dietEdits: {}, visibleIntakes: [] };
+  const FOOD_LOG_DAYS = 14; // how much Food Log the coach sees in Check-ins
 
   let shoppingTimer = null;
   let pendingShopping = null; // { memberId, row } waiting to be written
@@ -20,14 +21,21 @@
     throw new Error(/row-level security|permission/i.test(msg) ? 'You don’t have permission to do that.' : (fallback || 'Could not save — check your connection and try again.'));
   }
 
+  function daysAgoIso(n){
+    const d = new Date(); d.setDate(d.getDate() - n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   async function loadMember(memberId){
-    const [intake, plan, checkins, goals, trial, shopping] = await Promise.all([
+    const [intake, plan, checkins, goals, trial, shopping, foodLog] = await Promise.all([
       bnbClient.from('meal_plan_intake').select('*').eq('member_id', memberId).maybeSingle(),
       bnbClient.from('meal_plans').select('*').eq('member_id', memberId).maybeSingle(),
       bnbClient.from('meal_plan_checkins').select('*').eq('member_id', memberId).order('created_at', { ascending: false }),
       bnbClient.from('nutrition_goals').select('*').eq('user_id', memberId).maybeSingle(),
       bnbClient.from('diet_trials').select('*').eq('member_id', memberId).maybeSingle(),
-      bnbClient.from('meal_plan_shopping').select('*').eq('member_id', memberId).maybeSingle()
+      bnbClient.from('meal_plan_shopping').select('*').eq('member_id', memberId).maybeSingle(),
+      bnbClient.from('nutrition_log').select('date, calories, protein_g, carbs_g, fat_g, water_ml, notes')
+        .eq('user_id', memberId).gte('date', daysAgoIso(FOOD_LOG_DAYS - 1)).order('date', { ascending: false })
     ]);
     const err = intake.error || plan.error || checkins.error;
     if (err){ console.error('Supabase load meal plan data failed:', err); return false; }
@@ -36,6 +44,7 @@
     cache.checkins[memberId] = checkins.data || [];
     cache.goals[memberId] = (goals && goals.data) || null;
     cache.trials[memberId] = (trial && !trial.error && trial.data) || null;
+    cache.foodLog[memberId] = (foodLog && !foodLog.error && foodLog.data) || [];
     // A list with an unsaved change wins over the database copy, so a
     // re-render right after ticking/adding never loses the change.
     cache.shopping[memberId] = (pendingShopping && pendingShopping.memberId === memberId) ? pendingShopping.row
@@ -77,6 +86,8 @@
     getTrial(id){ return cache.trials[id] || null; },
     getDietEdits(dietId){ return cache.dietEdits[dietId] || null; },
     getShopping(id){ return cache.shopping[id] || null; },
+    getFoodLog(id){ return cache.foodLog[id] || []; },
+    FOOD_LOG_DAYS,
     visibleIntakes(){ return cache.visibleIntakes.slice(); },
     coachPlans(){ return (cache.coachPlans || []).slice(); },
     coachCheckins(){ return (cache.coachCheckins || []).slice(); },

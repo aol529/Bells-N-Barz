@@ -2098,6 +2098,13 @@ header.site{
 .sched-scope .mp-t-lbl{font-size:11px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; color:var(--muted-2);}
 .sched-scope .mp-targets-empty{display:block; font-size:13px; color:var(--muted); background:var(--surface); border:1px dashed var(--line); padding:12px 14px;}
 @media (max-width:640px){ .sched-scope .mp-targets{grid-template-columns:repeat(2, 1fr);} }
+.sched-scope .mp-targets-src{margin:0 0 4px; font-size:12px;}
+.sched-scope .mp-target-inputs{display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:0 12px;}
+.sched-scope .mp-target-inputs .mp-num{max-width:none; width:100%;}
+.sched-scope .mp-target-refs{display:flex; flex-direction:column; gap:6px; margin:0 0 6px;}
+.sched-scope .mp-target-refs .mp-fill{padding:3px 10px; font-size:11px; margin-left:6px;}
+.sched-scope .mp-foodlog-avg .mp-t-num .field-hint{font-size:13px; font-family:'IBM Plex Mono',monospace;}
+@media (max-width:640px){ .sched-scope .mp-target-inputs{grid-template-columns:repeat(2, minmax(0, 1fr));} }
 .sched-scope .mp-plan-block{background:var(--surface); border:1px solid var(--line-soft); padding:14px 16px; margin-top:12px;}
 .sched-scope .mp-plan-block h4{font-size:13px; color:var(--accent); margin:0 0 8px; text-transform:uppercase; letter-spacing:.04em; font-family:'IBM Plex Mono',monospace;}
 .sched-scope .mp-plan-block ul{margin:0; padding-left:18px;}

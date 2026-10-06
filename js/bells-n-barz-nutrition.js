@@ -60,30 +60,24 @@
   function displayWeightToKg(v){ return getWeightUnit() === 'kg' ? v : v * KG_PER_LB; }
   function kgToDisplayWeight(kg){ return getWeightUnit() === 'kg' ? kg : kg / KG_PER_LB; }
 
-  function calcBMR(sex, weightKg, heightCm, age){
-    const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
-    return sex === 'male' ? base + 5 : base - 161;
-  }
+  // The shared formula (js/bells-n-barz-targets.js) — Meal Plan uses
+  // the same one, so both show the same numbers for the same person.
   function calcGoals(sex, weightKg, heightCm, age, activityMultiplier, goal){
-    const bmr = calcBMR(sex, weightKg, heightCm, age);
-    const tdee = bmr * activityMultiplier;
-    let calories = tdee;
-    if (goal === 'lose') calories -= 500;
-    else if (goal === 'gain') calories += 400;
-    calories = Math.max(1200, calories); // sane floor regardless of inputs
-    const weightLb = weightKg / KG_PER_LB;
-    const proteinG = Math.round(weightLb * 0.85); // midpoint of the 0.7-1g/lb range
-    const fatCalories = calories * 0.28; // midpoint of the 20-35% range
-    const fatG = Math.round(fatCalories / 9);
-    const proteinCalories = proteinG * 4;
-    const carbsCalories = Math.max(0, calories - proteinCalories - fatCalories);
-    const carbsG = Math.round(carbsCalories / 4);
-    return { calories: Math.round(calories), proteinG: proteinG, fatG: fatG, carbsG: carbsG };
+    const t = window.BNB_TARGETS.calc({ sex: sex, age: age, heightCm: heightCm, weightKg: weightKg, factor: activityMultiplier, goal: goal });
+    return { calories: t.calories, proteinG: t.protein_g, fatG: t.fat_g, carbsG: t.carbs_g, note: t.note };
   }
 
   let goalsCache = null; // populated by refreshGoalsFromSupabase; null until goals are set
+  // Targets the member's coach set in their Meal Plan (meal_plans.content
+  // .targets). When present they win over the calculator's own numbers.
+  let coachTargets = null;
+  const goalSource = document.getElementById('nutrition-goal-source');
+  const ccCoachNote = document.getElementById('cc-coach-note');
+  const ccNote = document.getElementById('cc-note');
 
-  function showResults(cal, protein, carbs, fat){
+  function showResults(cal, protein, carbs, fat, note){
+    ccNote.style.display = note ? '' : 'none';
+    ccNote.textContent = note || '';
     ccResultsBox.style.display = 'grid';
     ccResultCalories.textContent = cal + ' kcal';
     ccResultProtein.textContent = protein + 'g';
@@ -111,9 +105,14 @@
   async function refreshGoalsFromSupabase(){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return;
-    const { data, error } = await bnbClient.from('nutrition_goals').select('*').eq('user_id', me.id).maybeSingle();
+    const [{ data, error }, plan] = await Promise.all([
+      bnbClient.from('nutrition_goals').select('*').eq('user_id', me.id).maybeSingle(),
+      bnbClient.from('meal_plans').select('content, coach_id, updated_at').eq('member_id', me.id).maybeSingle()
+    ]);
     if (error) { console.error('Supabase load nutrition_goals failed:', error); return; }
     goalsCache = data || null;
+    const t = plan && !plan.error && plan.data && plan.data.content && plan.data.content.targets;
+    coachTargets = t && t.calories ? Object.assign({ coachId: plan.data.coach_id }, t) : null;
     if (goalsCache) populateCalculatorForm(goalsCache);
     else prefillWeightFromTracker();
     renderGoalSummary();
@@ -127,8 +126,21 @@
     goalsCache = payload;
     renderGoalSummary();
   }
+  // Today's progress against the active targets: the coach's (from the
+  // Meal Plan) if they set some, otherwise the calculator's.
+  function activeTargets(){
+    if (coachTargets) return { calories: coachTargets.calories, protein: coachTargets.protein_g, carbs: coachTargets.carbs_g, fat: coachTargets.fat_g };
+    if (goalsCache) return { calories: goalsCache.target_calories, protein: goalsCache.target_protein_g, carbs: goalsCache.target_carbs_g, fat: goalsCache.target_fat_g };
+    return null;
+  }
   function renderGoalSummary(){
-    if (!goalsCache){
+    const coachName = coachTargets && window.BNB_USERS && window.BNB_USERS.getName ? (window.BNB_USERS.getName(coachTargets.coachId) || 'your coach') : 'your coach';
+    goalSource.style.display = coachTargets ? '' : 'none';
+    goalSource.textContent = coachTargets ? 'Targets set by ' + coachName + ' in your Meal Plan.' : '';
+    ccCoachNote.style.display = coachTargets ? '' : 'none';
+    ccCoachNote.textContent = coachTargets ? coachName + ' has set your targets in your Meal Plan, so those are used above. The calculator below is just for reference — it won\u2019t change them.' : '';
+    const t = activeTargets();
+    if (!t){
       goalSummaryBox.style.display = 'none';
       goalEmptyHint.style.display = '';
       return;
@@ -136,10 +148,10 @@
     goalSummaryBox.style.display = 'grid';
     goalEmptyHint.style.display = 'none';
     const today = loadEntries().find(e => e.date === todayIso());
-    ngsCalories.textContent = (today && today.calories != null ? today.calories : 0) + ' / ' + goalsCache.target_calories + ' kcal';
-    ngsProtein.textContent = (today && today.proteinG != null ? today.proteinG : 0) + ' / ' + goalsCache.target_protein_g + 'g';
-    ngsCarbs.textContent = (today && today.carbsG != null ? today.carbsG : 0) + ' / ' + goalsCache.target_carbs_g + 'g';
-    ngsFat.textContent = (today && today.fatG != null ? today.fatG : 0) + ' / ' + goalsCache.target_fat_g + 'g';
+    ngsCalories.textContent = (today && today.calories != null ? today.calories : 0) + ' / ' + t.calories + ' kcal';
+    ngsProtein.textContent = (today && today.proteinG != null ? today.proteinG : 0) + ' / ' + (t.protein != null ? t.protein : '—') + 'g';
+    ngsCarbs.textContent = (today && today.carbsG != null ? today.carbsG : 0) + ' / ' + (t.carbs != null ? t.carbs : '—') + 'g';
+    ngsFat.textContent = (today && today.fatG != null ? today.fatG : 0) + ' / ' + (t.fat != null ? t.fat : '—') + 'g';
   }
   ccWeightUnitLabel.textContent = getWeightUnit();
   ccCalculateBtn.addEventListener('click', () => {
@@ -157,7 +169,7 @@
     const activityMultiplier = Number(ccActivitySelect.value);
     const goal = ccGoalSelect.value;
     const targets = calcGoals(sex, weightKg, heightCm, age, activityMultiplier, goal);
-    showResults(targets.calories, targets.proteinG, targets.carbsG, targets.fatG);
+    showResults(targets.calories, targets.proteinG, targets.carbsG, targets.fatG, targets.note);
     saveGoals({
       sex: sex, age: age, height_cm: heightCm, weight_kg: weightKg, activity_multiplier: activityMultiplier, goal: goal,
       target_calories: targets.calories, target_protein_g: targets.proteinG, target_carbs_g: targets.carbsG, target_fat_g: targets.fatG
