@@ -413,9 +413,7 @@
   // Client Progress panel state (Coach Dashboard) — kept as plain variables
   // rather than rebuilt from scratch each render, so the selected client/
   // marker survive a dashboard refresh (e.g. after booking a slot).
-  let progressClientId = null;
-  let progressMarker = 'assessment'; // 'assessment' | 'exercise' | 'attendance' | 'compliance'
-  let progressAssessmentField = 'weight'; // 'weight' | 'bodyfat' | 'tapefat'
+  let progressClientId = null; // null = the client grid; an id = that person's charts page
   let progressExercise = null;
   // "Today's Program" marker: programs isn't preloaded in this file's
   // closure (Program Builder's data lives in the main file's own separate
@@ -1062,7 +1060,7 @@
   // a bit larger (900×340 vs 700×320) since this is meant to read as the
   // dashboard's focal graphic, not a tucked-away widget.
   function svgLineChart(points){
-    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
+    const W=chartW,H=CHART_H,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const values = points.map(p=>p.value);
     let minV=Math.min(...values), maxV=Math.max(...values);
@@ -1091,7 +1089,7 @@
     return '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">'+svg+'</svg>';
   }
   function svgBarChart(values, labels){
-    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
+    const W=chartW,H=CHART_H,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const maxV = Math.max(1, Math.max.apply(null, values));
     const n = values.length, gap = 10;
@@ -1113,94 +1111,106 @@
     return '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">'+svg+'</svg>';
   }
 
-  function clientProgressGraphHtml(clientId){
-    if (progressMarker === 'assessment' && progressAssessmentField === 'tapefat'){
-      return tapeBodyFatHtml(clientId);
+  // Chart size for the client page's card grid. renderCoachDashboard sets
+  // chartW from the real card width before building, so the SVG text
+  // stays a readable size on phones and on wide screens alike.
+  let chartW = 560;
+  const CHART_H = 240;
+
+  // Each chart card body: { state: 'ok' | 'empty' | 'loading', html }.
+  // Cards with data sort ahead of empty ones on the client page.
+  const ok = html => ({ state: 'ok', html });
+  const emptyBody = text => ({ state: 'empty', html: '<div class="weight-chart-empty">' + text + '</div>' });
+  const loadingBody = text => ({ state: 'loading', html: '<div class="weight-chart-empty">' + text + '</div>' });
+
+  function findUser(id){
+    const U = window.BNB_USERS;
+    if (!U) return null;
+    const self = U.getSelf && U.getSelf();
+    if (self && self.id === id) return self;
+    return (U.getById && U.getById(id)) || U.getMembers().find(u => u.id === id) || null;
+  }
+
+  function assessmentBody(clientId, field){
+    const entries = (window.BNB_USERS && window.BNB_USERS.getAssessments) ? window.BNB_USERS.getAssessments(clientId) : [];
+    const filtered = entries.filter(a=> a[field] !== '' && a[field] != null && !isNaN(Number(a[field]))).slice().reverse(); // oldest-first
+    if (filtered.length < 2){
+      return emptyBody('Needs at least two assessments with a ' + (field==='weight'?'weight':'body fat') + ' entry.');
     }
-    if (progressMarker === 'assessment'){
-      const field = progressAssessmentField;
-      const label = field === 'weight' ? 'Body Weight (kg)' : 'Body Fat (%)';
-      const entries = (window.BNB_USERS && window.BNB_USERS.getAssessments) ? window.BNB_USERS.getAssessments(clientId) : [];
-      const filtered = entries.filter(a=> a[field] !== '' && a[field] != null && !isNaN(Number(a[field]))).slice().reverse(); // oldest-first
-      if (filtered.length < 2){
-        return '<div class="weight-chart-empty">Not enough assessment data yet — log at least two assessments with a ' + (field==='weight'?'weight':'body fat') + ' entry to see a trend.</div>';
-      }
-      const points = filtered.map(a=> ({ label: fmtChartDate(a.date), value: Number(a[field]) }));
-      return svgLineChart(points) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>' + label + '</span></div>';
-    }
-    if (progressMarker === 'exercise'){
-      if (!progressExercise) return '<div class="weight-chart-empty">This client has no logged Live Session exercises yet.</div>';
-      const points = (window.BNB_MLS && window.BNB_MLS.getExerciseSeries) ? window.BNB_MLS.getExerciseSeries(clientId, progressExercise) : [];
-      if (points.length < 2){
-        return '<div class="weight-chart-empty">Log at least two sessions with this exercise to see a trend.</div>';
-      }
-      const chartPoints = points.map(p=> ({ label: fmtChartDate(p.date), value: p.wt }));
-      return svgLineChart(chartPoints) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>' + progressExercise + ' — top set weight</span></div>';
-    }
-    if (progressMarker === 'attendance'){
-      const counts = (window.BNB_USERS && window.BNB_USERS.getWeeklyVisitCounts) ? window.BNB_USERS.getWeeklyVisitCounts(clientId, 8) : [];
-      if (!counts.some(c=>c>0)){
-        return '<div class="weight-chart-empty">No check-ins logged for this client yet.</div>';
-      }
-      const labels = counts.map((_,i)=> i===counts.length-1 ? 'This wk' : (counts.length-1-i) + 'wk ago');
-      return svgBarChart(counts, labels) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Visits per rolling 7-day window</span></div>';
-    }
-    if (progressMarker === 'compliance'){
-      return complianceHtml(clientId);
-    }
-    if (progressMarker === 'bp' || progressMarker === 'steps'){
-      return vitalsHtml(clientId);
-    }
-    return '';
+    const points = filtered.map(a=> ({ label: fmtChartDate(a.date), value: Number(a[field]) }));
+    const last = points[points.length - 1].value, change = last - points[0].value;
+    return ok('<div class="vitals-summary">Latest <b>' + last + (field==='weight'?' kg':'%') + '</b> · change <b>' + (change > 0 ? '+' : '') + change.toFixed(1) + '</b> since ' + points[0].label + '</div>' + svgLineChart(points));
+  }
+
+  function exerciseBody(clientId){
+    const names = (window.BNB_MLS && window.BNB_MLS.getExerciseNames) ? window.BNB_MLS.getExerciseNames(clientId) : [];
+    if (!names.length) return emptyBody('No logged Live Session exercises yet.');
+    if (names.indexOf(progressExercise) === -1) progressExercise = names[0];
+    let html = '<div class="field cp-card-field"><select id="progress-exercise-select">';
+    names.forEach(n=> html += '<option value="'+esc(n)+'"'+(n===progressExercise?' selected':'')+'>'+esc(n)+'</option>');
+    html += '</select></div>';
+    const points = (window.BNB_MLS && window.BNB_MLS.getExerciseSeries) ? window.BNB_MLS.getExerciseSeries(clientId, progressExercise) : [];
+    if (points.length < 2) return ok(html + '<div class="weight-chart-empty">Log at least two sessions with this exercise to see a trend.</div>');
+    return ok(html + svgLineChart(points.map(p=> ({ label: fmtChartDate(p.date), value: p.wt }))) +
+      '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Top set weight</span></div>');
+  }
+
+  function attendanceBody(clientId){
+    const counts = (window.BNB_USERS && window.BNB_USERS.getWeeklyVisitCounts) ? window.BNB_USERS.getWeeklyVisitCounts(clientId, 8) : [];
+    if (!counts.some(c=>c>0)) return emptyBody('No check-ins logged yet.');
+    const labels = counts.map((_,i)=> i===counts.length-1 ? 'Now' : '-' + (counts.length-1-i) + 'w');
+    return ok(svgBarChart(counts, labels) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Visits per rolling 7-day window</span></div>');
   }
 
   // Blood pressure and steps the member logs in Me > BP and Me > Steps,
   // drawn with the same chart code they see (js/bells-n-barz-vitals.js).
-  function vitalsHtml(clientId){
-    if (!(clientId in vitalsCache)){
-      vitalsCache[clientId] = 'loading';
-      Promise.all([
-        bnbClient.from('blood_pressure_log').select('taken_at,systolic,diastolic,pulse').eq('user_id', clientId).order('taken_at'),
-        bnbClient.from('step_log').select('date,steps').eq('user_id', clientId).order('date')
-      ]).then(([bp, st])=>{
-        if (bp.error) console.error('Supabase load blood_pressure_log failed:', bp.error);
-        if (st.error) console.error('Supabase load step_log failed:', st.error);
-        vitalsCache[clientId] = (bp.error || st.error) ? null : {
-          bp: (bp.data || []).map(r=> ({ t: new Date(r.taken_at).getTime(), sys: r.systolic, dia: r.diastolic, pulse: r.pulse })),
-          steps: st.data || []
-        };
-        if (progressClientId === clientId && (progressMarker === 'bp' || progressMarker === 'steps')) renderCoachDashboard();
-      });
-    }
+  function fetchVitals(clientId){
+    vitalsCache[clientId] = 'loading';
+    Promise.all([
+      bnbClient.from('blood_pressure_log').select('taken_at,systolic,diastolic,pulse').eq('user_id', clientId).order('taken_at'),
+      bnbClient.from('step_log').select('date,steps').eq('user_id', clientId).order('date')
+    ]).then(([bp, st])=>{
+      if (bp.error) console.error('Supabase load blood_pressure_log failed:', bp.error);
+      if (st.error) console.error('Supabase load step_log failed:', st.error);
+      vitalsCache[clientId] = (bp.error || st.error) ? null : {
+        bp: (bp.data || []).map(r=> ({ t: new Date(r.taken_at).getTime(), sys: r.systolic, dia: r.diastolic, pulse: r.pulse })),
+        steps: st.data || []
+      };
+      renderCoachDashboard();
+    });
+  }
+  function vitalsBody(clientId, kind){
+    if (!(clientId in vitalsCache)) fetchVitals(clientId);
     const data = vitalsCache[clientId];
-    if (data === 'loading') return '<div class="weight-chart-empty">Loading…</div>';
-    if (data === null) return '<div class="weight-chart-empty">Couldn’t load this client’s logs.</div>';
+    if (data === 'loading') return loadingBody('Loading…');
+    if (data === null) return emptyBody('Couldn’t load these logs.');
     const V = window.BNB_VITALS;
     const DAY = 86400000, now = Date.now(), days = progressVitalsDays;
-    const W = 900, H = 260;
+    const W = chartW, H = CHART_H;
 
-    if (progressMarker === 'bp'){
+    if (kind === 'bp'){
       const list = data.bp.filter(e=> e.t >= now - days * DAY);
       if (!list.length){
-        return '<div class="weight-chart-empty">' + (data.bp.length ? 'No readings in the last ' + days + ' days.' : 'No blood pressure readings yet. The client logs them in Me &gt; BP.') + '</div>';
+        return emptyBody(data.bp.length ? 'No readings in the last ' + days + ' days.' : 'No readings yet. They’re logged in Me &gt; BP.');
       }
       const latest = data.bp[data.bp.length - 1];
       const cat = V.bpCategory(latest.sys, latest.dia);
       const avgS = Math.round(list.reduce((a,e)=> a + e.sys, 0) / list.length);
       const avgD = Math.round(list.reduce((a,e)=> a + e.dia, 0) / list.length);
+      const avgCat = V.bpCategory(avgS, avgD);
       let html = '<div class="vitals-summary">Latest <b>' + latest.sys + '/' + latest.dia + '</b> <span class="' + cat.cls + '">' + cat.label + '</span>'
         + ' <span class="muted">' + V.fmtDate(latest.t) + '</span>'
-        + ' · ' + days + '-day avg <b>' + avgS + '/' + avgD + '</b> <span class="' + V.bpCategory(avgS, avgD).cls + '">' + V.bpCategory(avgS, avgD).label + '</span>'
+        + ' · avg <b>' + avgS + '/' + avgD + '</b> <span class="' + avgCat.cls + '">' + avgCat.label + '</span>'
         + ' · ' + list.length + ' reading' + (list.length === 1 ? '' : 's') + '</div>';
       html += '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">' + V.bpChartSvg(list, W, H, days) + '</svg>';
       html += '<div class="weight-chart-legend"><span><i class="swatch solid" style="background:var(--accent-2);"></i>Systolic</span><span><i class="swatch solid"></i>Diastolic</span><span><i class="swatch target"></i>120 / 80</span></div>';
-      return html;
+      return ok(html);
     }
 
-    const firstT = V.dayStart(new Date(now - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10)) - (days - 1) * DAY;
+    const firstT = V.dayStart(TODAY) - (days - 1) * DAY;
     const list = data.steps.filter(e=> V.dayStart(e.date) >= firstT);
     if (!list.length){
-      return '<div class="weight-chart-empty">' + (data.steps.length ? 'No steps logged in the last ' + days + ' days.' : 'No steps logged yet. The client logs them in Me &gt; Steps.') + '</div>';
+      return emptyBody(data.steps.length ? 'No steps logged in the last ' + days + ' days.' : 'No steps logged yet. They’re logged in Me &gt; Steps.');
     }
     // The member's own goal is a per-device setting, so the coach sees
     // the common 10,000 as a reference instead.
@@ -1209,39 +1219,37 @@
     const hit = list.filter(e=> e.steps >= ref).length;
     let html = '<div class="vitals-summary">Avg <b>' + V.fmtInt(avg) + '</b> a logged day · ' + list.length + ' of ' + days + ' days logged · '
       + hit + ' at 10k+ · best <b>' + V.fmtInt(Math.max(...list.map(e=> e.steps))) + '</b></div>';
-    html += '<svg class="weight-chart-svg" id="coach-steps-chart" viewBox="0 0 '+W+' '+H+'">' + V.stepsChartSvg(data.steps, list, W, H, days, ref, '10k reference') + '</svg>';
+    html += '<svg class="weight-chart-svg coach-steps-chart" viewBox="0 0 '+W+' '+H+'">' + V.stepsChartSvg(data.steps, list, W, H, days, ref, '10k') + '</svg>';
     html += '<div class="weight-chart-legend"><span><i class="swatch bar"></i>10k+</span><span><i class="swatch bar" style="background:var(--accent-dim);"></i>Under 10k</span><span><i class="swatch dash"></i>7-day avg</span></div>';
-    return html;
+    return ok(html);
   }
 
   // Body fat % from the member's own tape measurements (Me > Weight > Body
   // Composition), using the same formulas they see (js/bells-n-barz-bodyfat.js)
   // and the height on their profile.
-  function tapeBodyFatHtml(clientId){
+  function tapeBodyFatBody(clientId){
     if (!(clientId in measurementsCache)){
       measurementsCache[clientId] = 'loading';
       bnbClient.from('body_measurements').select('*').eq('user_id', clientId).order('date').then(({ data, error })=>{
         if (error) console.error('Supabase load body_measurements failed:', error);
         measurementsCache[clientId] = error ? null : (data || []);
-        if (progressClientId === clientId && progressAssessmentField === 'tapefat') renderCoachDashboard();
+        if (progressClientId === clientId) renderCoachDashboard();
       });
     }
     const rows = measurementsCache[clientId];
-    if (rows === 'loading') return '<div class="weight-chart-empty">Loading measurements…</div>';
-    if (rows === null) return '<div class="weight-chart-empty">Couldn’t load this client’s measurements.</div>';
-    const member = (window.BNB_USERS ? window.BNB_USERS.getMembers() : []).find(u => u.id === clientId);
+    if (rows === 'loading') return loadingBody('Loading measurements…');
+    if (rows === null) return emptyBody('Couldn’t load the measurements.');
+    if (rows.length < 2) return emptyBody('Needs at least two saved measurements in Me &gt; Weight &gt; Body Composition.');
+    const member = findUser(clientId);
     const heightCm = member && parseFloat(member.height);
-    if (!(heightCm > 0)) return '<div class="weight-chart-empty">This client has no height on their profile, which the body fat formulas need.</div>';
-    if (rows.length < 2){
-      return '<div class="weight-chart-empty">Not enough measurements yet — the client needs to save at least two in Me &gt; Weight &gt; Body Composition to see a trend.</div>';
-    }
+    if (!(heightCm > 0)) return emptyBody('No height on the profile, which the body fat formulas need.');
     const BF = window.BNB_BODYFAT;
     const points = rows.map(r=> ({ label: fmtChartDate(r.date), value: Number(BF.estimate({
       sex: r.sex, waistCm: Number(r.waist_cm),
       neckCm: r.neck_cm == null ? null : Number(r.neck_cm),
       hipCm: r.hip_cm == null ? null : Number(r.hip_cm)
     }, heightCm).pct.toFixed(1)) }));
-    return svgLineChart(points) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Body Fat (%) from tape measurements (Navy when neck is measured, otherwise RFM)</span></div>';
+    return ok(svgLineChart(points) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Navy when neck is measured, otherwise RFM</span></div>');
   }
 
   // Same Mon..Sun resolution used elsewhere in this app (main file lines
@@ -1253,30 +1261,25 @@
     return DAY_ORDER[idx === 0 ? 6 : idx - 1];
   }
 
-  // "Today's Program" marker: compares a client's assigned exercises for
-  // today against what they actually logged (window.BNB_MLS.getLoggedExercisesForDate,
+  // "Today's Program": compares a client's assigned exercises for today
+  // against what they actually logged (window.BNB_MLS.getLoggedExercisesForDate,
   // in the main file — same closure that owns mls_history). programs isn't
   // preloaded here, so it's fetched once per client and cached in
   // complianceProgramCache; a cache miss kicks off the fetch and re-renders
-  // the dashboard once it resolves, same fetch-then-rerender pattern used
-  // elsewhere in this file (e.g. refreshPtBookingsFromSupabase -> renderCoachDashboard).
-  function complianceHtml(clientId){
+  // the dashboard once it resolves.
+  function complianceBody(clientId){
     if (!(clientId in complianceProgramCache)){
       complianceProgramCache[clientId] = 'loading';
       bnbClient.from('programs').select('data').eq('owner_id', clientId).then(({ data, error })=>{
         complianceProgramCache[clientId] = (!error && data && data.length) ? data[0].data : null;
-        if (progressClientId === clientId && progressMarker === 'compliance') renderCoachDashboard();
+        if (progressClientId === clientId) renderCoachDashboard();
       });
-      return '<div class="weight-chart-empty">Loading today’s program…</div>';
     }
     const program = complianceProgramCache[clientId];
-    if (program === 'loading') return '<div class="weight-chart-empty">Loading today’s program…</div>';
+    if (program === 'loading') return loadingBody('Loading today’s program…');
 
-    const dayKey = todayDayKey();
-    const blocks = (program && program[dayKey]) || [];
-    if (!blocks.length){
-      return '<div class="weight-chart-empty">Rest day — nothing assigned today.</div>';
-    }
+    const blocks = (program && program[todayDayKey()]) || [];
+    if (!blocks.length) return emptyBody('Rest day — nothing assigned today.');
 
     const logged = (window.BNB_MLS && window.BNB_MLS.getLoggedExercisesForDate) ? window.BNB_MLS.getLoggedExercisesForDate(clientId, TODAY) : null;
     const isFreeform = logged && logged.mode === 'freeform';
@@ -1290,7 +1293,6 @@
     } else if (isFreeform){
       html += '<div class="admin-notice">Logged freeform today — not matched against the assigned list below.</div>';
     }
-
     html += '<table class="admin-table"><tr><th></th><th>Exercise</th><th>Prescribed</th></tr>';
     blocks.forEach(block=>{
       (block.exercises||[]).forEach(ex=>{
@@ -1300,82 +1302,141 @@
       });
     });
     html += '</table>';
+    return ok(html);
+  }
+
+  /* ---------------- CLIENT GRID (Coach Dashboard landing) ---------------- */
+  // The coach first, then every active client. Clicking a card opens that
+  // person's page with all their charts side by side.
+  function progressPeopleIds(){
+    const ids = selfTrainerId ? [selfTrainerId] : [];
+    activeClientIdsForTrainer(selfTrainerId).forEach(id=>{ if (ids.indexOf(id) === -1) ids.push(id); });
+    return ids;
+  }
+  function isMe(id){
+    const real = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    return !!(real && real.id === id);
+  }
+  function initials(name){
+    return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=> w[0]).join('').toUpperCase();
+  }
+  // One query per table for everyone on the grid (last 90 days, the
+  // longest chart range), so the cards can show BP and steps at a glance.
+  let vitalsBatchKey = null;
+  function prefetchVitals(ids){
+    const missing = ids.filter(id=> !(id in vitalsCache));
+    const key = missing.join(',');
+    if (!missing.length || key === vitalsBatchKey) return;
+    vitalsBatchKey = key;
+    missing.forEach(id=> vitalsCache[id] = 'loading');
+    const since = new Date(Date.now() - 90 * 86400000);
+    Promise.all([
+      bnbClient.from('blood_pressure_log').select('user_id,taken_at,systolic,diastolic,pulse').in('user_id', missing).gte('taken_at', since.toISOString()).order('taken_at'),
+      bnbClient.from('step_log').select('user_id,date,steps').in('user_id', missing).gte('date', since.toISOString().slice(0,10)).order('date')
+    ]).then(([bp, st])=>{
+      if (bp.error) console.error('Supabase load blood_pressure_log failed:', bp.error);
+      if (st.error) console.error('Supabase load step_log failed:', st.error);
+      missing.forEach(id=>{
+        vitalsCache[id] = (bp.error || st.error) ? null : {
+          bp: (bp.data || []).filter(r=> r.user_id === id).map(r=> ({ t: new Date(r.taken_at).getTime(), sys: r.systolic, dia: r.diastolic, pulse: r.pulse })),
+          steps: (st.data || []).filter(r=> r.user_id === id).map(r=> ({ date: r.date, steps: r.steps }))
+        };
+      });
+      renderCoachDashboard();
+    });
+  }
+  function clientCardHtml(id){
+    const name = isMe(id) ? (memberName(id) || trainerName(id)) : memberName(id);
+    let sub;
+    if (id === selfTrainerId){
+      sub = isMe(id) ? 'You' : 'Coach';
+    } else {
+      const sess = ptSessionsForTrainer(selfTrainerId).filter(x=> x.p.userId === id).map(x=> x.sl.date).sort();
+      const next = sess.find(d=> d >= TODAY), last = sess.filter(d=> d < TODAY).pop();
+      sub = next ? 'Next 1-on-1 ' + fmtChartDate(next) : last ? 'Last 1-on-1 ' + daysSince(last) + 'd ago' : 'Assigned client';
+    }
+    const V = window.BNB_VITALS, data = vitalsCache[id];
+    let badges = '';
+    if (V && data && data !== 'loading'){
+      const bp = data.bp[data.bp.length - 1];
+      if (bp){ const c = V.bpCategory(bp.sys, bp.dia); badges += '<span class="cp-badge"><i class="bp-dot ' + c.cls + '"></i>' + bp.sys + '/' + bp.dia + '</span>'; }
+      const weekStart = V.dayStart(TODAY) - 6 * 86400000;
+      const wk = data.steps.filter(e=> V.dayStart(e.date) >= weekStart);
+      if (wk.length) badges += '<span class="cp-badge">👟 ' + V.fmtInt(wk.reduce((a,e)=> a + e.steps, 0) / wk.length) + '/day</span>';
+    }
+    const a = (window.BNB_USERS && window.BNB_USERS.getAssessments) ? window.BNB_USERS.getAssessments(id) : [];
+    const w = a.find(x=> x.weight !== '' && x.weight != null && !isNaN(Number(x.weight)));
+    if (w) badges += '<span class="cp-badge">⚖️ ' + Number(w.weight) + ' kg</span>';
+    return '<button type="button" class="cp-client' + (id === selfTrainerId ? ' self' : '') + '" data-client="' + esc(id) + '">'
+      + '<span class="cp-avatar">' + esc(initials(name)) + '</span>'
+      + '<span class="cp-client-text"><span class="cp-name">' + esc(name) + '</span><span class="cp-sub">' + esc(sub) + '</span>'
+      + (badges ? '<span class="cp-badges">' + badges + '</span>' : '') + '</span>'
+      + '<span class="cp-go">›</span></button>';
+  }
+  function clientGridHtml(){
+    const ids = progressPeopleIds();
+    prefetchVitals(ids);
+    let html = '<div class="section-sub-head" style="margin-top:0;"><h3>Clients</h3><span class="field-hint">Tap someone to see all their charts</span></div>';
+    html += '<div class="cp-grid-clients">' + ids.map(clientCardHtml).join('') + '</div>';
+    if (ids.length < 2){
+      html += '<div class="field-hint" style="margin:-6px 0 18px;">No active clients yet. They show up here once you have a confirmed 1-on-1 booking with someone or they pick you as their coach.</div>';
+    }
     return html;
   }
 
-  function clientProgressHtml(){
-    const clientIds = activeClientIdsForTrainer(selfTrainerId);
-    if (!clientIds.length){
-      return '<div class="weight-card" style="margin-bottom:24px;"><h3>Client Progress</h3><div class="empty-msg">No active clients yet — progress charts show up here once you have a confirmed 1-on-1 booking with someone.</div></div>';
-    }
-    if (!progressClientId || clientIds.indexOf(progressClientId) === -1) progressClientId = clientIds[0];
-    if (progressMarker === 'exercise' && !progressExercise){
-      const names = (window.BNB_MLS && window.BNB_MLS.getExerciseNames) ? window.BNB_MLS.getExerciseNames(progressClientId) : [];
-      if (names.length) progressExercise = names[0];
-    }
+  /* ---------------- CLIENT PAGE (all charts) ---------------- */
+  function clientPageHtml(id){
+    const name = memberName(id) || trainerName(id);
+    const cards = [
+      { title: 'Body Weight', body: assessmentBody(id, 'weight') },
+      { title: 'Body Fat %', body: assessmentBody(id, 'bodyfat') },
+      { title: 'Tape Body Fat %', body: tapeBodyFatBody(id) },
+      { title: 'Blood Pressure', body: vitalsBody(id, 'bp') },
+      { title: 'Steps', body: vitalsBody(id, 'steps') },
+      { title: 'Exercise Load', body: exerciseBody(id) },
+      { title: 'Attendance', body: attendanceBody(id) },
+      { title: 'Today\'s Program', body: complianceBody(id) }
+    ];
+    // Charts with data in the main grid; the empty ones get a compact
+    // row of their own underneath so they don't stretch beside a chart.
+    const full = cards.filter(c=> c.body.state !== 'empty');
+    const empty = cards.filter(c=> c.body.state === 'empty');
 
-    let html = '<div class="weight-card" style="margin-bottom:24px;">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">';
-    html += '<h3 style="margin:0;">Client Progress</h3>';
-    html += '<div class="field" style="margin:0;min-width:200px;"><select id="progress-client-select">';
-    clientIds.forEach(id=> html += '<option value="'+id+'"'+(id===progressClientId?' selected':'')+'>'+esc(memberName(id))+'</option>');
-    html += '</select></div>';
-    html += '</div>';
-
-    html += '<div class="weight-chart-card" style="margin-bottom:14px;">' + clientProgressGraphHtml(progressClientId) + '</div>';
-
-    html += '<div class="subtab-bar" id="progress-marker-tabs">';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='assessment'?' active':'')+'" data-marker="assessment">Body Weight &amp; Fat %</button>';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='exercise'?' active':'')+'" data-marker="exercise">Exercise Load</button>';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='attendance'?' active':'')+'" data-marker="attendance">Attendance</button>';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='compliance'?' active':'')+'" data-marker="compliance">Today\'s Program</button>';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='bp'?' active':'')+'" data-marker="bp">Blood Pressure</button>';
-    html += '<button type="button" class="subtab-btn'+(progressMarker==='steps'?' active':'')+'" data-marker="steps">Steps</button>';
-    html += '</div>';
-
-    if (progressMarker === 'assessment'){
-      html += '<div class="unit-switch" id="progress-assessment-toggle" style="margin-top:2px;">';
-      html += '<button type="button" data-field="weight" class="'+(progressAssessmentField==='weight'?'active':'')+'">Weight</button>';
-      html += '<button type="button" data-field="bodyfat" class="'+(progressAssessmentField==='bodyfat'?'active':'')+'">Body Fat %</button>';
-      html += '<button type="button" data-field="tapefat" class="'+(progressAssessmentField==='tapefat'?'active':'')+'">Tape Body Fat %</button>';
+    let html = '<div class="cp-page-head">';
+    html += '<button type="button" class="btn2" id="cp-back">← All clients</button>';
+    html += '<span class="cp-avatar">' + esc(initials(name)) + '</span>';
+    html += '<h3>' + esc(name) + (id === selfTrainerId && isMe(id) ? ' <span class="field-hint">(you)</span>' : '') + '</h3>';
+    html += '<div class="unit-switch" id="progress-vitals-days" title="Range for Blood Pressure and Steps">';
+    [30, 90].forEach(d=> html += '<button type="button" data-days="'+d+'" class="'+(progressVitalsDays===d?'active':'')+'">'+d+' days</button>');
+    html += '</div></div>';
+    if (full.length){
+      html += '<div class="cp-chart-grid">';
+      full.forEach(c=> html += '<div class="weight-chart-card cp-card"><h3>' + c.title + '</h3>' + c.body.html + '</div>');
       html += '</div>';
-    } else if (progressMarker === 'bp' || progressMarker === 'steps'){
-      html += '<div class="unit-switch" id="progress-vitals-days" style="margin-top:2px;">';
-      [30, 90].forEach(d=> html += '<button type="button" data-days="'+d+'" class="'+(progressVitalsDays===d?'active':'')+'">'+d+' days</button>');
-      html += '</div>';
-    } else if (progressMarker === 'exercise'){
-      const names = (window.BNB_MLS && window.BNB_MLS.getExerciseNames) ? window.BNB_MLS.getExerciseNames(progressClientId) : [];
-      if (names.length){
-        html += '<div class="field" style="max-width:280px;margin-top:14px;"><label>Exercise</label><select id="progress-exercise-select">';
-        names.forEach(n=> html += '<option value="'+esc(n)+'"'+(n===progressExercise?' selected':'')+'>'+esc(n)+'</option>');
-        html += '</select></div>';
-      }
     }
-
-    html += '</div>';
+    if (empty.length){
+      html += '<div class="section-sub-head" style="margin-top:0;"><h3>No data yet</h3></div>';
+      html += '<div class="cp-empty-grid">';
+      empty.forEach(c=> html += '<div class="weight-chart-card cp-card empty"><h3>' + c.title + '</h3>' + c.body.html + '</div>');
+      html += '</div>';
+    }
     return html;
   }
 
   function wireClientProgressPanel(){
-    const clientSel = document.getElementById('progress-client-select');
-    if (clientSel) clientSel.addEventListener('change', ()=>{
-      progressClientId = clientSel.value;
-      progressExercise = null;
+    document.querySelectorAll('#coach-dashboard-body .cp-client').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        progressClientId = btn.getAttribute('data-client');
+        progressExercise = null;
+        renderCoachDashboard();
+        const body = document.getElementById('coach-dashboard-body');
+        if (body) body.scrollIntoView({ block: 'start' });
+      });
+    });
+    const back = document.getElementById('cp-back');
+    if (back) back.addEventListener('click', ()=>{
+      progressClientId = null;
       renderCoachDashboard();
-    });
-    const markerTabs = document.getElementById('progress-marker-tabs');
-    if (markerTabs) markerTabs.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        progressMarker = btn.getAttribute('data-marker');
-        renderCoachDashboard();
-      });
-    });
-    const assessToggle = document.getElementById('progress-assessment-toggle');
-    if (assessToggle) assessToggle.querySelectorAll('button').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        progressAssessmentField = btn.getAttribute('data-field');
-        renderCoachDashboard();
-      });
     });
     const vitalsDays = document.getElementById('progress-vitals-days');
     if (vitalsDays) vitalsDays.querySelectorAll('button').forEach(btn=>{
@@ -1402,7 +1463,12 @@
     const stale = staleClientsForTrainer(selfTrainerId);
     const unpaid = unpaidForTrainerClients(selfTrainerId);
 
-    let html = clientProgressHtml();
+    // A person's page replaces the dashboard until "All clients" is hit.
+    const people = progressPeopleIds();
+    if (progressClientId && people.indexOf(progressClientId) === -1) progressClientId = null;
+    if (progressClientId) return clientPageHtml(progressClientId);
+
+    let html = clientGridHtml();
 
     html += '<div class="stat-block">';
     html += statCardHtml(agenda.length, 'Sessions Today');
@@ -1452,6 +1518,13 @@
   function renderCoachDashboard(){
     const body = document.getElementById('coach-dashboard-body');
     if (!body) return;
+    // Two chart columns when there's room, one on phones; card padding
+    // and border are about 42px.
+    const w = body.clientWidth;
+    if (w){
+      const cols = w >= 860 ? 2 : 1;
+      chartW = Math.max(300, Math.round((w - 16 * (cols - 1)) / cols - 42));
+    }
     body.innerHTML = coachDashboardHtml();
 
     wireClientProgressPanel();
@@ -1927,6 +2000,19 @@
   // this module — so the Dashboard's "unpaid invoices" line can go stale
   // otherwise. Re-render just the dashboard piece whenever the COACH tab
   // itself is opened, which is cheap and catches that case.
+  // Chart widths follow the card width, so redraw a person's page when
+  // the window changes size enough to matter.
+  let lastDashWidth = 0, dashResizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(dashResizeTimer);
+    dashResizeTimer = setTimeout(()=>{
+      const body = document.getElementById('coach-dashboard-body');
+      if (!body || !progressClientId || !body.clientWidth) return;
+      if (Math.abs(body.clientWidth - lastDashWidth) < 40) return;
+      lastDashWidth = body.clientWidth;
+      renderCoachDashboard();
+    }, 200);
+  });
   window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); };
 
 })();
