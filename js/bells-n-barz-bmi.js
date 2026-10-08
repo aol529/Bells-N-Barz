@@ -351,6 +351,8 @@
       }
     }
 
+    renderHowItWorks(heightCmNow, m, latest);
+
     // ---- Trend (saved entries) ----
     if (!heightCmNow || bcEntries.length === 0){
       bcChartEmpty.style.display = 'block';
@@ -364,6 +366,54 @@
       buildLineChart(bcChartSvg, points, v => v.toFixed(1) + '% body fat');
     }
   }
+
+  // "How it works" tab: each equation worked through on the member's own
+  // numbers, so they can see exactly where every result comes from.
+  function renderHowItWorks(heightCmNow, m, latest){
+    const yours = {};
+    const f1 = v => v.toFixed(1), f2 = v => v.toFixed(2);
+    const female = m.sex === 'female';
+    if (heightCmNow && m.waistCm){
+      const h = heightCmNow, w = m.waistCm;
+      yours.whtr = 'Yours: ' + f1(w) + ' cm ÷ ' + f1(h) + ' cm = <b>' + f2(BF.whtr(h, w)) + '</b> (' + BF.whtrCategory(BF.whtr(h, w)).label.toLowerCase() + ').';
+      yours.rfm = 'Yours: ' + (female ? 76 : 64) + ' − (20 × ' + f1(h) + ' ÷ ' + f1(w) + ') = <b>' + f1(BF.rfm(m.sex, h, w)) + '%</b>.';
+      const navyPct = BF.navy(m.sex, h, w, m.neckCm, m.hipCm);
+      if (navyPct !== null){
+        const hi = h / 2.54, wi = w / 2.54, ni = m.neckCm / 2.54;
+        yours.navy = female
+          ? 'Yours, in inches: 163.205 × log₁₀(' + f1(wi) + ' + ' + f1(m.hipCm / 2.54) + ' − ' + f1(ni) + ') − 97.684 × log₁₀(' + f1(hi) + ') − 78.387 = <b>' + f1(navyPct) + '%</b>.'
+          : 'Yours, in inches: 86.010 × log₁₀(' + f1(wi) + ' − ' + f1(ni) + ') − 70.041 × log₁₀(' + f1(hi) + ') + 36.76 = <b>' + f1(navyPct) + '%</b>.';
+      } else {
+        yours.navy = 'Add your neck' + (female ? ' and hips' : '') + ' on the Calculator tab to see yours.';
+      }
+      if (latest){
+        const est = BF.estimate(m, h);
+        const lean = latest.kg * (1 - est.pct / 100);
+        const hm = h / 100;
+        yours.ffmi = 'Yours: ' + f1(latest.kg) + ' kg × (1 − ' + f1(est.pct) + ' ÷ 100) = ' + f1(lean) + ' kg lean, then ' + f1(lean) + ' ÷ ' + f2(hm) + '² = <b>' + f1(BF.ffmi(latest.kg, h, est.pct)) + '</b> (using ' + est.method + ' body fat).';
+        const bmi = latest.kg / (hm * hm);
+        yours.absi = 'Yours: ' + f2(w / 100) + ' ÷ (' + f1(bmi) + '<sup>2/3</sup> × ' + f2(hm) + '<sup>1/2</sup>) = <b>' + BF.absi(latest.kg, h, w).toFixed(4) + '</b>.';
+      } else {
+        yours.ffmi = yours.absi = 'Log a weight in the Weight Log above to see yours.';
+      }
+    } else {
+      const need = !heightCmNow ? 'Enter your height in the BMI Calculator' : 'Enter your waist on the Calculator tab';
+      ['whtr', 'rfm', 'navy', 'ffmi', 'absi'].forEach(k => { yours[k] = need + ' to see yours.'; });
+    }
+    document.querySelectorAll('#bodycomp-page-how [data-bc-yours]').forEach(el => {
+      el.innerHTML = yours[el.getAttribute('data-bc-yours')] || '';
+    });
+  }
+
+  const bcPageTabs = document.getElementById('bodycomp-page-tabs');
+  if (bcPageTabs) bcPageTabs.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.getAttribute('data-bc-page');
+      bcPageTabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      document.getElementById('bodycomp-page-calc').style.display = page === 'calc' ? 'block' : 'none';
+      document.getElementById('bodycomp-page-how').style.display = page === 'how' ? 'block' : 'none';
+    });
+  });
 
   async function saveMeasurement(){
     const m = formMeasurement();

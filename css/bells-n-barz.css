@@ -2296,3 +2296,10 @@ header.site{
 .shop-add{display:grid; grid-template-columns:minmax(0,1fr) 170px auto; gap:8px; margin:12px 0;}
 @media (max-width:520px){ .shop-add{grid-template-columns:minmax(0,1fr) auto;} .shop-add select{grid-column:1 / -1; grid-row:2;} .shop-item{grid-template-columns:minmax(0,1fr) 90px auto;} }
 .shop-coach-line{margin:-4px 0 10px;}
+
+/* ---------- BODY COMPOSITION: HOW IT WORKS ---------- */
+#bodycomp-page-tabs{margin-bottom:18px;}
+.bc-eq{font-family:'IBM Plex Mono',monospace;font-size:13.5px;line-height:1.7;color:var(--text);background:var(--surface-2);border:1px solid var(--line-soft);border-radius:6px;padding:10px 14px;margin:0 0 12px;overflow-x:auto;}
+.bc-yours{font-size:13.5px;color:var(--muted);border-left:2px solid var(--accent-dim);padding-left:12px;}
+.bc-yours b{color:var(--accent);}
+.bc-yours:empty{display:none;}

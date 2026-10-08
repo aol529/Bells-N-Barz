@@ -1637,6 +1637,11 @@
 </div>
 <div class="bmi-section" id="bodycomp-section">
 <div class="bmi-section-head">Body Composition</div>
+<div class="sched-sub" id="bodycomp-page-tabs">
+<button class="active" data-bc-page="calc" type="button">Calculator</button>
+<button data-bc-page="how" type="button">How it works</button>
+</div>
+<div id="bodycomp-page-calc">
 <div class="bmi-grid">
 <div class="weight-card">
 <h3>Your Measurements</h3>
@@ -1699,6 +1704,41 @@
 <div class="weight-chart-legend" id="bodycomp-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>Body fat % per saved entry (Navy when neck is measured, otherwise RFM)</span>
 </div>
+</div>
+</div>
+<div id="bodycomp-page-how" style="display:none;">
+<p class="mp-how-lede">BMI only knows your height and weight, so it can't tell muscle from fat. These five calculations add a tape measure. Here's each equation, what it tells you, and the math on your own numbers (from the Calculator tab, the BMI height and your latest Weight Log entry).</p>
+<div class="mp-how-step"><div class="mp-how-num">1</div><div>
+<h3>Waist-to-Height Ratio</h3>
+<div class="bc-eq">WHtR = waist ÷ height</div>
+<p>Use the same units for both. Under <b>0.5</b> is the usual healthy target: keep your waist under half your height. It's the simplest of these checks and a strong predictor of heart and metabolic risk. Under 0.4 reads as low, 0.5–0.6 as increased risk, and 0.6 and above as high risk.</p>
+<p class="bc-yours" data-bc-yours="whtr"></p>
+</div></div>
+<div class="mp-how-step"><div class="mp-how-num">2</div><div>
+<h3>Relative Fat Mass (RFM)</h3>
+<div class="bc-eq">Men: RFM = 64 − (20 × height ÷ waist)<br/>Women: RFM = 76 − (20 × height ÷ waist)</div>
+<p>Gives an estimated body fat %. Height and waist must be in the same units. It was checked against DEXA scans and tracks body fat better than BMI, and because it uses your waist, extra muscle doesn't count against you.</p>
+<p class="bc-yours" data-bc-yours="rfm"></p>
+</div></div>
+<div class="mp-how-step"><div class="mp-how-num">3</div><div>
+<h3>U.S. Navy Body Fat</h3>
+<div class="bc-eq">Men: 86.010 × log₁₀(waist − neck) − 70.041 × log₁₀(height) + 36.76<br/>Women: 163.205 × log₁₀(waist + hips − neck) − 97.684 × log₁₀(height) − 78.387</div>
+<p>All measurements in <b>inches</b> (the app converts for you). It adds your neck, and for women your hips, so it uses more of your shape than RFM and is usually within a few percentage points of lab methods. When you've measured your neck, the app uses this one for FFMI and the trend chart; otherwise it falls back to RFM.</p>
+<p class="bc-yours" data-bc-yours="navy"></p>
+</div></div>
+<div class="mp-how-step"><div class="mp-how-num">4</div><div>
+<h3>Fat-Free Mass Index (FFMI)</h3>
+<div class="bc-eq">Lean mass (kg) = weight × (1 − body fat % ÷ 100)<br/>FFMI = lean mass ÷ height (m)²</div>
+<p>The athlete's version of BMI: it measures how much muscle you carry for your height, so it rewards muscle instead of counting it against you. Untrained men usually score about 18–20 and well-trained men 22–25; women run about 3–4 points lower. It needs a body fat % first, which comes from step 3 (or step 2).</p>
+<p class="bc-yours" data-bc-yours="ffmi"></p>
+</div></div>
+<div class="mp-how-step"><div class="mp-how-num">5</div><div>
+<h3>A Body Shape Index (ABSI)</h3>
+<div class="bc-eq">ABSI = waist ÷ (BMI<sup>2/3</sup> × height<sup>1/2</sup>)</div>
+<p>Waist and height in <b>metres</b>, BMI from kg and metres. It flags belly fat independently of BMI, and it's mostly used in research, so there's no simple healthy cut-off. Compare it against your own past readings.</p>
+<p class="bc-yours" data-bc-yours="absi"></p>
+</div></div>
+<div class="admin-notice"><b>Which should you watch?</b> For a quick health check, waist-to-height ratio. To understand your build, take body fat from the Navy formula (or RFM), then look at FFMI. Every tape-measure formula is an estimate, so measure the same way each time, relaxed and not sucking in, and pay more attention to the trend than to any single reading. Not calibrated for children or pregnancy.</div>
 </div>
 </div>
 <div class="weight-history">
