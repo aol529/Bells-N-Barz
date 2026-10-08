@@ -415,13 +415,16 @@
   // marker survive a dashboard refresh (e.g. after booking a slot).
   let progressClientId = null;
   let progressMarker = 'assessment'; // 'assessment' | 'exercise' | 'attendance' | 'compliance'
-  let progressAssessmentField = 'weight'; // 'weight' | 'bodyfat'
+  let progressAssessmentField = 'weight'; // 'weight' | 'bodyfat' | 'tapefat'
   let progressExercise = null;
   // "Today's Program" marker: programs isn't preloaded in this file's
   // closure (Program Builder's data lives in the main file's own separate
   // script), so each selected client's today's-program blob is fetched
   // once on demand and cached here, keyed by client id.
   let complianceProgramCache = {};
+  // "Tape Body Fat %": a client's saved body_measurements rows, fetched
+  // once per client on demand, same pattern as complianceProgramCache.
+  let measurementsCache = {};
 
   /* ---------------- IDENTITY ROW ---------------- */
   // Booking is member-only now — the old Admin view (class/session
@@ -1107,6 +1110,9 @@
   }
 
   function clientProgressGraphHtml(clientId){
+    if (progressMarker === 'assessment' && progressAssessmentField === 'tapefat'){
+      return tapeBodyFatHtml(clientId);
+    }
     if (progressMarker === 'assessment'){
       const field = progressAssessmentField;
       const label = field === 'weight' ? 'Body Weight (kg)' : 'Body Fat (%)';
@@ -1139,6 +1145,36 @@
       return complianceHtml(clientId);
     }
     return '';
+  }
+
+  // Body fat % from the member's own tape measurements (Me > Weight > Body
+  // Composition), using the same formulas they see (js/bells-n-barz-bodyfat.js)
+  // and the height on their profile.
+  function tapeBodyFatHtml(clientId){
+    if (!(clientId in measurementsCache)){
+      measurementsCache[clientId] = 'loading';
+      bnbClient.from('body_measurements').select('*').eq('user_id', clientId).order('date').then(({ data, error })=>{
+        if (error) console.error('Supabase load body_measurements failed:', error);
+        measurementsCache[clientId] = error ? null : (data || []);
+        if (progressClientId === clientId && progressAssessmentField === 'tapefat') renderCoachDashboard();
+      });
+    }
+    const rows = measurementsCache[clientId];
+    if (rows === 'loading') return '<div class="weight-chart-empty">Loading measurements…</div>';
+    if (rows === null) return '<div class="weight-chart-empty">Couldn’t load this client’s measurements.</div>';
+    const member = (window.BNB_USERS ? window.BNB_USERS.getMembers() : []).find(u => u.id === clientId);
+    const heightCm = member && parseFloat(member.height);
+    if (!(heightCm > 0)) return '<div class="weight-chart-empty">This client has no height on their profile, which the body fat formulas need.</div>';
+    if (rows.length < 2){
+      return '<div class="weight-chart-empty">Not enough measurements yet — the client needs to save at least two in Me &gt; Weight &gt; Body Composition to see a trend.</div>';
+    }
+    const BF = window.BNB_BODYFAT;
+    const points = rows.map(r=> ({ label: fmtChartDate(r.date), value: Number(BF.estimate({
+      sex: r.sex, waistCm: Number(r.waist_cm),
+      neckCm: r.neck_cm == null ? null : Number(r.neck_cm),
+      hipCm: r.hip_cm == null ? null : Number(r.hip_cm)
+    }, heightCm).pct.toFixed(1)) }));
+    return svgLineChart(points) + '<div class="weight-chart-legend"><span><i class="swatch solid"></i>Body Fat (%) from tape measurements (Navy when neck is measured, otherwise RFM)</span></div>';
   }
 
   // Same Mon..Sun resolution used elsewhere in this app (main file lines
@@ -1232,6 +1268,7 @@
       html += '<div class="unit-switch" id="progress-assessment-toggle" style="margin-top:2px;">';
       html += '<button type="button" data-field="weight" class="'+(progressAssessmentField==='weight'?'active':'')+'">Weight</button>';
       html += '<button type="button" data-field="bodyfat" class="'+(progressAssessmentField==='bodyfat'?'active':'')+'">Body Fat %</button>';
+      html += '<button type="button" data-field="tapefat" class="'+(progressAssessmentField==='tapefat'?'active':'')+'">Tape Body Fat %</button>';
       html += '</div>';
     } else if (progressMarker === 'exercise'){
       const names = (window.BNB_MLS && window.BNB_MLS.getExerciseNames) ? window.BNB_MLS.getExerciseNames(progressClientId) : [];

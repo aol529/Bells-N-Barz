@@ -116,12 +116,13 @@
     });
   });
 
-  function buildBmiChart(points){
+  // points: [{ date, value }]; tip(value) is the dot's hover text after the date
+  function buildLineChart(svgEl, points, tip){
     const W = 700, H = 320, padL = 44, padR = 20, padT = 20, padB = 36;
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     const dates = points.map(p => new Date(p.date + 'T00:00:00').getTime());
-    const values = points.map(p => p.bmi);
+    const values = points.map(p => p.value);
     let minD = Math.min(...dates), maxD = Math.max(...dates);
     if (minD === maxD) { minD -= 86400000; maxD += 86400000; }
     let minV = Math.min(...values), maxV = Math.max(...values);
@@ -160,10 +161,10 @@
     points.forEach((p, i) => {
       const xx = x(new Date(p.date + 'T00:00:00').getTime());
       const yy = y(values[i]);
-      svg += `<circle class="data-dot" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.5"><title>${fmtDate(p.date)}: BMI ${values[i].toFixed(1)}</title></circle>`;
+      svg += `<circle class="data-dot" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.5"><title>${fmtDate(p.date)}: ${tip(values[i])}</title></circle>`;
     });
 
-    chartSvg.innerHTML = svg;
+    svgEl.innerHTML = svg;
   }
 
   function renderBmi(){
@@ -203,12 +204,219 @@
       chartLegend.style.display = 'none';
     } else {
       const m = effectiveHeightCm / 100;
-      const points = entries.map(e => ({ date: e.date, bmi: e.kg / (m * m) }));
+      const points = entries.map(e => ({ date: e.date, value: e.kg / (m * m) }));
       chartEmpty.style.display = 'none';
       chartSvg.style.display = 'block';
       chartLegend.style.display = 'flex';
-      buildBmiChart(points);
+      buildLineChart(chartSvg, points, v => 'BMI ' + v.toFixed(1));
     }
+
+    renderBodyComp();
+  }
+
+  /* ---------------- BODY COMPOSITION ---------------- */
+  // Tape-measure estimates that work better than BMI for athletes
+  // (formulas in js/bells-n-barz-bodyfat.js, shared with the Coach
+  // Dashboard). Saved measurements live in Supabase body_measurements,
+  // one row per member per day, readable by their coach. The results
+  // card follows the inputs live; the trend chart uses saved entries.
+  // Sex and the in/cm choice are per-device preferences.
+  const BF = window.BNB_BODYFAT;
+  const BC_PREFS_KEY = 'bnb-bodycomp-prefs';
+  const bcSexSwitch = document.getElementById('bodycomp-sex-switch');
+  const bcUnitSwitch = document.getElementById('bodycomp-unit-switch');
+  const bcDate = document.getElementById('bodycomp-date');
+  const bcWaist = document.getElementById('bodycomp-waist');
+  const bcNeck = document.getElementById('bodycomp-neck');
+  const bcHip = document.getElementById('bodycomp-hip');
+  const bcHipWrap = document.getElementById('bodycomp-hip-wrap');
+  const bcSubmit = document.getElementById('bodycomp-submit');
+  const bcStatus = document.getElementById('bodycomp-status');
+  const bcPlaceholder = document.getElementById('bodycomp-placeholder');
+  const bcResults = document.getElementById('bodycomp-results');
+  const bcChartEmpty = document.getElementById('bodycomp-chart-empty');
+  const bcChartSvg = document.getElementById('bodycomp-chart-svg');
+  const bcChartLegend = document.getElementById('bodycomp-chart-legend');
+
+  let bcPrefs = { sex: 'male', unit: 'in' };
+  try { Object.assign(bcPrefs, JSON.parse(localStorage.getItem(BC_PREFS_KEY)) || {}); } catch(e) {}
+  function savePrefs(){
+    try { localStorage.setItem(BC_PREFS_KEY, JSON.stringify(bcPrefs)); } catch(e) {}
+  }
+
+  // [{ date, sex, waistCm, neckCm, hipCm }], oldest first
+  let bcEntries = [];
+  function rowToMeasurement(r){
+    return { date: r.date, sex: r.sex, waistCm: Number(r.waist_cm),
+      neckCm: r.neck_cm == null ? null : Number(r.neck_cm),
+      hipCm: r.hip_cm == null ? null : Number(r.hip_cm) };
+  }
+  async function refreshMeasurementsFromSupabase(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return; // guest — nothing saved to load
+    const { data, error } = await bnbClient.from('body_measurements').select('*').eq('user_id', me.id).order('date');
+    if (error) { console.error('Supabase load body_measurements failed:', error); return; }
+    bcEntries = (data || []).map(rowToMeasurement);
+    // Start the form from the latest saved entry, unless they've begun typing
+    const latest = bcEntries[bcEntries.length - 1];
+    if (latest && !bcWaist.value && !bcNeck.value && !bcHip.value){
+      bcPrefs.sex = latest.sex;
+      fillInputs(latest);
+      syncSwitches();
+    }
+    renderBodyComp();
+  }
+
+  function todayIso(){
+    const d = new Date();
+    return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+  const toCm = v => bcPrefs.unit === 'in' ? v * 2.54 : v;
+  const fromCm = cm => bcPrefs.unit === 'in' ? cm / 2.54 : cm;
+  function readCm(input){
+    const v = parseFloat(input.value);
+    return v > 0 ? toCm(v) : null;
+  }
+  // What's in the form right now
+  function formMeasurement(){
+    return { sex: bcPrefs.sex, waistCm: readCm(bcWaist), neckCm: readCm(bcNeck),
+      hipCm: bcPrefs.sex === 'female' ? readCm(bcHip) : null };
+  }
+  function fillInputs(m){
+    [[bcWaist, m.waistCm], [bcNeck, m.neckCm], [bcHip, m.hipCm]].forEach(([input, cm]) => {
+      input.value = cm ? fromCm(cm).toFixed(1) : '';
+    });
+  }
+  function syncSwitches(){
+    bcSexSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-sex') === bcPrefs.sex));
+    bcUnitSwitch.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.getAttribute('data-unit') === bcPrefs.unit));
+    bcHipWrap.style.display = bcPrefs.sex === 'female' ? 'block' : 'none';
+    document.getElementById('bc-navy-hip-note').style.display = bcPrefs.sex === 'female' ? 'inline' : 'none';
+  }
+  function showStatus(text){
+    bcStatus.textContent = text;
+    bcStatus.style.display = text ? 'block' : 'none';
+  }
+
+  function setText(id, text, cls){
+    const el = document.getElementById(id);
+    el.textContent = text;
+    if (cls !== undefined) el.className = cls;
+  }
+
+  function renderBodyComp(){
+    if (!bcResults) return;
+    const heightCmNow = currentHeightCm() || loadHeightCm();
+    const entries = loadWeightEntries();
+    const latest = entries.length ? entries[entries.length - 1] : null;
+    const m = formMeasurement();
+
+    // ---- Results (live from the form) ----
+    if (!heightCmNow || !m.waistCm){
+      bcPlaceholder.textContent = !heightCmNow
+        ? 'Enter your height in the BMI Calculator above to see your results.'
+        : 'Enter your waist measurement to see your results.';
+      bcPlaceholder.style.display = 'block';
+      bcResults.style.display = 'none';
+    } else {
+      bcPlaceholder.style.display = 'none';
+      bcResults.style.display = 'block';
+
+      const ratio = BF.whtr(heightCmNow, m.waistCm);
+      const wCat = BF.whtrCategory(ratio);
+      setText('bc-whtr', ratio.toFixed(2));
+      setText('bc-whtr-cat', wCat.label, wCat.cls);
+
+      setText('bc-rfm', BF.rfm(m.sex, heightCmNow, m.waistCm).toFixed(1) + '%');
+
+      const navyPct = BF.navy(m.sex, heightCmNow, m.waistCm, m.neckCm, m.hipCm);
+      if (navyPct !== null){
+        setText('bc-navy', navyPct.toFixed(1) + '%');
+        setText('bc-navy-sub', 'body fat');
+      } else {
+        setText('bc-navy', '—');
+        setText('bc-navy-sub', m.neckCm && (m.sex === 'male' || m.hipCm) ? 'check measurements'
+          : m.sex === 'female' ? 'needs neck + hips' : 'needs neck');
+      }
+
+      if (latest){
+        const est = BF.estimate(m, heightCmNow);
+        setText('bc-ffmi', BF.ffmi(latest.kg, heightCmNow, est.pct).toFixed(1));
+        setText('bc-ffmi-sub', 'using ' + est.method + ' body fat');
+        setText('bc-absi', BF.absi(latest.kg, heightCmNow, m.waistCm).toFixed(4));
+      } else {
+        setText('bc-ffmi', '—');
+        setText('bc-ffmi-sub', 'needs a weight entry');
+        setText('bc-absi', '—');
+      }
+    }
+
+    // ---- Trend (saved entries) ----
+    if (!heightCmNow || bcEntries.length === 0){
+      bcChartEmpty.style.display = 'block';
+      bcChartSvg.style.display = 'none';
+      bcChartLegend.style.display = 'none';
+    } else {
+      const points = bcEntries.map(e => ({ date: e.date, value: BF.estimate(e, heightCmNow).pct }));
+      bcChartEmpty.style.display = 'none';
+      bcChartSvg.style.display = 'block';
+      bcChartLegend.style.display = 'flex';
+      buildLineChart(bcChartSvg, points, v => v.toFixed(1) + '% body fat');
+    }
+  }
+
+  async function saveMeasurement(){
+    const m = formMeasurement();
+    if (!m.waistCm){ bcWaist.focus(); return; }
+    if (m.sex === 'female' && m.neckCm && !m.hipCm){ bcHip.focus(); showStatus('Add your hips too, or clear the neck field.'); return; }
+    const date = bcDate.value || todayIso();
+    const entry = Object.assign({ date }, m);
+
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (me){
+      bcSubmit.disabled = true;
+      const { error } = await bnbClient.from('body_measurements').upsert({
+        user_id: me.id, date, sex: m.sex,
+        waist_cm: +m.waistCm.toFixed(2),
+        neck_cm: m.neckCm ? +m.neckCm.toFixed(2) : null,
+        hip_cm: m.hipCm ? +m.hipCm.toFixed(2) : null
+      }, { onConflict: 'user_id,date' });
+      bcSubmit.disabled = false;
+      if (error){
+        console.error('Supabase save body_measurements failed:', error);
+        showStatus('Couldn\'t save your measurements. Please try again.');
+        return;
+      }
+    }
+    bcEntries = bcEntries.filter(e => e.date !== date).concat([entry])
+      .sort((a, b) => a.date.localeCompare(b.date));
+    showStatus(me ? 'Saved for ' + fmtDate(date) + '.' : 'Saved for this visit only. Sign in to keep your measurements.');
+    renderBodyComp();
+  }
+
+  if (bcResults){
+    syncSwitches();
+    bcDate.value = todayIso();
+    bcDate.max = todayIso();
+    bcSexSwitch.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        bcPrefs.sex = btn.getAttribute('data-sex');
+        savePrefs(); syncSwitches(); renderBodyComp();
+      });
+    });
+    bcUnitSwitch.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const before = formMeasurement();
+        bcPrefs.unit = btn.getAttribute('data-unit');
+        savePrefs(); syncSwitches(); fillInputs(before);
+      });
+    });
+    [bcWaist, bcNeck, bcHip].forEach(input => {
+      input.addEventListener('input', () => { showStatus(''); renderBodyComp(); });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') saveMeasurement(); });
+    });
+    bcSubmit.addEventListener('click', saveMeasurement);
+    refreshMeasurementsFromSupabase(); // async — fills the form and trend once it responds
   }
 
   [heightFt, heightIn, heightCm].forEach(input => {

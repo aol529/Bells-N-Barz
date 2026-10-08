@@ -105,7 +105,9 @@
   // on by default and would need to load immediately either way.
   const BNB_MODULES = {
     weight:       { file: 'js/bells-n-barz-weight.js' },
-    bmi:          { file: 'js/bells-n-barz-bmi.js', deps: ['weight'] },
+    bmi:          { file: 'js/bells-n-barz-bmi.js', deps: ['weight', 'bodyfat'] },
+    // Tape-measure body fat formulas, shared by Body Composition and Client Progress.
+    bodyfat:      { file: 'js/bells-n-barz-bodyfat.js' },
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
     // One calorie/macro formula shared by Food Log, Meal Plan and the diets.
@@ -122,7 +124,7 @@
     // fallback (shows an empty unpaid-invoices list instead of failing),
     // but loading Billing alongside it avoids that degraded state for
     // the common case of a staff member using both together anyway.
-    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing'] },
+    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing', 'bodyfat'] },
     billing:      { file: 'js/bells-n-barz-billing.js' },
     migrate:      { file: 'js/bells-n-barz-migrate.js' },
     accountability: { file: 'js/bells-n-barz-accountability.js' },
@@ -1630,6 +1632,72 @@
 <svg class="weight-chart-svg" id="bmi-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
 <div class="weight-chart-legend" id="bmi-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>BMI per log entry</span>
+</div>
+</div>
+</div>
+<div class="bmi-section" id="bodycomp-section">
+<div class="bmi-section-head">Body Composition</div>
+<div class="bmi-grid">
+<div class="weight-card">
+<h3>Your Measurements</h3>
+<div class="unit-switch" id="bodycomp-sex-switch">
+<button class="active" data-sex="male" type="button">MEN</button>
+<button data-sex="female" type="button">WOMEN</button>
+</div>
+<div class="unit-switch" id="bodycomp-unit-switch">
+<button class="active" data-unit="in" type="button">IN</button>
+<button data-unit="cm" type="button">CM</button>
+</div>
+<div class="weight-form">
+<label for="bodycomp-date">Date</label>
+<input id="bodycomp-date" type="date"/>
+<label for="bodycomp-waist">Waist <span style="text-transform:none;font-weight:400;">(at the navel)</span></label>
+<input id="bodycomp-waist" min="0" placeholder="e.g. 32" step="0.1" type="number"/>
+<label for="bodycomp-neck">Neck <span style="text-transform:none;font-weight:400;">(just below the Adam's apple)</span></label>
+<input id="bodycomp-neck" min="0" placeholder="e.g. 15" step="0.1" type="number"/>
+<div id="bodycomp-hip-wrap" style="display:none;">
+<label for="bodycomp-hip">Hips <span style="text-transform:none;font-weight:400;">(widest point)</span></label>
+<input id="bodycomp-hip" min="0" placeholder="e.g. 38" step="0.1" type="number"/>
+</div>
+<button class="weight-submit" id="bodycomp-submit" type="button">Save Measurements</button>
+</div>
+<p class="weight-hint" id="bodycomp-status" style="display:none;"></p>
+<p class="weight-hint">Results update as you type and use the height from the BMI Calculator and your latest Weight Log entry. Saving the same date again overwrites that day. Your coach can see saved measurements. Measure the same way each time, relaxed and not sucking in, and watch the trend rather than any single reading.</p>
+</div>
+<div class="weight-chart-card">
+<h3>Results</h3>
+<div class="bmi-placeholder" id="bodycomp-placeholder">Enter your height above and your waist here to see your results.</div>
+<div class="bodycomp-results" id="bodycomp-results" style="display:none;">
+<div class="bodycomp-row">
+<div class="bodycomp-name">Waist-to-Height Ratio<span>Waist ÷ height. Under 0.5 is the usual healthy target and a strong predictor of heart and metabolic risk.</span></div>
+<div class="bodycomp-val"><b id="bc-whtr">—</b><i id="bc-whtr-cat"></i></div>
+</div>
+<div class="bodycomp-row">
+<div class="bodycomp-name">Relative Fat Mass (RFM)<span>Body fat % from height and waist. Validated against DEXA scans, and it doesn't count muscle against you.</span></div>
+<div class="bodycomp-val"><b id="bc-rfm">—</b><i>body fat</i></div>
+</div>
+<div class="bodycomp-row">
+<div class="bodycomp-name">U.S. Navy Body Fat<span>Body fat % from neck, waist<span id="bc-navy-hip-note" style="display:none;"> and hips</span>. Usually within a few points of lab methods.</span></div>
+<div class="bodycomp-val"><b id="bc-navy">—</b><i id="bc-navy-sub">body fat</i></div>
+</div>
+<div class="bodycomp-row">
+<div class="bodycomp-name">Fat-Free Mass Index (FFMI)<span>The athlete's BMI: lean mass ÷ height². Untrained men score about 18–20, well-trained men 22–25; women run about 3–4 points lower.</span></div>
+<div class="bodycomp-val"><b id="bc-ffmi">—</b><i id="bc-ffmi-sub"></i></div>
+</div>
+<div class="bodycomp-row">
+<div class="bodycomp-name">A Body Shape Index (ABSI)<span>Flags belly fat independent of BMI. Mostly a research measure, so compare it against your own past readings.</span></div>
+<div class="bodycomp-val"><b id="bc-absi">—</b><i></i></div>
+</div>
+<p class="weight-hint" style="text-align:left;">Every tape-measure formula is an estimate. Not calibrated for children or pregnancy.</p>
+</div>
+</div>
+</div>
+<div class="weight-chart-card" style="margin-top:22px;">
+<h3>Body Fat Trend</h3>
+<div class="weight-chart-empty" id="bodycomp-chart-empty">Save measurements, and enter your height above, to see your body fat trend.</div>
+<svg class="weight-chart-svg" id="bodycomp-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<div class="weight-chart-legend" id="bodycomp-chart-legend" style="display:none;">
+<span><i class="swatch solid"></i>Body fat % per saved entry (Navy when neck is measured, otherwise RFM)</span>
 </div>
 </div>
 </div>
