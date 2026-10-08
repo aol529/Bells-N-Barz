@@ -2431,6 +2431,11 @@ h3.sub-h{font-size:var(--fs-md); color:var(--accent); margin:var(--sp-5) 0 var(-
 .t-panel{padding:var(--sp-4);}
 .weight-card h3, .weight-chart-card h3{font-size:14px; margin-bottom:var(--sp-3);}
 .weight-grid, .bmi-grid{gap:var(--stack-gap);}
+/* Right-hand column beside a log form: cards stack with one even gap, and
+   hidden ones (stats before any data) leave no space, so the first visible
+   card always lines up with the top of the form. */
+.weight-grid > div:not(.weight-card){display:flex; flex-direction:column; gap:var(--stack-gap); min-width:0;}
+.weight-grid > div:not(.weight-card) > *{margin-top:0 !important; margin-bottom:0;}
 .sched-scope #acc-feed-grid{gap:var(--sp-3);}
 .sched-scope .acc-card{padding:var(--sp-3) var(--sp-4); gap:var(--sp-2);}
 .bmi-section{margin-top:var(--sp-5); padding-top:var(--sp-4);}
