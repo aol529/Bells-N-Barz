@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=redesign-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -154,6 +154,13 @@
     return promise;
   }
   window.bnbLoadModule = bnbLoadModule;
+  // Charts draw at the width they're shown at (one SVG unit = one pixel),
+  // so a full-width chart stays the same height with normal-size text
+  // instead of a 700-wide drawing stretched up. 700 while hidden.
+  window.bnbChartWidth = function(el){
+    const w = el ? Math.round(el.getBoundingClientRect().width) : 0;
+    return w > 320 ? w : 700;
+  };
   if (BNB_ENV !== 'production') console.warn('⚠️ Running against STAGING Supabase project, not production.');
   if (BNB_ENV !== 'production'){
     document.addEventListener('DOMContentLoaded', function(){
@@ -893,7 +900,7 @@
   </div>
 </section>
 
-<section class="site-page" id="site-gym">
+<section class="site-page gym-manual-mode" id="site-gym">
 <header class="site">
 <div class="wrap site-title-row">
 <div>
@@ -1243,13 +1250,13 @@
 <div class="section-block">
 <h2>Programming Notes</h2>
 <p class="lede">Priority order, dosage guidance, and cautions for closing the gaps identified in the audit. The specific day-by-day action for each day is embedded directly on that day's page in Part One as a Core Programming Note callout.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 10px;">Priority Order — Updated v1.6.1</h3>
+<h3 class="sub-h">Priority Order — Updated v1.6.1</h3>
 <div class="callout why"><b>1. Bracing / IAP — Resolved.</b> Dead Bug already sits in the Core slot 3×/week and in Sunday's Activate — the gap was cueing, not the exercise. v1.6.1 adds brace-and-breathe cues to the week's two heavy-hinge/squat days; costs zero extra minutes. <i>(v2.9 — this now cues Tuesday's squats and Friday's hinges, following the Thursday→Friday relocation.)</i></div>
 <div class="callout why"><b>2. Force Transfer — Resolved.</b> Monday and Thursday's Potentiate phase runs Medicine Ball Rotational Throw instead of Chest Pass/Slams. Zero added time, direct substitution. <i>(v2.9 — Wednesday's and Friday's former rotational Potentiate work both now live on the merged Thursday.)</i></div>
 <div class="callout why"><b>3. Rotation.</b> Torso Rotations is already in the Core slot on Monday, Thursday, and Saturday. It's just unloaded. Add a band or light cable in the same 2×10 — real training effect, same slot.</div>
 <div class="callout why"><b>4. Anti-Lateral-Flexion — Resolved.</b> Pallof Press (alt: Suitcase Carry) already sits in the Core slot 3×/week, and each day's own Core Programming Note already assigns one specifically — Pallof Press on Monday and Saturday, Suitcase Carry on Thursday. This is a fixed rotation, not a coin flip; no further action needed.</div>
 <div class="callout why"><b>5. Lateral Flexion / Flexion / Extension — Resolved.</b> Added to Sunday Recovery Perform block as light (2 × 10–12) work, consistent with the documented caution against adding spinal loading on top of an already loading-heavy week. Sunday is the only day without competing spinal load from the main lifts.</div>
-<h3 style="font-size:16px;color:var(--accent);margin:24px 0 10px;">Dosage by Function Type</h3>
+<h3 class="sub-h">Dosage by Function Type</h3>
 <table class="ref-table">
 <tr><th>Function Type</th><th>Dosage Guidance</th></tr>
 <tr><td>Movement-Production</td><td>Moderate reps (8–15), controlled tempo, moderate load. This is strength through a range of motion.</td></tr>
@@ -1257,7 +1264,7 @@
 <tr><td>Force Transfer</td><td>A power quality. Low reps, full recovery between sets, explosive intent — program it early in the session, not as a finisher.</td></tr>
 <tr><td>Bracing / IAP</td><td>Not a slot — a skill layered into every heavy lift via cueing, not just isolated to a single exercise.</td></tr>
 </table>
-<h3 style="font-size:16px;color:var(--accent);margin:24px 0 10px;">Cautions</h3>
+<h3 class="sub-h">Cautions</h3>
 <div class="callout bracing"><b>Lateral Flexion / Flexion / Extension were likely an intentional gap, not an oversight</b> — and they have been added accordingly. The program's own revision notes record that Weighted Side Bends was tried in the Core slot and deliberately replaced with Pallof Press "to keep the work anti-rotational rather than adding spinal loading on top of an already loading-heavy week." v1.6.1 respects this caution by placing these three functions on Sunday Recovery — the only day without competing spinal load — and keeping them light (2 × 10–12).</div>
 <div class="callout bracing"><b>Anti-Rotation and Anti-Extension look strong on paper</b> — but that strength may be compromised if Bracing/IAP isn't cued underneath them on the week's squat and hinge days. v1.6.1 adds the cueing directly to those days' Core Programming Notes. <i>(v2.2 — Tuesday takes over the squat-day role from Monday under the split restructure. v2.9 — the hinge-day role moves from Thursday to Friday when Thursday absorbs the former Wednesday/Friday sessions.)</i></div>
 </div>
@@ -1322,17 +1329,17 @@
 <div class="section-block">
 <h2>Revision Notes — Detail</h2>
 <p class="lede">Consolidated week-wide and day-by-day change log for this edition.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">Week-wide</h3>
+<h3 class="sub-h">Week-wide</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Every training day's Perform section runs as lettered blocks so pairs can be supersetted when time or conditioning calls for it. A short Core slot (Leg Drops, Dead Bug, Torso Rotations, Pallof Press or Suitcase Carry — 2 × 10 each) sits between Mobilize and Activate on Monday, Thursday, and Saturday — the non-leg training days, since Tuesday and Friday already carry heavy core-bracing demand from squats, hip hinges, and Copenhagen Plank, and Wednesday is a full rest day with no session at all. Weighted Side Bends was replaced with Pallof Press (alt: Suitcase Carry) in this slot to keep the work anti-rotational rather than adding spinal loading on top of an already loading-heavy week. <i>(v2.9 — Core-slot days updated to Monday/Thursday/Saturday and Wednesday dropped to rest, as part of the Five-Day Split Restructure; this paragraph previously still read the pre-v2.2 day list.)</i></p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.3 — Animal-Pattern Movement Additions</h3>
+<h3 class="sub-h">v1.3 — Animal-Pattern Movement Additions</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Animal-pattern locomotion moves (Bear Crawl, Bear Crawl Hold, Crab Walk, Duck Walk, Ape Walk) added across Monday, Tuesday, Wednesday, Thursday, Saturday, and Sunday Activate/Potentiate slots. Bear Crawl and Bear Crawl Hold draw directly from the Appendix's own Bracing/IAP and Anti-Extension exercise references, closing part of the Bracing/IAP gap flagged in the Core Training System audit without adding a new function to the system. All additions sit in Activate or Potentiate — the Core slot is untouched on every day, preserving the anti-rotational-only design. No Perform blocks, set/rep schemes, or session-length estimates change. Friday is intentionally unchanged — its Potentiate slot (Clap Push-ups) has no med-ball or crawl-pattern equivalent in the current system.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.4 — Nordic Curls Added to Thursday</h3>
+<h3 class="sub-h">v1.4 — Nordic Curls Added to Thursday</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Thursday gains a new standalone Block D — Nordic Curls (2–3 × 5–6), a low-rep, eccentric-emphasis hamstring finisher distinct from the higher-rep machine work in Block B's Leg Curls, evidenced for hamstring-strain prevention. No other Perform blocks, the Core slot, or session-length estimates change on any day.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.5 — Tuesday/Wednesday Anterior Delt Overlap Fix</h3>
+<h3 class="sub-h">v1.5 — Tuesday/Wednesday Anterior Delt Overlap Fix</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Tuesday's Block A primary and alternate swapped — Decline Barbell Bench Press now leads, Weighted Ring Dips moved to alternate — reducing anterior-delt secondary loading ahead of Wednesday's Military Press. A new note on Wednesday flags Military Press for load autoregulation rather than fixed progression, since it's the one lift in the week following next-day pressing volume rather than the usual 3–4 day gap. No blocks, set/rep schemes, or session-length estimates change on either day.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.6.0 — Enhanced Edition</h3>
+<h3 class="sub-h">v1.6.0 — Enhanced Edition</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Added Session Duration Summary table for all seven days to aid in planning and scheduling. Added Glossary of Terms defining CARs, IAP, HIIT, Superset, Alternate, Potentiation, Bracing, and Anti-Movement. Clarified set/rep structure for Core slot exercises (2 × 10 each side where unilateral; 2 × 10 total reps where bilateral). No changes to any exercise selection, set/rep schemes, or programming.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.6.1 — Applied Audit Gap Solutions</h3>
+<h3 class="sub-h">v1.6.1 — Applied Audit Gap Solutions</h3>
 <table class="ref-table">
 <tr><th>Function</th><th>Solution</th><th>Implementation</th></tr>
 <tr><td>Flexion</td><td>Added Cable Crunches</td><td>Sunday Recovery Perform block — 2 × 10–12</td></tr>
@@ -1342,19 +1349,19 @@
 <tr><td>Bracing / IAP</td><td>Added brace-and-breathe cueing</td><td>Monday (squats) and Thursday (hinges) Core Programming Notes</td></tr>
 </table>
 <p style="font-size:13.5px;color:var(--muted);"><b>Session Duration Changes —</b> Sunday: increased from ~25 min to ~35 min (+10 min). Tuesday/Wednesday/Saturday: no change to duration, exercise swap only. Monday/Thursday: no change to duration, cueing only. No other day's Perform blocks, Core slot, set/rep schemes, or session-length estimates change.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v1.9 — Tuesday/Saturday Reorganized by Plane of Pull</h3>
+<h3 class="sub-h">v1.9 — Tuesday/Saturday Reorganized by Plane of Pull</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Tuesday re-organized as a fully horizontal-plane push/pull day and Saturday as a fully vertical-pull day. Weighted Chin-ups removed from Tuesday's Block A and added to Saturday's Block A as the alternate for Weighted Pull-ups. Seated Cable Rows moved from Saturday's Block C to Tuesday's Block A (paired with Decline Barbell Bench Press, promoted to 4 × 8–10); Neutral-Grip Lat Pulldowns takes its place in Saturday's Block C at the same 3 × 10–12. No exercises added or removed from the week, no change to total weekly volume for chest, back, or biceps, and no change to either day's session-length estimate.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v2.0 — Tuesday Block A/B Swap + Progression Scheme</h3>
+<h3 class="sub-h">v2.0 — Tuesday Block A/B Swap + Progression Scheme</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Tuesday's Block A and Block B primaries swapped: Incline Barbell Bench Press now leads at 4 × 8–10 (promoted from Block B's 3 × 8–10); Decline Barbell Bench Press moves to Block B at 3 × 8–10. Added a Hepburn-style double-progression scheme (submaximal start, add one rep per session across sets until the top of the rep range is hit for all sets, then add load and restart at the bottom) to the week's three Block A "drives the week" lifts: Incline Barbell Bench Press (Tuesday), Weighted Ring Dips (Friday), Weighted Pull-ups (Saturday). Wednesday's Military Press keeps its existing autoregulation exception and is excluded. Program Design Audit's Progression Scheme status updated from Open to Partial — Block B/C/D/E accessory work still has no stated periodization model. No exercise selections, set/rep ranges (aside from the Tuesday Block A/B swap noted above), or session-length estimates otherwise change.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v2.1 — Volume Audit Fixes: Calves, Triceps, Side Delts</h3>
+<h3 class="sub-h">v2.1 — Volume Audit Fixes: Calves, Triceps, Side Delts</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">A volume audit of v2.0 flagged three structural issues: zero weekly calf sets despite it being a major muscle group; triceps as the program's highest-volume muscle group (18 direct + 20 secondary sets/week) from stacking Tuesday's accessory work, Wednesday's Military Press, and four Friday tricep exercises; and a roughly 3.3:1 front-to-side-delt set ratio (30 vs. 9 sets/week) linked to shoulder impingement risk. Fixes applied: Standing Calf Raises (3 × 15–20) added to Monday's new Block F; Seated Calf Raises (3 × 15–20) added to Thursday's new Block E — twice-weekly calf frequency with complementary standing/seated emphasis. Diamond Push-ups removed from Friday's Block D, trimming roughly 3 direct triceps sets. Saturday's Lateral Raises increased from 2 × 15 to 3 × 15, adding one direct side-delt set. Triceps volume and the delt ratio are improved but not fully resolved — flagged as Partial in the Program Design Audit pending further trims.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v2.2 — Full Six-Day Split Restructure</h3>
+<h3 class="sub-h">v2.2 — Full Six-Day Split Restructure</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Matches Training Manual v2.8. Monday becomes Rows &amp; Bench Presses — the horizontal push/pull role formerly carried by Tuesday, now run as four full blocks (three bench-press variations, each paired with a row variation) instead of three. Tuesday becomes Quads, Adductors &amp; Hip Flexors — the former Monday's content, relocated, with Standing Cable Hip Flexion added to Block D to close the hip-flexor training gap. Wednesday (Shoulders &amp; Biceps) is unchanged except that Arnold Press is added as Military Press's Block A alternate. Thursday (Glutes, Hamstrings &amp; Low Back) keeps its existing four blocks and adds a new standalone Block E — Back Extensions — closing the low-back training gap.</p>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Friday becomes Pulls &amp; Pushes: three blocks of heavy-to-moderate vertical pulling (Weighted Pull-ups, Wide Cable Lat Pulldowns, Pullovers), each supersetted with a different shoulder accessory movement. The "push" side was deliberately scoped to accessory work only, not a second heavy overhead compound, once it became clear that pairing it with Wednesday's Military Press would double heavy shoulder-press frequency to twice a week. Saturday becomes Chest &amp; Arms: Push-ups and Dips as a bodyweight compound pairing, followed by two direct tricep and two direct bicep isolation movements — kept to three blocks specifically to avoid re-creating the Biceps Volume Redundancy the audit already resolved once on the manual's former Saturday (v2.1's predecessor logic). Session Duration Summary recalculated for all seven days. Program Design Audit updated with three new resolved entries. No changes to Sunday's Recovery day, the Core slot exercise pool, or the Glossary.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:20px 0 8px;">v2.9 — Five-Day Split Restructure</h3>
+<h3 class="sub-h">v2.9 — Five-Day Split Restructure</h3>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">The v2.2 six-day split solved frequency and training-gap problems but left Monday through Saturday as six consecutive training days with no rest until Sunday. v2.9 merges the former Wednesday (Shoulders &amp; Biceps) and former Friday (Pulls &amp; Pushes) into a single new Thursday — Vertical Push &amp; Pull day, run as six blocks: Military Press/Curls, Shrugs, Lateral Flyes/Front Raises (ex-Wednesday), then Weighted Pull-ups/Lateral Raises, Wide Cable Lat Pulldowns/Rear Delt Flyes, Pullovers/Face Pulls (ex-Friday). The one duplicate — Rear Delt Flyes appeared on both source days — is trimmed to a single copy, since Face Pulls elsewhere in the merged session already covers the same rear-delt/rotator-cuff pattern the second copy would have doubled. Shrugs now stands alone as its own block. The former Thursday (Glutes, Hamstrings &amp; Low Back) relocates to Friday with no changes to its blocks, sets, reps, or exercises. Wednesday becomes a full rest day.</p>
 <p style="font-size:14px;color:var(--muted);max-width:75ch;">Core-slot rotation updates from Monday/Wednesday/Friday/Saturday to Monday/Thursday/Saturday, since Wednesday and Friday no longer carry standalone sessions; Thursday's Core slot runs Suitcase Carry, inheriting the anti-lateral-flexion rationale both merged source days shared. Force Transfer (Medicine Ball Rotational Throw in Potentiate) now runs on Monday and Thursday only, consolidated from the former Monday/Wednesday/Friday. This pass also corrected several stale day references left over from the v2.2 Monday/Tuesday swap that this manual had never caught up on — the Appendix's Current Program Audit table, Priority Order callouts, and function-detail data all still cited "Tuesday" for squat-day bracing and "Monday/Thursday" for rotation-plane and Force Transfer assignments, none of which matched the actual day pages since v2.2. Session Duration Summary recalculated: Wednesday is now Rest, Thursday grows to ~90 min (the week's new longest single session), Friday holds at ~60 min. No exercise, set, or rep is dropped anywhere in the program — everything the former Wednesday and Friday carried still exists, consolidated onto Thursday.</p>
-<h3 style="font-size:16px;color:var(--accent);margin:24px 0 10px;">Day-by-day (v1.1 – v2.1 highlights)</h3>
+<h3 class="sub-h">Day-by-day (v1.1 – v2.1 highlights)</h3>
 <div class="grid2">
 <div class="mini-card"><h4>Monday</h4>Machine Hip Adduction removed; Bench Lying Leg Curls moved to Thursday. Block B pairs Landmine Static Split Squats with Leg Extensions. Standalone Block E — Lying Leg Curls added, +5–10 min. v2.1: Standalone Block F — Standing Calf Raises added.</div>
 <div class="mini-card"><h4>Tuesday</h4>Consolidated to three blocks. v1.5: Decline Barbell Bench Press promoted to Block A primary. v1.7: Lateral Raises/Face Pulls moved to Saturday. v1.8: Weighted Ring Dips removed from the alternate slot and relocated to Friday. v1.9: Weighted Chin-ups relocated to Saturday; Seated Cable Rows moved in from Saturday, promoted to 4 × 8–10 — now a fully horizontal push/pull day. v2.0: Incline Barbell Bench Press promoted to Block A primary (Decline moves to Block B); Incline now runs a Hepburn-style progression.</div>
@@ -1459,8 +1466,8 @@
 <div class="timer-spec mono">Prep → (Work → Rest) × Cycles → rest between sets → repeat × Sets → Cool down</div>
 </div>
 </div>
-<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:22px;">Both clocks run on the same GET READY → WORK → REST cycle used throughout this manual's Potentiate and interval work (HIIT Rower, Kettlebell Swings, etc.), with a short tone on every phase change. A timer keeps counting even if you switch to another tab on the site — it'll be right where it should be when you come back.</p>
-<div class="section-block" style="margin-top:44px;">
+<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Both clocks run on the same GET READY → WORK → REST cycle used throughout this manual's Potentiate and interval work (HIIT Rower, Kettlebell Swings, etc.), with a short tone on every phase change. A timer keeps counting even if you switch to another tab on the site — it'll be right where it should be when you come back.</p>
+<div class="section-block">
 <h2>Training Formats</h2>
 <p class="lede">The three interval formats referenced throughout this manual, and how each maps onto the Custom Timer above.</p>
 <div class="format-grid">
@@ -1519,7 +1526,7 @@
 <div class="timer-spec mono">5s prep · UP 2s / DOWN 5s · ×30 reps</div>
 </div>
 </div>
-<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:22px;">Based on the "Bring Sally Up" push-up challenge, built around Moby's song "Flower" — every "up" cue is a push-up, every "down" cue is a hold with your chest hovering just off the floor, until the track ends. This pacer approximates that same up/down/hold cadence (it doesn't play the actual song — cue up your own copy alongside it if you want the real thing). Works for squats or pull-ups too, not just push-ups. Not a beginner drill: if you can't hold a strict plank for 60+ seconds or do 15+ unbroken push-ups, build that base first — bad form under fatigue here is how shoulders get hurt.</p>
+<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Based on the "Bring Sally Up" push-up challenge, built around Moby's song "Flower" — every "up" cue is a push-up, every "down" cue is a hold with your chest hovering just off the floor, until the track ends. This pacer approximates that same up/down/hold cadence (it doesn't play the actual song — cue up your own copy alongside it if you want the real thing). Works for squats or pull-ups too, not just push-ups. Not a beginner drill: if you can't hold a strict plank for 60+ seconds or do 15+ unbroken push-ups, build that base first — bad form under fatigue here is how shoulders get hurt.</p>
 </section>
 <!-- ================= ME ================= -->
 <section class="member-section" id="tab-me">
@@ -1541,16 +1548,6 @@
 <section class="me-section active" id="tab-weight">
 <div class="day-head"><h2>Weight — Daily Log</h2></div>
 <div class="day-focus">Track bodyweight day to day and watch the trend, not the noise</div>
-<div class="weight-chart-card" style="margin-bottom:22px;">
-<h3>Progress</h3>
-<div class="weight-chart-empty" id="weight-chart-empty">No entries yet — log a weight to start the chart.</div>
-<svg class="weight-chart-svg" id="weight-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
-<div class="weight-chart-legend" id="weight-chart-legend" style="display:none;">
-<span><i class="swatch solid"></i>Daily entry</span>
-<span><i class="swatch dash"></i>7-day trend</span>
-<span id="weight-chart-legend-target" style="display:none;"><i class="swatch target"></i>Target</span>
-</div>
-</div>
 <div class="weight-grid">
 <div class="weight-card">
 <h3>Log an Entry</h3>
@@ -1579,6 +1576,16 @@
 <div class="weight-stat"><span class="lbl">Change</span><span class="val" id="stat-change">—</span></div>
 <div class="weight-stat"><span class="lbl">Entries</span><span class="val" id="stat-count">—</span></div>
 </div>
+<div class="weight-chart-card" style="margin-top:var(--stack-gap);">
+<h3>Progress</h3>
+<div class="weight-chart-empty" id="weight-chart-empty">No entries yet — log a weight to start the chart.</div>
+<svg class="weight-chart-svg" id="weight-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
+<div class="weight-chart-legend" id="weight-chart-legend" style="display:none;">
+<span><i class="swatch solid"></i>Daily entry</span>
+<span><i class="swatch dash"></i>7-day trend</span>
+<span id="weight-chart-legend-target" style="display:none;"><i class="swatch target"></i>Target</span>
+</div>
+</div>
 </div>
 </div>
 <div class="bmi-section">
@@ -1603,6 +1610,7 @@
 </div>
 <p class="weight-hint">BMI is calculated from the height entered here and your most recent entry in the Weight Log above — no need to re-enter weight. Height is saved on this device; BMI is a rough screening tool that doesn't account for muscle mass or frame size.</p>
 </div>
+<div>
 <div class="weight-chart-card bmi-result-card">
 <h3>Result</h3>
 <div class="bmi-placeholder" id="bmi-placeholder">Log a weight entry above and enter your height to see your BMI.</div>
@@ -1625,13 +1633,14 @@
 <p class="weight-hint" style="text-align:left;">Standard adult ranges: below 18.5 underweight, 18.5–24.9 normal, 25–29.9 overweight, 30 and above obese. Not calibrated for children, pregnancy, or highly muscular athletes.</p>
 </div>
 </div>
-</div>
-<div class="weight-chart-card" style="margin-top:22px;">
+<div class="weight-chart-card" style="margin-top:var(--stack-gap);">
 <h3>BMI Trend</h3>
 <div class="weight-chart-empty" id="bmi-chart-empty">Log at least one weight entry, and enter your height above, to see your BMI trend.</div>
-<svg class="weight-chart-svg" id="bmi-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="bmi-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-legend" id="bmi-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>BMI per log entry</span>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1674,6 +1683,7 @@
 </div>
 <p class="weight-hint">Shows as a line on the Body Fat Trend chart below. Leave blank to hide it. Saved on this device.</p>
 </div>
+<div>
 <div class="weight-chart-card">
 <h3>Results</h3>
 <div class="bmi-placeholder" id="bodycomp-placeholder">Enter your height above and your waist here to see your results.</div>
@@ -1701,14 +1711,15 @@
 <p class="weight-hint" style="text-align:left;">Every tape-measure formula is an estimate. Not calibrated for children or pregnancy.</p>
 </div>
 </div>
-</div>
-<div class="weight-chart-card" style="margin-top:22px;">
+<div class="weight-chart-card" style="margin-top:var(--stack-gap);">
 <h3>Body Fat Trend</h3>
 <div class="weight-chart-empty" id="bodycomp-chart-empty">Save measurements, and enter your height above, to see your body fat trend.</div>
-<svg class="weight-chart-svg" id="bodycomp-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="bodycomp-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-legend" id="bodycomp-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>Body fat % per saved entry (Navy when neck is measured, otherwise RFM)</span>
 <span id="bodycomp-chart-legend-target" style="display:none;"><i class="swatch target"></i>Goal</span>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1809,15 +1820,15 @@
 </div>
 </div>
 </div>
-<div class="weight-chart-card" style="margin-top:22px;">
+<div class="weight-chart-card" style="margin-top:var(--stack-gap);">
 <h3>Cycle Length Trend</h3>
 <div class="weight-chart-empty" id="period-chart-empty">Log at least two full periods to see cycle length trend.</div>
-<svg class="weight-chart-svg" id="period-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="period-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-legend" id="period-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>Days between period starts</span>
 </div>
 </div>
-<div class="weight-history" style="margin-top:22px;">
+<div class="weight-history" style="margin-top:var(--stack-gap);">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Cycle Summary</h3>
 <table class="weight-history-table" id="period-cycle-table">
 <thead><tr><th>Period Start</th><th>Length</th><th>Cycle Length</th></tr></thead>
@@ -1841,7 +1852,7 @@
 <section class="me-section" id="tab-track">
 <div class="day-head"><h2>Track — Hepburn Progression</h2></div>
 <div class="day-focus">Log submaximal double-progression sessions for your Block A lifts and watch the ladder climb</div>
-<div class="weight-card" style="margin-bottom:22px;">
+<div class="weight-card" style="margin-bottom:var(--stack-gap);">
 <h3>Program Length</h3>
 <div class="unit-switch" id="track-program-switch">
 <button data-weeks="6" type="button">6 WK</button>
@@ -1866,7 +1877,7 @@
 <div class="weight-chart-card">
 <h3>Load Progression</h3>
 <div class="weight-chart-empty" id="track-chart-empty">Log a session to start the chart.</div>
-<svg class="weight-chart-svg" id="track-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="track-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-legend" id="track-chart-legend" style="display:none;">
 <span><i class="swatch solid" style="background:var(--accent);"></i>Level-up</span>
 <span><i class="swatch solid" style="background:var(--accent-3);"></i>Advance</span>
@@ -1926,15 +1937,15 @@
 <div class="weight-stat"><span class="lbl">Avg Fat (7d)</span><span class="val" id="nutrition-stat-fat">—</span></div>
 </div>
 </div>
-<div class="weight-chart-card" style="margin-top:22px;">
+<div class="weight-chart-card" style="margin-top:var(--stack-gap);">
 <h3>Calorie Trend</h3>
 <div class="weight-chart-empty" id="nutrition-chart-empty">Log at least two days to see a trend.</div>
-<svg class="weight-chart-svg" id="nutrition-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="nutrition-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-legend" id="nutrition-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>Calories logged per day</span>
 </div>
 </div>
-<div class="weight-history" style="margin-top:22px;">
+<div class="weight-history" style="margin-top:var(--stack-gap);">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Day Log</h3>
 <table class="weight-history-table" id="nutrition-history-table">
 <thead><tr><th>Date</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Water</th><th>Notes</th><th></th></tr></thead>
@@ -1947,7 +1958,7 @@
 </div>
 
 <!-- ---- Calorie & Macro Calculator: set-once goals feeding the summary above ---- -->
-<div class="weight-chart-card" id="calorie-counter-card" style="margin-top:22px;">
+<div class="weight-chart-card" id="calorie-counter-card" style="margin-top:var(--stack-gap);">
 <h3>Calorie &amp; Macro Calculator</h3>
 <p class="weight-hint" style="margin-top:0;">Mifflin-St Jeor formula: sets a daily calorie and macro target from your stats, goal, and activity level — feeds the summary at the top of this page. Meal Plan uses the same formula.</p>
 <div class="admin-notice" id="cc-coach-note" style="display:none;"></div>
@@ -2039,7 +2050,7 @@
   <div class="weight-stat"><span class="lbl">Current Streak</span><span class="val" id="fasting-stat-streak">—</span></div>
 </div>
 
-<div class="weight-history" style="margin-top:22px;">
+<div class="weight-history" style="margin-top:var(--stack-gap);">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Fast Log</h3>
 <table class="weight-history-table" id="fasting-history-table">
 <thead><tr><th>Started</th><th>Ended</th><th>Duration</th><th>Goal</th></tr></thead>
@@ -2076,7 +2087,7 @@
   <div class="fasting-meta" id="fasting-522-status-meta" style="margin-top:8px;">—</div>
 </div>
 
-<div class="weight-history" style="margin-top:22px;">
+<div class="weight-history" style="margin-top:var(--stack-gap);">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Recent Fasting Days</h3>
 <table class="weight-history-table" id="fasting-522-history-table">
 <thead><tr><th>Date</th><th>Calories Logged</th><th>Cap</th><th>Result</th></tr></thead>
@@ -2101,7 +2112,7 @@
 <div class="empty-msg" id="acc-feed-empty">You're not in an accountability group yet — connect with someone below to start one.</div>
 <div id="acc-feed-grid" style="display:none;"></div>
 
-<div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+<div class="divider-block">
   <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
     <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Connect</span>
   </div>
@@ -2188,7 +2199,7 @@
 </div>
 </div>
 
-<div class="weight-history" id="mls-history-section" style="margin-top:26px;display:none;">
+<div class="weight-history" id="mls-history-section" style="margin-top:var(--stack-gap);display:none;">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:8px;">History</h3>
 <table class="weight-history-table" id="mls-history-table">
 <thead><tr><th>Date</th><th>Day</th><th>Mode</th><th>Exercises</th><th>Notes</th><th></th></tr></thead>
@@ -2198,10 +2209,10 @@
 <div class="weight-clear-row"><button class="weight-clear-btn" id="mls-history-clear-btn" type="button">Clear all history</button></div>
 </div>
 
-<div class="weight-chart-card" id="mls-graph-section" style="margin-top:22px;display:none;">
+<div class="weight-chart-card" id="mls-graph-section" style="margin-top:var(--stack-gap);display:none;">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:14px;">Progress Graph</h3>
 <div class="t-field" style="max-width:320px;margin-bottom:14px;"><label>Exercise</label><select id="mls-graph-exercise"></select></div>
-<svg class="weight-chart-svg" id="mls-graph-svg" style="display:none;" viewbox="0 0 700 320"></svg>
+<svg class="weight-chart-svg" id="mls-graph-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-empty" id="mls-graph-empty">Save a couple of sessions logging the same exercise to see a trend here.</div>
 </div>
 </section>
@@ -2589,7 +2600,7 @@
       <button class="btn2" id="admin-reset-day">Reset This Day to Manual Default</button>
     </div>
 
-    <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+    <div class="divider-block">
       <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
         <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Preset Programs</span>
       </div>
@@ -2597,7 +2608,7 @@
       <div class="format-grid preset-tile-grid" id="admin-preset-grid"></div>
     </div>
 
-    <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:18px;">
+    <div class="divider-block">
       <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
         <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Backup / Restore Program Data</span>
       </div>

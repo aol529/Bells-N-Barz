@@ -1058,7 +1058,7 @@
   // a bit larger (900×340 vs 700×320) since this is meant to read as the
   // dashboard's focal graphic, not a tucked-away widget.
   function svgLineChart(points){
-    const W=900,H=340,padL=54,padR=24,padT=20,padB=40;
+    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const values = points.map(p=>p.value);
     let minV=Math.min(...values), maxV=Math.max(...values);
@@ -1087,7 +1087,7 @@
     return '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">'+svg+'</svg>';
   }
   function svgBarChart(values, labels){
-    const W=900,H=340,padL=54,padR=24,padT=20,padB=40;
+    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const maxV = Math.max(1, Math.max.apply(null, values));
     const n = values.length, gap = 10;

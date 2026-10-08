@@ -120,7 +120,8 @@
   // target (optional): { value, label } drawn as a dotted line, like the
   // Weight chart's target.
   function buildLineChart(svgEl, points, tip, target){
-    const W = 700, H = 320, padL = 44, padR = 20, padT = 20, padB = 36;
+    const W = bnbChartWidth(svgEl), H = 230, padL = 44, padR = 20, padT = 20, padB = 36;
+    svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     const dates = points.map(p => new Date(p.date + 'T00:00:00').getTime());

@@ -36,7 +36,7 @@
      tracker modules' buildChart(), since this page has several charts
      rather than one fixed DOM node) ---------------- */
   function svgLineChart(points){
-    const W=900,H=340,padL=54,padR=24,padT=20,padB=40;
+    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const values = points.map(p=>p.value);
     let minV=Math.min(...values), maxV=Math.max(...values);
@@ -65,7 +65,7 @@
     return '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">'+svg+'</svg>';
   }
   function svgBarChart(values, labels){
-    const W=900,H=340,padL=54,padR=24,padT=20,padB=40;
+    const W=900,H=260,padL=54,padR=24,padT=20,padB=40;
     const innerW=W-padL-padR, innerH=H-padT-padB;
     const maxV = Math.max(1, Math.max.apply(null, values));
     const n = values.length, gap = 10;
@@ -147,11 +147,11 @@
         <div class="weight-stat"><span class="lbl">Collected This Month</span><span class="val">${money(revenueThisMonth)}</span></div>
         <div class="weight-stat"><span class="lbl">Outstanding Balance</span><span class="val">${money(outstanding)}</span></div>
       </div>
-      <div class="weight-chart-card" style="margin-top:22px;">
+      <div class="weight-chart-card" style="margin-top:var(--stack-gap);">
         <h3>Revenue by Month</h3>
         ${svgBarChart(revenueByMonth.map(v => Math.round(v)), monthLabels)}
       </div>
-      <div class="weight-history" style="margin-top:22px;">
+      <div class="weight-history" style="margin-top:var(--stack-gap);">
         <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Revenue by Type (last 6 months)</h3>
         <table class="weight-history-table">
           <thead><tr><th>Type</th><th>Amount</th></tr></thead>
@@ -199,7 +199,7 @@
         <h3>Check-Ins per Week (last 8 weeks)</h3>
         ${points.some(p => p.value > 0) ? svgLineChart(points) : '<div class="empty-msg">No check-ins logged yet.</div>'}
       </div>
-      <div class="weight-stats" style="display:grid;margin-top:22px;">
+      <div class="weight-stats" style="display:grid;margin-top:var(--stack-gap);">
         <div class="weight-stat"><span class="lbl">Classes Booked (30d)</span><span class="val">${classesBooked}</span></div>
         <div class="weight-stat"><span class="lbl">No-Show Rate (30d)</span><span class="val">${noShowRate}%</span></div>
         <div class="weight-stat"><span class="lbl">PT Sessions Completed (30d)</span><span class="val">${ptCompleted}</span></div>
@@ -236,14 +236,14 @@
         <h3>Members by Status</h3>
         ${statusKeys.length ? svgBarChart(statusKeys.map(k => counts[k]), statusKeys.map(k => MSTATUS_LABELS[k] || k)) : '<div class="empty-msg">No members yet.</div>'}
       </div>
-      <div class="weight-history" style="margin-top:22px;">
+      <div class="weight-history" style="margin-top:var(--stack-gap);">
         <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">At Risk — No Check-In in 14+ Days</h3>
         <table class="weight-history-table">
           <thead><tr><th>Member</th><th>Last Check-In</th></tr></thead>
           <tbody>${atRisk.length ? atRisk.map(x => `<tr><td>${esc(x.m.fullName)}</td><td class="mono">${x.days === null ? 'Never' : x.days + 'd ago'}</td></tr>`).join('') : '<tr><td colspan="2">No members at risk.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="weight-history" style="margin-top:22px;">
+      <div class="weight-history" style="margin-top:var(--stack-gap);">
         <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Contracts Expiring in 30 Days</h3>
         <table class="weight-history-table">
           <thead><tr><th>Member</th><th>Contract End</th></tr></thead>

@@ -380,7 +380,8 @@
     svgEl.style.display = "block";
     legendEl.style.display = "flex";
 
-    const W = 700, H = 320, padL = 44, padR = 20, padT = 20, padB = 36;
+    const W = bnbChartWidth(svgEl), H = 230, padL = 44, padR = 20, padT = 20, padB = 36;
+    svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     const weights = hist.map(h => h.weight);

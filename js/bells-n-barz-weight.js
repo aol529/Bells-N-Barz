@@ -105,7 +105,8 @@
   }
 
   function buildChart(entries){
-    const W = 700, H = 320, padL = 52, padR = 20, padT = 20, padB = 36;
+    const W = bnbChartWidth(chartSvg), H = 230, padL = 52, padR = 20, padT = 20, padB = 36;
+    chartSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     const dates = entries.map(e => new Date(e.date + 'T00:00:00').getTime());

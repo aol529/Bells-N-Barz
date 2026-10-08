@@ -283,6 +283,10 @@ function switchTab(rawTab, scrollTop){
   document.title = (TAB_TITLES[tab] || 'Training Manual') + " \u2014 Bell(e)s N' Barz";
   plates.forEach(x => x.classList.toggle('active', x.getAttribute('data-tab') === tab));
   if (navManualBtn) navManualBtn.classList.toggle('active', manualTabs.includes(tab));
+  // The day sidebar only belongs to the Manual; Member/Coach/Admin/Inbox
+  // get the full width (see "REDESIGN" in the stylesheet).
+  const gymPage = document.getElementById('site-gym');
+  if (gymPage) gymPage.classList.toggle('gym-manual-mode', manualTabs.includes(tab));
   if (navMemberBtn) navMemberBtn.classList.toggle('active', memberSectionTabs.includes(tab));
   if (navAdminBtn) navAdminBtn.classList.toggle('active', adminSectionTabs.includes(tab));
   document.querySelectorAll('.tab-panel').forEach(sec => sec.classList.remove('active'));

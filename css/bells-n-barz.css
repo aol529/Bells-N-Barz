@@ -2303,3 +2303,225 @@ header.site{
 .bc-yours{font-size:13.5px;color:var(--muted);border-left:2px solid var(--accent-dim);padding-left:12px;}
 .bc-yours b{color:var(--accent);}
 .bc-yours:empty{display:none;}
+
+/* ============================================================
+   REDESIGN — compact, unified (Oct 2026)
+   One layer over everything above: shared spacing / type / radius
+   tokens, a single slim Gym header bar, the day sidebar on the Manual
+   only, and tighter cards, tiles, forms, tables and charts across
+   every app (Home, Gym, Blog, Gallery, Shop, Users).
+   Revert to the look before this:
+   git checkout pre-redesign-2026-10-08 -- css js "bells n barz (main file).html"
+   ============================================================ */
+:root{
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --stack-gap:14px;                 /* space between stacked cards */
+  --card-pad:14px 16px;
+  --r-sm:4px; --r:6px;              /* inputs/buttons, cards */
+  --fs-xs:11px; --fs-sm:12.5px; --fs:14px; --fs-md:15px; --fs-lg:18px; --fs-xl:22px;
+  --content-max:1280px;
+  --outer-h:48px;                   /* site nav height */
+  --gymbar-h:50px;                  /* Gym tabs + search bar height */
+  --side-w:168px;
+}
+
+/* ---------- Page width and gutters ---------- */
+.wrap,
+.blog-scope .wrap, .gallery-scope .wrap, .shop-scope .wrap, .users-scope .wrap{max-width:var(--content-max); padding:0 var(--sp-5);}
+.blog-scope .header-inner, .gallery-scope .header-inner, .shop-scope .header-inner, .users-scope .header-inner{
+  max-width:var(--content-max); padding:var(--sp-2) var(--sp-5);
+}
+main{padding:var(--sp-5) 0 48px;}
+
+/* ---------- Site nav (all pages) ---------- */
+.outer-header-inner{max-width:var(--content-max); height:var(--outer-h); padding:0 var(--sp-5);}
+.outer-link{padding:6px 12px; font-size:12px;}
+.outer-brand{font-size:15px;}
+
+/* ---------- App headers (Blog, Gallery, Shop, Users) ---------- */
+/* every app header sticks just under the site nav, the same way */
+.blog-scope header.site, .gallery-scope header.site, .shop-scope header.site, .users-scope header.site{
+  position:sticky; top:var(--outer-h); z-index:40; padding:0;
+}
+.blog-scope .brand-block h1, .gallery-scope .brand-block h1, .shop-scope .brand-block h1, .users-scope .brand-block h1{font-size:var(--fs-xl);}
+.blog-scope .view{padding:var(--sp-5) 0 48px;}
+.shop-scope .view{padding:var(--sp-5) 0 48px;}
+.blog-toolbar, .gallery-toolbar{margin-bottom:var(--sp-4);}
+.megatron{max-width:none; height:260px; margin:0 0 var(--sp-5); border-radius:var(--r);}
+.megatron-caption{padding:var(--sp-4) var(--sp-5); font-size:var(--fs-lg);}
+.list-layout{gap:var(--sp-5);}
+.blog-scope .side-widget{top:calc(var(--outer-h) + 64px); padding:var(--sp-3) var(--sp-4) var(--sp-1);}
+.shop-scope .shop-type-tabs{margin-bottom:var(--sp-4);}
+.shop-scope .shop-section-label{margin-top:var(--sp-5);}
+footer.site, footer.shop-footer{padding:var(--sp-4);}
+.gallery-scope .empty-msg, .shop-scope .shop-empty{padding:28px 20px;}
+.profile-card{padding:var(--sp-5);}
+
+/* ---------- Gym: one slim header bar ---------- */
+#site-gym header.site{padding:0; background:var(--surface);}
+#site-gym .site-title-row{align-items:center; padding-top:var(--sp-2); padding-bottom:var(--sp-2); gap:var(--sp-3); flex-wrap:nowrap;}
+#site-gym .site-title{font-size:var(--fs-lg); line-height:1.2;}
+#site-gym .site-tag{display:none;}
+#site-gym.gym-manual-mode .site-tag{display:block; font-size:10.5px; margin-top:2px; letter-spacing:.06em;}
+#site-gym .theme-toggle, #site-gym .account-menu-btn{padding:4px 10px; font-size:11px;}
+#site-gym .notif-bell-btn{width:28px; height:28px; font-size:13px;}
+nav.rack.rack-top{
+  top:var(--outer-h); min-height:var(--gymbar-h); box-shadow:0 4px 12px var(--shadow-soft);
+  display:flex; align-items:center; gap:var(--sp-3);
+  padding:0 max(var(--sp-5), calc((100% - var(--content-max)) / 2 + var(--sp-5)));
+}
+nav.rack.rack-top .rack-inner{max-width:none; margin:0; padding:var(--sp-2) 0; flex:0 0 auto; justify-content:flex-start;}
+nav.rack.rack-top .search-wrap{flex:1 1 auto; border-top:none; min-width:0;}
+nav.rack.rack-top .search-box{max-width:none; padding:var(--sp-2) 0;}
+#site-search{padding:6px 10px; border-radius:var(--r-sm); font-size:12.5px;}
+.sr-item{padding:9px var(--sp-4);}
+.nav-pill .plate{padding:5px 13px; font-size:11.5px;}
+@media (max-width:760px){
+  nav.rack.rack-top{flex-wrap:wrap; gap:0; padding:0 var(--sp-4);}
+  nav.rack.rack-top .rack-inner{flex:1 1 100%;}
+  nav.rack.rack-top .search-wrap{flex:1 1 100%;}
+  nav.rack.rack-top .search-box{padding-top:0;}
+}
+
+/* ---------- Gym: day sidebar on the Manual only ---------- */
+.gym-layout{grid-template-columns:var(--side-w) 1fr; max-width:var(--content-max);}
+#site-gym:not(.gym-manual-mode) nav.rack.rack-side{display:none;}
+#site-gym:not(.gym-manual-mode) .gym-layout{grid-template-columns:1fr;}
+@media (min-width:901px){
+  nav.rack.rack-side{
+    top:calc(var(--outer-h) + var(--gymbar-h));
+    height:calc(100vh - var(--outer-h) - var(--gymbar-h));
+  }
+}
+nav.rack.rack-side .rack-inner{padding:var(--sp-4) var(--sp-3); gap:var(--sp-2);}
+nav.rack.rack-side .plate.util{height:36px;}
+/* main.wrap: .wrap's side padding would otherwise wipe main's top/bottom
+   padding; same 20px gutter as the header bar so all edges line up */
+main.wrap{padding-top:var(--sp-5); padding-bottom:48px;}
+.gym-layout > main.wrap{margin:0; width:100%; padding-left:var(--sp-5); padding-right:var(--sp-5);}
+#site-gym.gym-manual-mode .gym-layout > main.wrap{padding-left:var(--sp-6);}
+.side-nav{top:calc(var(--outer-h) + var(--gymbar-h) + var(--sp-4)); max-height:calc(100vh - var(--outer-h) - var(--gymbar-h) - 32px);}
+.side-layout{grid-template-columns:180px 1fr; gap:var(--sp-5);}
+@media (max-width:900px){
+  .gym-layout > main.wrap, #site-gym.gym-manual-mode .gym-layout > main.wrap{padding-left:var(--sp-4); padding-right:var(--sp-4);}
+  nav.rack.rack-side .rack-inner{padding:var(--sp-2) var(--sp-4);}
+}
+
+/* ---------- Page headings ---------- */
+.day-head{gap:var(--sp-3); margin-bottom:2px;}
+.day-head h2{font-size:var(--fs-xl);}
+.day-sub{font-size:12px;}
+.day-focus{font-size:12px; margin-bottom:var(--sp-4); padding-bottom:var(--sp-3);}
+.section-block{margin-bottom:32px;}
+.section-block h2{font-size:var(--fs-xl);}
+.lede{font-size:var(--fs);}
+h3.perform-h{font-size:var(--fs-lg); margin:var(--sp-5) 0 var(--sp-3); padding-top:var(--sp-4);}
+h3.sub-h{font-size:var(--fs-md); color:var(--accent); margin:var(--sp-5) 0 var(--sp-2);}
+.divider-block{margin-top:var(--sp-5); border-top:1px solid var(--line); padding-top:var(--sp-4);}
+.sched-scope .section-sub-head{margin:var(--sp-5) 0 var(--sp-3);}
+.sched-scope .mp-section-head, .sched-scope .mp-sub-head{margin-top:var(--sp-5);}
+
+/* ---------- Cards (one look everywhere) ---------- */
+.weight-card, .weight-chart-card, .t-panel, .profile-card,
+.sched-scope .acc-card, .sched-scope .fasting-timer-card, .sched-scope .moon-today-card, .sched-scope .ekadashi-card,
+.blog-scope .side-widget{
+  border-radius:var(--r);
+}
+.weight-card, .weight-chart-card{padding:var(--card-pad);}
+.t-panel{padding:var(--sp-4);}
+.weight-card h3, .weight-chart-card h3{font-size:14px; margin-bottom:var(--sp-3);}
+.weight-grid, .bmi-grid{gap:var(--stack-gap);}
+.sched-scope #acc-feed-grid{gap:var(--sp-3);}
+.sched-scope .acc-card{padding:var(--sp-3) var(--sp-4); gap:var(--sp-2);}
+.bmi-section{margin-top:var(--sp-5); padding-top:var(--sp-4);}
+.bmi-section-head{margin-bottom:var(--sp-3);}
+.bmi-placeholder{padding:var(--sp-5) var(--sp-3);}
+.bmi-value{font-size:44px;}
+.bmi-category{margin-bottom:var(--sp-4);}
+.weight-chart-empty{padding:28px 16px;}
+.weight-chart-svg{display:block; width:100%; height:auto;}
+.phase{margin-bottom:var(--sp-3); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-sm);}
+.callout{margin:var(--sp-3) 0; padding:var(--sp-3) var(--sp-4); border-radius:var(--r-sm);}
+.hold-strip{margin:var(--sp-5) 0 var(--sp-1); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-sm);}
+details.updated{margin-top:var(--sp-4); border-radius:var(--r-sm); overflow:hidden;}
+details.updated .body{padding:var(--sp-3) var(--sp-4);}
+.ref-table{margin:var(--sp-3) 0 var(--sp-6);}
+.phase-list{margin-bottom:var(--sp-5);}
+.sched-scope .fasting-timer-card{padding:var(--sp-5);}
+.sched-scope .fasting-action-btn{padding:10px 24px;}
+
+/* ---------- Home ---------- */
+.home-moon-banner{padding:var(--sp-5) 0;}
+.home-moon-banner-head h2{font-size:var(--fs-lg);}
+.sched-scope .ekadashi-card{padding:var(--sp-4); margin-top:var(--sp-3);}
+.sched-scope .ekadashi-hourglass svg{width:48px; height:77px;}
+.site-stub{padding:40px var(--sp-5) 48px;}
+
+/* ---------- Section tiles (Member / Me / Coach / Admin) ----------
+   Desktop: one compact row of icon + label buttons. Phones keep the
+   big tap-friendly tile grid from the rules above. */
+@media (min-width:641px){
+  #member-section-switch, #me-section-switch, #coach-section-switch, #admin-section-switch{
+    grid-template-columns:repeat(auto-fit, minmax(118px, 1fr)); gap:var(--sp-2); margin-bottom:var(--sp-4);
+  }
+  #member-section-switch .plate, #me-section-switch button, #coach-section-switch button, #admin-section-switch .plate{
+    min-height:42px; padding:var(--sp-2) var(--sp-3); flex-direction:row; gap:var(--sp-2);
+    font-size:14px; border-width:1px; border-radius:var(--r); box-shadow:none;
+  }
+  #member-section-switch .plate::before, #me-section-switch button::before,
+  #coach-section-switch button::before, #admin-section-switch .plate::before{font-size:17px;}
+}
+
+/* ---------- Tabs, buttons, pills ---------- */
+.sched-scope .sched-sub{gap:var(--sp-1); margin-bottom:var(--sp-4);}
+.sched-scope .sched-sub button, .sched-scope .sched-sub .plate{padding:6px 12px; border-radius:var(--r-sm);}
+.sched-scope .view-switch{margin-bottom:var(--sp-3);}
+.sched-scope .view-switch button{padding:6px 14px;}
+.sched-scope .row-actions button{border-radius:var(--r-sm);}
+.unit-switch{margin-bottom:var(--sp-3);}
+.unit-switch button{padding:5px 14px;}
+.weight-submit{margin-top:var(--sp-3); border-radius:var(--r-sm);}
+.admin-day-select.side-nav .subtab-btn, .subtab-bar.side-nav .subtab-btn,
+.glance-scope nav.jump.side-nav a{border-radius:var(--r-sm);}
+
+/* ---------- Forms ---------- */
+.weight-form label{margin-top:var(--sp-3);}
+.weight-form input, .weight-form select{padding:7px 10px; font-size:14px; border-radius:var(--r-sm);}
+.sched-scope .field{margin-bottom:var(--sp-3);}
+.sched-scope .field input, .sched-scope .field select, .sched-scope .field textarea,
+.sched-scope .form-inline input, .sched-scope .form-inline select,
+.sched-scope .identity-row select{padding:7px 10px; border-radius:var(--r-sm);}
+.sched-scope .form-inline{padding:var(--sp-3); gap:var(--sp-2); margin-bottom:var(--sp-4); border-radius:var(--r);}
+.sched-scope .identity-row{margin-bottom:var(--sp-4); padding-bottom:var(--sp-3);}
+
+/* ---------- Tables ---------- */
+table.block td{padding:7px 12px; font-size:14px;}
+.sched-scope .admin-table{margin-bottom:var(--sp-4);}
+.sched-scope .admin-table th{padding:6px 10px;}
+.sched-scope .admin-table td{padding:7px 10px;}
+
+/* ---------- Empty states, panels, modals ---------- */
+.sched-scope .empty-msg{padding:var(--sp-5) var(--sp-4); border-radius:var(--r);}
+.sched-scope .panel-backdrop{padding:24px 16px;}
+.sched-scope .panel{padding:var(--sp-5); border-radius:var(--r);}
+.sched-scope .panel h2{font-size:var(--fs-lg); margin-bottom:var(--sp-3);}
+.sched-scope .panel-actions{margin-top:var(--sp-4); padding-top:var(--sp-3);}
+.gate-panel{padding:var(--sp-5);}
+
+/* ---------- Phones: Gym header in two short rows ---------- */
+@media (max-width:640px){
+  #site-gym header.site{padding:0;}
+  #site-gym .site-title-row{flex-direction:row; align-items:center; justify-content:space-between; text-align:left; flex-wrap:nowrap; padding:var(--sp-2) var(--sp-4);}
+  #site-gym .site-title{font-size:16px;}
+  #site-gym.gym-manual-mode .site-tag{display:none;}
+  #site-gym .header-right{width:auto; gap:6px;}
+  #site-gym .theme-toggle-label{display:none;}
+  nav.rack.rack-top .rack-inner{padding:6px 0;}
+  .nav-pill{flex-wrap:nowrap; width:100%;}
+  .nav-pill .plate{flex:1 1 0; padding:5px 2px; font-size:10.5px; letter-spacing:.02em;}
+  .day-head h2{font-size:20px;}
+  /* Manual day row: wraps instead of side-scrolling; day picker gets its own line */
+  nav.rack.rack-side .rack-inner{flex-wrap:wrap; overflow-x:visible; gap:6px;}
+  nav.rack.rack-side .plate.util{height:32px; padding:0 12px; font-size:12px; flex:1 1 auto;}
+  nav.rack.rack-side .weekday-dropdown{order:-1; padding:7px 10px;}
+}

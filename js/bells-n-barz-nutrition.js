@@ -251,7 +251,8 @@
   }
 
   function buildChart(points){
-    const W = 700, H = 320, padL = 44, padR = 20, padT = 20, padB = 36;
+    const W = bnbChartWidth(chartSvg), H = 230, padL = 44, padR = 20, padT = 20, padB = 36;
+    chartSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     const dates = points.map(p => new Date(p.date + 'T00:00:00').getTime());

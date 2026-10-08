@@ -2404,7 +2404,8 @@
     if (points.length < 2){ svg.style.display='none'; empty.style.display='block'; return; }
     empty.style.display='none'; svg.style.display='block';
 
-    const W=700,H=320,padL=50,padR=20,padT=20,padB=36;
+    const W=bnbChartWidth(svg),H=230,padL=50,padR=20,padT=20,padB=36;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     const ys = points.map(p=>p.wt);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const yRange = (maxY - minY) || 1;
