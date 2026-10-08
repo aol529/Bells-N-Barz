@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=redesign-2" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=redesign-3" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -1572,7 +1572,7 @@
 </div>
 <p class="weight-hint">Shows as a line on the Progress chart above. Leave blank to hide it.</p>
 </div>
-<div>
+<div class="side-col">
 <div class="weight-stats" id="weight-stats" style="display:none;">
 <div class="weight-stat"><span class="lbl">Start</span><span class="val" id="stat-start">—</span></div>
 <div class="weight-stat"><span class="lbl">Current</span><span class="val" id="stat-current">—</span></div>
@@ -1809,7 +1809,7 @@
 </div>
 <p class="weight-hint">Logging the same date again overwrites that day's entry. Days logged without any flow selected are treated as symptom-only, not period days, and don't count toward cycle length.</p>
 </div>
-<div>
+<div class="side-col">
 <div class="weight-stats" id="period-stats" style="display:none;">
 <div class="weight-stat"><span class="lbl">Cycle Day</span><span class="val" id="period-stat-day">—</span></div>
 <div class="weight-stat"><span class="lbl">Avg Cycle</span><span class="val" id="period-stat-cycle">—</span></div>
@@ -1877,6 +1877,7 @@
 </div>
 <div class="weight-grid">
 <div class="weight-card" id="track-ladder-mount"></div>
+<div class="side-col">
 <div class="weight-chart-card">
 <h3>Load Progression</h3>
 <div class="weight-chart-empty" id="track-chart-empty">Log a session to start the chart.</div>
@@ -1887,7 +1888,6 @@
 <span><i class="swatch solid" style="background:var(--accent-2);"></i>Hold</span>
 </div>
 </div>
-</div>
 <div class="weight-history">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:12px;">Session History</h3>
 <table class="weight-history-table" id="track-history-table">
@@ -1895,6 +1895,8 @@
 <tbody id="track-history-body"></tbody>
 </table>
 <div class="weight-chart-empty" id="track-history-empty" style="display:none;">No sessions logged for this exercise yet.</div>
+</div>
+</div>
 </div>
 </section>
 <!-- ================= FOOD LOG (section key stays 'nutrition') ================= -->
@@ -1933,12 +1935,12 @@
 </div>
 <p class="weight-hint">Logging the same date again overwrites that day's entry.</p>
 </div>
+<div class="side-col">
 <div class="weight-stats" id="nutrition-stats" style="display:none;">
 <div class="weight-stat"><span class="lbl">Avg Calories (7d)</span><span class="val" id="nutrition-stat-calories">—</span></div>
 <div class="weight-stat"><span class="lbl">Avg Protein (7d)</span><span class="val" id="nutrition-stat-protein">—</span></div>
 <div class="weight-stat"><span class="lbl">Avg Carbs (7d)</span><span class="val" id="nutrition-stat-carbs">—</span></div>
 <div class="weight-stat"><span class="lbl">Avg Fat (7d)</span><span class="val" id="nutrition-stat-fat">—</span></div>
-</div>
 </div>
 <div class="weight-chart-card" style="margin-top:var(--stack-gap);">
 <h3>Calorie Trend</h3>
@@ -1957,6 +1959,8 @@
 <div class="weight-chart-empty" id="nutrition-history-empty" style="display:none;">Nothing logged yet.</div>
 <div class="weight-clear-row">
 <button class="weight-clear-btn" id="nutrition-clear-btn" type="button">Clear all entries</button>
+</div>
+</div>
 </div>
 </div>
 
