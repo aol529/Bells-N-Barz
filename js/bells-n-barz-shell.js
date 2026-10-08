@@ -134,6 +134,8 @@ document.querySelectorAll('table').forEach(t => {
       );
       if (modeBtn) modeBtn.click();
     }
+    // Also used by the Member preview page and the Tools calculators.
+    window.bnbEnterGym = enterGym;
     document.getElementById('gate-login-btn').addEventListener('click', ()=> enterGym('login'));
     document.getElementById('gate-signup-btn').addEventListener('click', ()=> enterGym('signup'));
     document.getElementById('gate-close-btn').addEventListener('click', closeGate);
@@ -146,7 +148,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', time:'Timers', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams', messages:'Messages', reports:'Reports'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', tools:'Tools', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams', messages:'Messages', reports:'Reports'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -163,13 +165,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','time','me','accountability','messages','schedule','challenges'];
+const memberSectionTabs = ['session','me','accountability','messages','schedule'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', time: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', challenges: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -235,7 +237,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin',
-  session: 'Live Session Log', time: 'Timers', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox', challenges: 'Challenges'
+  session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -267,7 +269,8 @@ function switchTab(rawTab, scrollTop){
     sessions: 'bookingCoach',
     billing: 'billing',
     users: 'migrate',
-    reports: 'reports'
+    reports: 'reports',
+    tools: 'tools'
   };
   if (TAB_TO_MODULE[tab] && typeof bnbLoadModule === 'function'){
     bnbLoadModule(TAB_TO_MODULE[tab]).catch(err => {
@@ -287,7 +290,7 @@ function switchTab(rawTab, scrollTop){
   // get the full width (see "REDESIGN" in the stylesheet).
   const gymPage = document.getElementById('site-gym');
   if (gymPage) gymPage.classList.toggle('gym-manual-mode', manualTabs.includes(tab));
-  if (navMemberBtn) navMemberBtn.classList.toggle('active', memberSectionTabs.includes(tab));
+  if (navMemberBtn) navMemberBtn.classList.toggle('active', memberSectionTabs.includes(tab) || tab === 'member-preview');
   if (navAdminBtn) navAdminBtn.classList.toggle('active', adminSectionTabs.includes(tab));
   document.querySelectorAll('.tab-panel').forEach(sec => sec.classList.remove('active'));
   panel.classList.add('active');
@@ -770,6 +773,11 @@ function refreshNavAuthGate(){
   });
   refreshAccountMenu(signedIn);
   refreshNotificationBell(signedIn);
+  // Tools' "save this" boxes switch between Sign Up and Open in Me.
+  if (window.BNB_TOOLS) window.BNB_TOOLS.refresh();
+  // Signed in while looking at the Member preview: go straight into Member.
+  const preview = document.getElementById('tab-member-preview');
+  if (signedIn && preview && preview.classList.contains('active')) switchTab('member');
 }
 
 /* ---------------- NOTIFICATION BELL (top-right, signed-in only) ---------------- */
@@ -1058,6 +1066,9 @@ plates.forEach(p => {
   p.addEventListener('click', () => {
     const tab = p.getAttribute('data-tab');
     if (GATED_TABS.includes(tab)){
+      // Signed-out MEMBER click: show what membership includes rather
+      // than a bare login pop-up (Coach/Admin/Inbox still use the pop-up).
+      if (!isSignedIn() && tab === 'member'){ hideBackPill(); switchTab('member-preview'); return; }
       if (!isSignedIn()){ goToLoginPrompt(); return; }
       if (STAFF_ONLY_TABS.includes(tab) && !isStaff()){ showStaffOnlyToast(); return; }
     }
@@ -1667,3 +1678,28 @@ setInterval(() => location.reload(), 2 * 60 * 60 * 1000);
 
 /* ---------------- WEIGHT TRACKER ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-weight.js (loaded on demand — see bnbLoadModule) -->
+
+
+/* ---------------- TOOLS PAGE (free, no account needed) ---------------- */
+// Timers and Challenges are static markup driven by this file; the Body
+// and Calories pages are filled by js/bells-n-barz-tools.js, lazy-loaded
+// the first time the Tools tab opens (TAB_TO_MODULE above).
+function showToolsPage(page){
+  document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tools-page') === page));
+  document.querySelectorAll('#tab-tools .tools-page').forEach(el => { el.style.display = el.id === 'tools-page-' + page ? 'block' : 'none'; });
+}
+window.bnbShowToolsPage = showToolsPage;
+document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => {
+  b.addEventListener('click', () => showToolsPage(b.getAttribute('data-tools-page')));
+});
+
+/* ---------------- MEMBER PREVIEW (signed-out visitors) ---------------- */
+(function(){
+  const enter = mode => { if (typeof window.bnbEnterGym === 'function') window.bnbEnterGym(mode); };
+  const signup = document.getElementById('member-preview-signup');
+  const login = document.getElementById('member-preview-login');
+  const tools = document.getElementById('member-preview-tools');
+  if (signup) signup.addEventListener('click', () => enter('signup'));
+  if (login) login.addEventListener('click', () => enter('login'));
+  if (tools) tools.addEventListener('click', () => { switchTab('tools'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+})();

@@ -1873,12 +1873,10 @@ header.site{
   line-height:1;
 }
 #member-section-switch [data-tab="session"]::before{content:"🏋️";}
-#member-section-switch [data-tab="time"]::before{content:"⏱️";}
 #member-section-switch [data-tab="me"]::before{content:"👤";}
 #member-section-switch [data-tab="accountability"]::before{content:"👥";}
 #member-section-switch [data-tab="messages"]::before{content:"💬";}
 #member-section-switch [data-tab="schedule"]::before{content:"📅";}
-#member-section-switch [data-tab="challenges"]::before{content:"🏆";}
 #me-section-switch [data-me-section="weight"]::before{content:"⚖️";}
 #me-section-switch [data-me-section="period"]::before{content:"🩸";}
 #me-section-switch [data-me-section="track"]::before{content:"📈";}
@@ -2536,3 +2534,23 @@ table.block td{padding:7px 12px; font-size:14px;}
   nav.rack.rack-side .plate.util{height:32px; padding:0 12px; font-size:12px; flex:1 1 auto;}
   nav.rack.rack-side .weekday-dropdown{order:-1; padding:7px 10px;}
 }
+
+/* ---------- TOOLS (free, no account needed) ---------- */
+.tools-switches{display:flex; gap:var(--sp-2); flex-wrap:wrap;}
+.tools-hint{text-transform:none; letter-spacing:0; color:var(--muted-2);}
+.tools-save p{font-size:13.5px; color:var(--muted); margin:0 0 var(--sp-3);}
+.tools-save .weight-clear-btn{margin-right:var(--sp-2);}
+details.tools-how{margin-top:var(--stack-gap);}
+details.tools-how .body{background:var(--surface);}
+details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
+
+/* ---------- MEMBER PREVIEW (signed-out visitors) ---------- */
+.member-preview-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:var(--sp-3); margin-bottom:var(--sp-5);}
+.member-preview-card{background:var(--surface); border:1px solid var(--line-soft); border-radius:var(--r); padding:var(--card-pad);}
+.member-preview-card .ico{font-size:22px; line-height:1; display:block; margin-bottom:var(--sp-2);}
+.member-preview-card h3{font-size:15px; margin-bottom:var(--sp-1);}
+.member-preview-card p{font-size:13.5px; color:var(--muted); margin:0; line-height:1.5;}
+.member-preview-actions{display:flex; gap:var(--sp-2); flex-wrap:wrap; align-items:center;}
+.member-preview-actions .weight-submit{width:auto; margin-top:0; padding-left:28px; padding-right:28px;}
+/* the MEMBER pill stays fully lit while a guest is on the preview page */
+.nav-pill .plate.locked.active{opacity:1;}

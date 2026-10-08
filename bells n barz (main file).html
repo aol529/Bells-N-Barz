@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=redesign-3" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=redesign-4" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -108,6 +108,8 @@
     bmi:          { file: 'js/bells-n-barz-bmi.js', deps: ['weight', 'bodyfat'] },
     // Tape-measure body fat formulas, shared by Body Composition and Client Progress.
     bodyfat:      { file: 'js/bells-n-barz-bodyfat.js' },
+    // Tools > Body Calculators / Calories & Macros (free, nothing saved).
+    tools:        { file: 'js/bells-n-barz-tools.js', deps: ['bodyfat', 'targets'] },
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
     // One calorie/macro formula shared by Food Log, Meal Plan and the diets.
@@ -943,6 +945,7 @@
 <div class="rack-inner" id="rack-top-inner">
     <div class="nav-pill" id="main-pill-switch">
     <div class="plate util" data-tab="overview" id="nav-manual-btn">MANUAL</div>
+    <div class="plate util" data-tab="tools" id="nav-tools-btn">TOOLS</div>
     <div class="plate util" data-tab="member" id="nav-member-btn">MEMBER</div>
     <div class="plate util" data-tab="coach">COACH</div>
     <div class="plate util" data-tab="admin" id="nav-admin-btn">ADMIN</div>
@@ -1414,123 +1417,15 @@
   <button class="member-back-btn" id="member-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="member-section-switch">
     <button class="plate active" data-tab="session">Live Session</button>
-    <button class="plate" data-tab="time">Timers</button>
     <button class="plate" data-tab="me">Me</button>
     <button class="plate" data-tab="accountability">My Teams</button>
     <button class="plate" data-tab="messages">Messages</button>
     <button class="plate" data-tab="schedule">Booking</button>
-    <button class="plate" data-tab="challenges">Challenges</button>
   </div>
 
-<!-- ================= TIME ================= -->
-<section class="member-section" id="tab-time">
-<div class="day-head"><h2>Time — Interval Timers</h2></div>
-<div class="day-focus">A ready-made Tabata clock, plus a fully editable interval timer for anything else</div>
-<div class="timer-grid">
-<div class="timer-card" data-phase="idle" id="tabata-card">
-<div class="timer-meta">
-<span class="timer-name">Tabata — Classic</span>
-<span class="timer-total mono" id="tabata-total">4:07 total</span>
-</div>
-<div class="timer-phase" id="tabata-phase">GET READY</div>
-<div class="timer-clock mono" id="tabata-clock">0:07</div>
-<div class="timer-round mono" id="tabata-round">Round 0 / 8</div>
-<div class="timer-progress"><div class="timer-progress-bar" id="tabata-progress"></div></div>
-<div class="timer-controls">
-<button class="primary" id="tabata-start" type="button">Start</button>
-<button disabled="" id="tabata-pause" type="button">Pause</button>
-<button id="tabata-reset" type="button">Reset</button>
-</div>
-<div class="timer-spec mono">7s prep · 20s work · 10s rest · 8 rounds</div>
-</div>
-<div class="timer-card" data-phase="idle" id="custom-card">
-<div class="timer-meta">
-<span class="timer-name">Custom Timer</span>
-<span class="timer-total mono" id="custom-total">4:40 total</span>
-</div>
-<div class="timer-fields">
-<label>Prep (s)<input id="custom-prep" max="600" min="0" type="number" value="10"/></label>
-<label>Work (s)<input id="custom-work" max="3600" min="1" type="number" value="30"/></label>
-<label>Rest (s)<input id="custom-rest" max="3600" min="0" type="number" value="15"/></label>
-<label>Cycles<input id="custom-cycles" max="99" min="1" type="number" value="6"/></label>
-<label>Sets<input id="custom-sets" max="20" min="1" type="number" value="1"/></label>
-<label>Rest btwn sets (s)<input id="custom-restsets" max="3600" min="0" type="number" value="0"/></label>
-<label>Cool down (s)<input id="custom-cooldown" max="3600" min="0" type="number" value="0"/></label>
-</div>
-<div class="timer-phase" id="custom-phase">GET READY</div>
-<div class="timer-clock mono" id="custom-clock">0:10</div>
-<div class="timer-round mono" id="custom-round">Round 0 / 6</div>
-<div class="timer-progress"><div class="timer-progress-bar" id="custom-progress"></div></div>
-<div class="timer-controls">
-<button class="primary" id="custom-start" type="button">Start</button>
-<button disabled="" id="custom-pause" type="button">Pause</button>
-<button id="custom-reset" type="button">Reset</button>
-</div>
-<div class="timer-spec mono">Prep → (Work → Rest) × Cycles → rest between sets → repeat × Sets → Cool down</div>
-</div>
-</div>
-<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Both clocks run on the same GET READY → WORK → REST cycle used throughout this manual's Potentiate and interval work (HIIT Rower, Kettlebell Swings, etc.), with a short tone on every phase change. A timer keeps counting even if you switch to another tab on the site — it'll be right where it should be when you come back.</p>
-<div class="section-block">
-<h2>Training Formats</h2>
-<p class="lede">The three interval formats referenced throughout this manual, and how each maps onto the Custom Timer above.</p>
-<div class="format-grid">
-<div class="format-card" data-cooldown="0" data-cycles="8" data-fmt="tabata" data-prep="10" data-rest="10" data-restsets="0" data-sets="1" data-work="20">
-<div class="format-tag">PROTOCOL</div>
-<h4>Tabata</h4>
-<p>A fixed, named protocol from a 1996 study on Japanese speed skaters: 20 seconds at true maximal effort, 10 seconds rest, repeated for 8 rounds — 4 minutes total. It's the format behind this tab's built-in Tabata clock.</p>
-<p class="format-note">The 20/10 timing only counts as "Tabata" if the work interval is genuinely all-out — pacing it like a moderate HIIT round misses the point of the protocol.</p>
-<div class="format-setup">
-<span class="spec">10s prep · 20/10 · ×8</span>
-<button class="format-load-btn" type="button">Load into Custom</button>
-</div>
-</div>
-<div class="format-card" data-cooldown="0" data-cycles="8" data-fmt="hiit" data-prep="10" data-rest="20" data-restsets="0" data-sets="1" data-work="40">
-<div class="format-tag">CATEGORY</div>
-<h4>HIIT</h4>
-<p>High-Intensity Interval Training is the umbrella category, not one fixed timing — short bursts of hard effort alternated with easier recovery, at whatever work/rest ratio suits the exercise and the client's conditioning. Tabata is technically one specific HIIT protocol.</p>
-<p class="format-note">Common ratios: 20/10, 30/30, 40/20, 1:1 work-to-rest. This manual's HIIT Rower and Potentiate throws are HIIT-style but don't follow the strict Tabata timing.</p>
-<div class="format-setup">
-<span class="spec">10s prep · 40/20 · ×8</span>
-<button class="format-load-btn" type="button">Load into Custom</button>
-</div>
-</div>
-<div class="format-card" data-cooldown="0" data-cycles="10" data-fmt="emom" data-prep="10" data-rest="20" data-restsets="0" data-sets="1" data-work="40">
-<div class="format-tag">FORMAT</div>
-<h4>EMOM</h4>
-<p>"Every Minute On the Minute" — a fixed number of reps performed at the start of each 60-second window, then whatever time is left over is rest. The faster the reps get done, the more rest that round; the interval length never changes.</p>
-<p class="format-note">The timer's Work/Rest split can only approximate this: set Work to a target rep-cap time and Rest to whatever's left in the minute (e.g. 40/20). True EMOM rest is self-paced, not fixed.</p>
-<div class="format-setup">
-<span class="spec">10s prep · 40/20 · ×10</span>
-<button class="format-load-btn" type="button">Load into Custom</button>
-</div>
-</div>
-</div>
-</div>
-</section>
+
 <!-- ================= CHALLENGES ================= -->
-<section class="member-section" id="tab-challenges">
-<div class="day-head"><h2>Challenges</h2></div>
-<div class="day-focus">Themed workouts built around a beat, not a stopwatch</div>
-<div class="timer-grid">
-<div class="timer-card" data-phase="idle" id="sally-card">
-<div class="timer-meta">
-<span class="timer-name">Bring Sally Up</span>
-<span class="timer-total mono" id="sally-total">3:35 total</span>
-</div>
-<div class="timer-phase" id="sally-phase">GET READY</div>
-<div class="timer-clock mono" id="sally-clock">0:05</div>
-<div class="timer-round mono" id="sally-round">Round 0 / 30</div>
-<div class="timer-progress"><div class="timer-progress-bar" id="sally-progress"></div></div>
-<div class="timer-controls">
-<button class="primary" id="sally-start" type="button">Start</button>
-<button disabled="" id="sally-pause" type="button">Pause</button>
-<button id="sally-reset" type="button">Reset</button>
-</div>
-<div class="timer-spec mono">5s prep · UP 2s / DOWN 5s · ×30 reps</div>
-</div>
-</div>
-<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Based on the "Bring Sally Up" push-up challenge, built around Moby's song "Flower" — every "up" cue is a push-up, every "down" cue is a hold with your chest hovering just off the floor, until the track ends. This pacer approximates that same up/down/hold cadence (it doesn't play the actual song — cue up your own copy alongside it if you want the real thing). Works for squats or pull-ups too, not just push-ups. Not a beginner drill: if you can't hold a strict plank for 60+ seconds or do 15+ unbroken push-ups, build that base first — bad form under fatigue here is how shoulders get hurt.</p>
-</section>
+
 <!-- ================= ME ================= -->
 <section class="member-section" id="tab-me">
 <div class="sched-sub" id="me-section-switch">
@@ -2572,6 +2467,147 @@
 </section>
 
 <!-- ================= COACH ================= -->
+<!-- ================= TOOLS (free, no account needed) ================= -->
+<section class="tab-panel" id="tab-tools">
+<div class="sched-scope">
+<div class="day-head"><h2>Tools</h2><span class="day-sub">Free for everyone, no account needed</span></div>
+<div class="sched-sub" id="tools-page-tabs">
+<button class="active" data-tools-page="timers" type="button">Timers</button>
+<button data-tools-page="challenges" type="button">Challenges</button>
+<button data-tools-page="body" type="button">Body Calculators</button>
+<button data-tools-page="calories" type="button">Calories &amp; Macros</button>
+</div>
+<div class="tools-page" id="tools-page-timers">
+<div class="day-focus">A ready-made Tabata clock, plus a fully editable interval timer for anything else</div>
+<div class="timer-grid">
+<div class="timer-card" data-phase="idle" id="tabata-card">
+<div class="timer-meta">
+<span class="timer-name">Tabata — Classic</span>
+<span class="timer-total mono" id="tabata-total">4:07 total</span>
+</div>
+<div class="timer-phase" id="tabata-phase">GET READY</div>
+<div class="timer-clock mono" id="tabata-clock">0:07</div>
+<div class="timer-round mono" id="tabata-round">Round 0 / 8</div>
+<div class="timer-progress"><div class="timer-progress-bar" id="tabata-progress"></div></div>
+<div class="timer-controls">
+<button class="primary" id="tabata-start" type="button">Start</button>
+<button disabled="" id="tabata-pause" type="button">Pause</button>
+<button id="tabata-reset" type="button">Reset</button>
+</div>
+<div class="timer-spec mono">7s prep · 20s work · 10s rest · 8 rounds</div>
+</div>
+<div class="timer-card" data-phase="idle" id="custom-card">
+<div class="timer-meta">
+<span class="timer-name">Custom Timer</span>
+<span class="timer-total mono" id="custom-total">4:40 total</span>
+</div>
+<div class="timer-fields">
+<label>Prep (s)<input id="custom-prep" max="600" min="0" type="number" value="10"/></label>
+<label>Work (s)<input id="custom-work" max="3600" min="1" type="number" value="30"/></label>
+<label>Rest (s)<input id="custom-rest" max="3600" min="0" type="number" value="15"/></label>
+<label>Cycles<input id="custom-cycles" max="99" min="1" type="number" value="6"/></label>
+<label>Sets<input id="custom-sets" max="20" min="1" type="number" value="1"/></label>
+<label>Rest btwn sets (s)<input id="custom-restsets" max="3600" min="0" type="number" value="0"/></label>
+<label>Cool down (s)<input id="custom-cooldown" max="3600" min="0" type="number" value="0"/></label>
+</div>
+<div class="timer-phase" id="custom-phase">GET READY</div>
+<div class="timer-clock mono" id="custom-clock">0:10</div>
+<div class="timer-round mono" id="custom-round">Round 0 / 6</div>
+<div class="timer-progress"><div class="timer-progress-bar" id="custom-progress"></div></div>
+<div class="timer-controls">
+<button class="primary" id="custom-start" type="button">Start</button>
+<button disabled="" id="custom-pause" type="button">Pause</button>
+<button id="custom-reset" type="button">Reset</button>
+</div>
+<div class="timer-spec mono">Prep → (Work → Rest) × Cycles → rest between sets → repeat × Sets → Cool down</div>
+</div>
+</div>
+<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Both clocks run on the same GET READY → WORK → REST cycle used throughout this manual's Potentiate and interval work (HIIT Rower, Kettlebell Swings, etc.), with a short tone on every phase change. A timer keeps counting even if you switch to another tab on the site — it'll be right where it should be when you come back.</p>
+<div class="section-block">
+<h2>Training Formats</h2>
+<p class="lede">The three interval formats referenced throughout this manual, and how each maps onto the Custom Timer above.</p>
+<div class="format-grid">
+<div class="format-card" data-cooldown="0" data-cycles="8" data-fmt="tabata" data-prep="10" data-rest="10" data-restsets="0" data-sets="1" data-work="20">
+<div class="format-tag">PROTOCOL</div>
+<h4>Tabata</h4>
+<p>A fixed, named protocol from a 1996 study on Japanese speed skaters: 20 seconds at true maximal effort, 10 seconds rest, repeated for 8 rounds — 4 minutes total. It's the format behind this tab's built-in Tabata clock.</p>
+<p class="format-note">The 20/10 timing only counts as "Tabata" if the work interval is genuinely all-out — pacing it like a moderate HIIT round misses the point of the protocol.</p>
+<div class="format-setup">
+<span class="spec">10s prep · 20/10 · ×8</span>
+<button class="format-load-btn" type="button">Load into Custom</button>
+</div>
+</div>
+<div class="format-card" data-cooldown="0" data-cycles="8" data-fmt="hiit" data-prep="10" data-rest="20" data-restsets="0" data-sets="1" data-work="40">
+<div class="format-tag">CATEGORY</div>
+<h4>HIIT</h4>
+<p>High-Intensity Interval Training is the umbrella category, not one fixed timing — short bursts of hard effort alternated with easier recovery, at whatever work/rest ratio suits the exercise and the client's conditioning. Tabata is technically one specific HIIT protocol.</p>
+<p class="format-note">Common ratios: 20/10, 30/30, 40/20, 1:1 work-to-rest. This manual's HIIT Rower and Potentiate throws are HIIT-style but don't follow the strict Tabata timing.</p>
+<div class="format-setup">
+<span class="spec">10s prep · 40/20 · ×8</span>
+<button class="format-load-btn" type="button">Load into Custom</button>
+</div>
+</div>
+<div class="format-card" data-cooldown="0" data-cycles="10" data-fmt="emom" data-prep="10" data-rest="20" data-restsets="0" data-sets="1" data-work="40">
+<div class="format-tag">FORMAT</div>
+<h4>EMOM</h4>
+<p>"Every Minute On the Minute" — a fixed number of reps performed at the start of each 60-second window, then whatever time is left over is rest. The faster the reps get done, the more rest that round; the interval length never changes.</p>
+<p class="format-note">The timer's Work/Rest split can only approximate this: set Work to a target rep-cap time and Rest to whatever's left in the minute (e.g. 40/20). True EMOM rest is self-paced, not fixed.</p>
+<div class="format-setup">
+<span class="spec">10s prep · 40/20 · ×10</span>
+<button class="format-load-btn" type="button">Load into Custom</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="tools-page" id="tools-page-challenges" style="display:none;">
+<div class="day-focus">Themed workouts built around a beat, not a stopwatch</div>
+<div class="timer-grid">
+<div class="timer-card" data-phase="idle" id="sally-card">
+<div class="timer-meta">
+<span class="timer-name">Bring Sally Up</span>
+<span class="timer-total mono" id="sally-total">3:35 total</span>
+</div>
+<div class="timer-phase" id="sally-phase">GET READY</div>
+<div class="timer-clock mono" id="sally-clock">0:05</div>
+<div class="timer-round mono" id="sally-round">Round 0 / 30</div>
+<div class="timer-progress"><div class="timer-progress-bar" id="sally-progress"></div></div>
+<div class="timer-controls">
+<button class="primary" id="sally-start" type="button">Start</button>
+<button disabled="" id="sally-pause" type="button">Pause</button>
+<button id="sally-reset" type="button">Reset</button>
+</div>
+<div class="timer-spec mono">5s prep · UP 2s / DOWN 5s · ×30 reps</div>
+</div>
+</div>
+<p style="font-size:12.5px;color:var(--muted-2);max-width:70ch;margin-top:var(--stack-gap);">Based on the "Bring Sally Up" push-up challenge, built around Moby's song "Flower" — every "up" cue is a push-up, every "down" cue is a hold with your chest hovering just off the floor, until the track ends. This pacer approximates that same up/down/hold cadence (it doesn't play the actual song — cue up your own copy alongside it if you want the real thing). Works for squats or pull-ups too, not just push-ups. Not a beginner drill: if you can't hold a strict plank for 60+ seconds or do 15+ unbroken push-ups, build that base first — bad form under fatigue here is how shoulders get hurt.</p>
+</div>
+<div class="tools-page" id="tools-page-body" style="display:none;"><div id="tools-body-mount"></div></div>
+<div class="tools-page" id="tools-page-calories" style="display:none;"><div id="tools-cal-mount"></div></div>
+</div>
+</section>
+
+<!-- ================= MEMBER PREVIEW (signed-out visitors who click MEMBER) ================= -->
+<section class="tab-panel" id="tab-member-preview">
+<div class="sched-scope">
+<div class="day-head"><h2>Member Area</h2></div>
+<div class="day-focus">Everything here is saved to your account and shared with your coach, so it needs a free sign-up</div>
+<div class="member-preview-grid">
+<div class="member-preview-card"><span class="ico">🏋️</span><h3>Live Session</h3><p>Log every set as you train, following your program or freeform, with a progress graph for each lift.</p></div>
+<div class="member-preview-card"><span class="ico">⚖️</span><h3>Progress Tracking</h3><p>Weight, BMI, body composition, Hepburn progressions, food log, fasting and cycle tracking, all saved and charted.</p></div>
+<div class="member-preview-card"><span class="ico">🥗</span><h3>Meal Plan</h3><p>A plan your coach builds from your questionnaire, with a shopping list and weekly food budget.</p></div>
+<div class="member-preview-card"><span class="ico">📅</span><h3>Booking</h3><p>Book classes and 1-on-1 sessions with a coach.</p></div>
+<div class="member-preview-card"><span class="ico">👥</span><h3>My Teams</h3><p>Accountability groups: see what your group has on today and who's showing up.</p></div>
+<div class="member-preview-card"><span class="ico">💬</span><h3>Messages</h3><p>Talk to the coaching staff directly.</p></div>
+</div>
+<div class="member-preview-actions">
+<button class="weight-submit" id="member-preview-signup" type="button">Sign Up</button>
+<button class="weight-clear-btn" id="member-preview-login" type="button">Log In</button>
+<button class="weight-clear-btn" id="member-preview-tools" type="button">Try the free tools →</button>
+</div>
+</div>
+</section>
+
 <section class="tab-panel" id="tab-coach">
   <div class="day-head"><h2>Coach — Program &amp; Roster</h2><span class="day-sub">Perform block builder, class roster, and 1-on-1 availability</span></div>
   <div class="sched-scope">
