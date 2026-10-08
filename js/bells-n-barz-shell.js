@@ -456,13 +456,15 @@ let previousLocation = null;
   const btns = switchEl.querySelectorAll('button');
   const sections = {
     weight: document.getElementById('tab-weight'),
+    bp: document.getElementById('tab-bp'),
+    steps: document.getElementById('tab-steps'),
     period: document.getElementById('tab-period'),
     track: document.getElementById('tab-track'),
     nutrition: document.getElementById('tab-nutrition'),
     fasting: document.getElementById('tab-fasting'),
     mealplan: document.getElementById('tab-mealplan')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');

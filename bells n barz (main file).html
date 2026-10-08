@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=redesign-4" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=vitals-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -110,6 +110,8 @@
     bodyfat:      { file: 'js/bells-n-barz-bodyfat.js' },
     // Tools > Body Calculators / Calories & Macros (free, nothing saved).
     tools:        { file: 'js/bells-n-barz-tools.js', deps: ['bodyfat', 'targets'] },
+    // Me > Blood Pressure and Me > Steps share one file.
+    vitals:       { file: 'js/bells-n-barz-vitals.js' },
     period:       { file: 'js/bells-n-barz-period.js' },
     track:        { file: 'js/bells-n-barz-track.js' },
     // One calorie/macro formula shared by Food Log, Meal Plan and the diets.
@@ -1430,6 +1432,8 @@
 <section class="member-section" id="tab-me">
 <div class="sched-sub" id="me-section-switch">
   <button data-me-section="weight" class="active">Weight</button>
+  <button data-me-section="bp" title="Blood Pressure">BP</button>
+  <button data-me-section="steps">Steps</button>
   <button data-me-section="period">Period</button>
   <button data-me-section="track">Track</button>
   <button data-me-section="nutrition">Food Log</button>
@@ -1665,6 +1669,132 @@
 <div class="weight-chart-empty" id="weight-history-empty" style="display:none;">Nothing logged yet.</div>
 <div class="weight-clear-row">
 <button class="weight-clear-btn" id="weight-clear-btn" type="button">Clear all entries</button>
+</div>
+</div>
+</section>
+<!-- ================= BLOOD PRESSURE ================= -->
+<section class="me-section" id="tab-bp">
+<div class="day-head"><h2>Blood Pressure</h2></div>
+<div class="day-focus">Log your readings and watch the trend; one high reading on its own doesn't mean much</div>
+<div class="weight-grid">
+<div class="weight-card">
+<h3>Log a Reading</h3>
+<div class="weight-form">
+<div class="bmi-field-row">
+<div><label for="bp-date">Date</label><input id="bp-date" type="date"/></div>
+<div><label for="bp-time">Time</label><input id="bp-time" type="time"/></div>
+</div>
+<div class="bmi-field-row">
+<div><label for="bp-sys">Systolic (top)</label><input id="bp-sys" inputmode="numeric" max="300" min="50" placeholder="e.g. 120" step="1" type="number"/></div>
+<div><label for="bp-dia">Diastolic (bottom)</label><input id="bp-dia" inputmode="numeric" max="200" min="30" placeholder="e.g. 80" step="1" type="number"/></div>
+</div>
+<label for="bp-pulse">Pulse (optional)</label>
+<input id="bp-pulse" inputmode="numeric" max="250" min="20" placeholder="beats per minute" step="1" type="number"/>
+<label for="bp-note">Note (optional)</label>
+<input id="bp-note" maxlength="200" placeholder="e.g. after coffee, left arm" type="text"/>
+<button class="weight-submit" id="bp-submit" type="button">Log Reading</button>
+</div>
+<div class="weight-hint" id="bp-status" style="display:none;"></div>
+<table class="bp-scale">
+<tr><td><i class="bp-dot bp-normal"></i>Normal</td><td class="mono">under 120 and under 80</td></tr>
+<tr><td><i class="bp-dot bp-elevated"></i>Elevated</td><td class="mono">120–129 and under 80</td></tr>
+<tr><td><i class="bp-dot bp-stage1"></i>Stage 1</td><td class="mono">130–139 or 80–89</td></tr>
+<tr><td><i class="bp-dot bp-stage2"></i>Stage 2</td><td class="mono">140+ or 90+</td></tr>
+<tr><td><i class="bp-dot bp-crisis"></i>Crisis</td><td class="mono">over 180 or over 120</td></tr>
+</table>
+<p class="weight-hint">Categories follow the American Heart Association. Sit quietly for 5 minutes first, feet flat, arm at heart level. If a reading is over 180/120, wait a few minutes and measure again. If it's still that high, or you have chest pain, shortness of breath or vision changes, get medical help. Your coach can see these readings.</p>
+</div>
+<div class="side-col">
+<div class="weight-stats" id="bp-stats" style="display:none;">
+<div class="weight-stat"><span class="lbl">Latest</span><span class="val" id="bp-stat-latest">—</span></div>
+<div class="weight-stat"><span class="lbl">Category</span><span class="val bp-cat" id="bp-stat-cat">—</span></div>
+<div class="weight-stat"><span class="lbl">7-Day Avg</span><span class="val" id="bp-stat-7">—</span></div>
+<div class="weight-stat"><span class="lbl">30-Day Avg</span><span class="val" id="bp-stat-30">—</span></div>
+</div>
+<div class="weight-chart-card">
+<div class="chart-head-row">
+<h3>Readings</h3>
+<div class="unit-switch range-switch" id="bp-range-switch">
+<button data-days="7" type="button">7D</button>
+<button class="active" data-days="30" type="button">30D</button>
+<button data-days="90" type="button">90D</button>
+<button data-days="0" type="button">All</button>
+</div>
+</div>
+<div class="weight-chart-empty" id="bp-chart-empty">No readings yet. Log one to start the chart.</div>
+<svg class="weight-chart-svg" id="bp-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
+<div class="weight-chart-legend" id="bp-chart-legend" style="display:none;">
+<span><i class="swatch solid" style="background:var(--accent-2);"></i>Systolic</span>
+<span><i class="swatch solid"></i>Diastolic</span>
+<span><i class="swatch target"></i>120 / 80</span>
+</div>
+</div>
+<div class="weight-history">
+<h3 class="history-title">Reading Log</h3>
+<table class="weight-history-table" id="bp-history-table">
+<thead><tr><th>When</th><th>Reading</th><th>Pulse</th><th>Category</th><th></th></tr></thead>
+<tbody id="bp-history-body"></tbody>
+</table>
+<div class="weight-chart-empty" id="bp-history-empty" style="display:none;">Nothing logged yet.</div>
+</div>
+</div>
+</div>
+</section>
+<!-- ================= STEPS ================= -->
+<section class="me-section" id="tab-steps">
+<div class="day-head"><h2>Steps — Daily Log</h2></div>
+<div class="day-focus">Copy today's count from your phone or watch and keep the streak going</div>
+<div class="weight-grid">
+<div class="weight-card">
+<h3>Log a Day</h3>
+<div class="weight-form">
+<label for="steps-date">Date</label>
+<input id="steps-date" type="date"/>
+<label for="steps-value">Steps</label>
+<input id="steps-value" inputmode="numeric" min="0" placeholder="e.g. 8500" step="1" type="number"/>
+<button class="weight-submit" id="steps-submit" type="button">Add Entry</button>
+</div>
+<div class="weight-hint" id="steps-status" style="display:none;"></div>
+<p class="weight-hint">Logging the same date again overwrites that day's entry.</p>
+<div class="weight-form" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);">
+<label for="steps-goal">Daily Goal</label>
+<input id="steps-goal" min="0" placeholder="10000" step="500" type="number"/>
+</div>
+<p class="weight-hint">Shows as a line on the chart and counts toward your streak. Saved on this device.</p>
+</div>
+<div class="side-col">
+<div class="weight-stats" id="steps-stats" style="display:none;">
+<div class="weight-stat"><span class="lbl">Latest</span><span class="val" id="steps-stat-latest">—</span></div>
+<div class="weight-stat"><span class="lbl">7-Day Avg</span><span class="val" id="steps-stat-7">—</span></div>
+<div class="weight-stat"><span class="lbl">Best Day</span><span class="val" id="steps-stat-best">—</span></div>
+<div class="weight-stat"><span class="lbl">Goal Streak</span><span class="val" id="steps-stat-streak">—</span></div>
+</div>
+<div class="weight-chart-card">
+<div class="chart-head-row">
+<h3>Daily Steps</h3>
+<div class="unit-switch range-switch" id="steps-range-switch">
+<button data-days="7" type="button">7D</button>
+<button class="active" data-days="30" type="button">30D</button>
+<button data-days="90" type="button">90D</button>
+</div>
+</div>
+<div class="weight-chart-empty" id="steps-chart-empty">No steps logged yet. Add a day to start the chart.</div>
+<svg class="weight-chart-svg" id="steps-chart-svg" style="display:none;" viewbox="0 0 700 230"></svg>
+<div class="weight-chart-legend" id="steps-chart-legend" style="display:none;">
+<span><i class="swatch bar"></i>Goal hit</span>
+<span><i class="swatch bar" style="background:var(--accent-dim);"></i>Under goal</span>
+<span><i class="swatch dash"></i>7-day avg</span>
+<span><i class="swatch target"></i>Goal</span>
+</div>
+</div>
+<div class="weight-history">
+<h3 class="history-title">Step Log</h3>
+<table class="weight-history-table" id="steps-history-table">
+<thead><tr><th>Date</th><th>Steps</th><th>Goal</th><th></th></tr></thead>
+<tbody id="steps-history-body"></tbody>
+</table>
+<div class="weight-chart-empty" id="steps-history-empty" style="display:none;">Nothing logged yet.</div>
+</div>
 </div>
 </div>
 </section>
