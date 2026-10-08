@@ -2591,3 +2591,7 @@ details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
 .weight-chart-legend{flex-wrap:wrap;}
 .weight-chart-legend .swatch.bar{height:10px;width:10px;background:var(--accent);}
 #steps-chart-svg .target-label{paint-order:stroke;stroke:var(--surface);stroke-width:3px;}
+.vitals-summary{font-size:13px;color:var(--muted);margin-bottom:var(--sp-3);line-height:1.6;}
+.vitals-summary b{color:var(--text);font-family:'IBM Plex Mono',monospace;font-weight:600;}
+.vitals-summary .muted{color:var(--muted-2);font-size:12px;}
+#coach-steps-chart .target-label{paint-order:stroke;stroke:var(--surface);stroke-width:3px;}

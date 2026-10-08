@@ -82,7 +82,7 @@
   const bpNote = document.getElementById('bp-note');
   const bpSubmit = document.getElementById('bp-submit');
   const bpStatus = document.getElementById('bp-status');
-  const bpChartSvg = document.getElementById('bp-chart-svg');
+  const bpChartSvgEl = document.getElementById('bp-chart-svg');
 
   // [{ id, t (ms), sys, dia, pulse, note }], oldest first
   let bpEntries = [];
@@ -104,13 +104,14 @@
     return Math.round(s) + '/' + Math.round(d);
   }
 
-  function buildBpChart(list){
-    const W = bnbChartWidth(bpChartSvg), H = 230, padL = 44, padR = 20, padT = 16, padB = 36;
-    bpChartSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  // SVG markup for a BP chart of `list` (oldest first), `days` back from
+  // now (0 = all of it). Shared with Coach > Client Progress.
+  function bpChartSvg(list, W, H, days){
+    const padL = 44, padR = 20, padT = 16, padB = 36;
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
     let maxT = Math.max(Date.now(), list[list.length - 1].t);
-    let minT = ranges.bp ? maxT - ranges.bp * DAY : list[0].t;
+    let minT = days ? maxT - days * DAY : list[0].t;
     if (maxT - minT < DAY){ minT -= DAY / 2; maxT += DAY / 2; }
     // Always keep the 120/80 guides in view
     let minV = Math.min(70, ...list.map(e => e.dia));
@@ -143,7 +144,12 @@
       svg += `<circle class="bp-sys-dot" cx="${x(e.t).toFixed(1)}" cy="${y(e.sys).toFixed(1)}" r="3.5"><title>${tip}</title></circle>`;
       svg += `<circle class="data-dot" cx="${x(e.t).toFixed(1)}" cy="${y(e.dia).toFixed(1)}" r="3.5"><title>${tip}</title></circle>`;
     });
-    bpChartSvg.innerHTML = svg;
+    return svg;
+  }
+  function buildBpChart(list){
+    const W = bnbChartWidth(bpChartSvgEl), H = 230;
+    bpChartSvgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    bpChartSvgEl.innerHTML = bpChartSvg(list, W, H, ranges.bp);
   }
 
   function renderBp(){
@@ -169,11 +175,11 @@
     if (!inRange.length){
       empty.textContent = bpEntries.length ? 'No readings in this range.' : 'No readings yet. Log one to start the chart.';
       empty.style.display = 'block';
-      bpChartSvg.style.display = 'none';
+      bpChartSvgEl.style.display = 'none';
       legend.style.display = 'none';
     } else {
       empty.style.display = 'none';
-      bpChartSvg.style.display = 'block';
+      bpChartSvgEl.style.display = 'block';
       legend.style.display = 'flex';
       buildBpChart(inRange);
     }
@@ -281,10 +287,10 @@
     renderSteps();
   }
 
-  // Average of logged days in the 7 calendar days ending on `iso`
-  function trailingAvg(iso){
+  // Average of logged days in `list` over the 7 calendar days ending on `iso`
+  function trailingAvg(list, iso){
     const end = dayStart(iso), start = end - 6 * DAY;
-    const days = stEntries.filter(e => { const t = dayStart(e.date); return t >= start && t <= end; });
+    const days = list.filter(e => { const t = dayStart(e.date); return t >= start && t <= end; });
     return days.length ? days.reduce((a, e) => a + e.steps, 0) / days.length : null;
   }
   // Consecutive days at or over goal, ending today (or yesterday, so an
@@ -300,12 +306,13 @@
     return n;
   }
 
-  function buildStepsChart(list){
-    const W = bnbChartWidth(stChartSvg), H = 230, padL = 44, padR = 20, padT = 16, padB = 36;
-    stChartSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  // SVG markup for a steps bar chart of the last `days` days. `all` is
+  // every logged day (for the rolling average), `list` the ones in range.
+  // Shared with Coach > Client Progress.
+  function stepsChartSvg(all, list, W, H, days, goal, goalLabel){
+    const padL = 44, padR = 20, padT = 16, padB = 36;
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
-    const days = ranges.steps;
     const lastT = dayStart(todayIso()), firstT = lastT - (days - 1) * DAY;
     const slot = innerW / days;
     const barW = Math.max(2, Math.min(28, slot * 0.7));
@@ -322,13 +329,18 @@
       svg += `<rect class="${e.steps >= goal ? 'step-bar hit' : 'step-bar'}" x="${(x(t) - barW / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${(padT + innerH - top).toFixed(1)}" rx="1.5"><title>${fmtDate(t)}: ${fmtInt(e.steps)} steps</title></rect>`;
     });
     if (list.length > 1){
-      const d = list.map((e, i) => (i ? 'L' : 'M') + x(dayStart(e.date)).toFixed(1) + ',' + y(trailingAvg(e.date)).toFixed(1)).join(' ');
+      const d = list.map((e, i) => (i ? 'L' : 'M') + x(dayStart(e.date)).toFixed(1) + ',' + y(trailingAvg(all, e.date)).toFixed(1)).join(' ');
       svg += `<path class="trend-line" d="${d}"/>`;
     }
     const gy = y(goal).toFixed(1);
     svg += `<line class="target-line" x1="${padL}" y1="${gy}" x2="${W - padR}" y2="${gy}"/>`;
-    svg += `<text class="target-label" x="${W - padR}" y="${gy - 6}" text-anchor="end">Goal: ${fmtInt(goal)}</text>`;
-    stChartSvg.innerHTML = svg;
+    svg += `<text class="target-label" x="${W - padR}" y="${gy - 6}" text-anchor="end">${goalLabel}: ${fmtInt(goal)}</text>`;
+    return svg;
+  }
+  function buildStepsChart(list){
+    const W = bnbChartWidth(stChartSvg), H = 230;
+    stChartSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    stChartSvg.innerHTML = stepsChartSvg(stEntries, list, W, H, ranges.steps, goal, 'Goal');
   }
 
   function renderSteps(){
@@ -340,7 +352,7 @@
     } else {
       stats.style.display = 'grid';
       document.getElementById('steps-stat-latest').textContent = fmtInt(latest.steps);
-      const avg = trailingAvg(todayIso());
+      const avg = trailingAvg(stEntries, todayIso());
       document.getElementById('steps-stat-7').textContent = avg == null ? '—' : fmtInt(avg);
       document.getElementById('steps-stat-best').textContent = fmtInt(Math.max(...stEntries.map(e => e.steps)));
       const streak = goalStreak();
@@ -430,6 +442,8 @@
     renderSteps();
     refreshSteps();
   }
+
+  window.BNB_VITALS = { bpCategory, bpChartSvg, stepsChartSvg, dayStart, fmtDate, fmtInt };
 
   // Both sections load with this file, but only one is on screen, and
   // the hidden one's chart can't measure its width. Redraw on show.

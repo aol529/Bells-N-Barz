@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=vitals-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=vitals-2" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -128,7 +128,7 @@
     // fallback (shows an empty unpaid-invoices list instead of failing),
     // but loading Billing alongside it avoids that degraded state for
     // the common case of a staff member using both together anyway.
-    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing', 'bodyfat'] },
+    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing', 'bodyfat', 'vitals'] },
     billing:      { file: 'js/bells-n-barz-billing.js' },
     migrate:      { file: 'js/bells-n-barz-migrate.js' },
     accountability: { file: 'js/bells-n-barz-accountability.js' },

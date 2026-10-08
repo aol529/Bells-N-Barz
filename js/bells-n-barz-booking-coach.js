@@ -425,6 +425,10 @@
   // "Tape Body Fat %": a client's saved body_measurements rows, fetched
   // once per client on demand, same pattern as complianceProgramCache.
   let measurementsCache = {};
+  // "Blood Pressure" / "Steps": a client's blood_pressure_log and step_log
+  // rows, fetched together once per client, same pattern again.
+  let vitalsCache = {};
+  let progressVitalsDays = 30; // 30 | 90
 
   /* ---------------- IDENTITY ROW ---------------- */
   // Booking is member-only now — the old Admin view (class/session
@@ -1144,7 +1148,70 @@
     if (progressMarker === 'compliance'){
       return complianceHtml(clientId);
     }
+    if (progressMarker === 'bp' || progressMarker === 'steps'){
+      return vitalsHtml(clientId);
+    }
     return '';
+  }
+
+  // Blood pressure and steps the member logs in Me > BP and Me > Steps,
+  // drawn with the same chart code they see (js/bells-n-barz-vitals.js).
+  function vitalsHtml(clientId){
+    if (!(clientId in vitalsCache)){
+      vitalsCache[clientId] = 'loading';
+      Promise.all([
+        bnbClient.from('blood_pressure_log').select('taken_at,systolic,diastolic,pulse').eq('user_id', clientId).order('taken_at'),
+        bnbClient.from('step_log').select('date,steps').eq('user_id', clientId).order('date')
+      ]).then(([bp, st])=>{
+        if (bp.error) console.error('Supabase load blood_pressure_log failed:', bp.error);
+        if (st.error) console.error('Supabase load step_log failed:', st.error);
+        vitalsCache[clientId] = (bp.error || st.error) ? null : {
+          bp: (bp.data || []).map(r=> ({ t: new Date(r.taken_at).getTime(), sys: r.systolic, dia: r.diastolic, pulse: r.pulse })),
+          steps: st.data || []
+        };
+        if (progressClientId === clientId && (progressMarker === 'bp' || progressMarker === 'steps')) renderCoachDashboard();
+      });
+    }
+    const data = vitalsCache[clientId];
+    if (data === 'loading') return '<div class="weight-chart-empty">Loading…</div>';
+    if (data === null) return '<div class="weight-chart-empty">Couldn’t load this client’s logs.</div>';
+    const V = window.BNB_VITALS;
+    const DAY = 86400000, now = Date.now(), days = progressVitalsDays;
+    const W = 900, H = 260;
+
+    if (progressMarker === 'bp'){
+      const list = data.bp.filter(e=> e.t >= now - days * DAY);
+      if (!list.length){
+        return '<div class="weight-chart-empty">' + (data.bp.length ? 'No readings in the last ' + days + ' days.' : 'No blood pressure readings yet. The client logs them in Me &gt; BP.') + '</div>';
+      }
+      const latest = data.bp[data.bp.length - 1];
+      const cat = V.bpCategory(latest.sys, latest.dia);
+      const avgS = Math.round(list.reduce((a,e)=> a + e.sys, 0) / list.length);
+      const avgD = Math.round(list.reduce((a,e)=> a + e.dia, 0) / list.length);
+      let html = '<div class="vitals-summary">Latest <b>' + latest.sys + '/' + latest.dia + '</b> <span class="' + cat.cls + '">' + cat.label + '</span>'
+        + ' <span class="muted">' + V.fmtDate(latest.t) + '</span>'
+        + ' · ' + days + '-day avg <b>' + avgS + '/' + avgD + '</b> <span class="' + V.bpCategory(avgS, avgD).cls + '">' + V.bpCategory(avgS, avgD).label + '</span>'
+        + ' · ' + list.length + ' reading' + (list.length === 1 ? '' : 's') + '</div>';
+      html += '<svg class="weight-chart-svg" viewBox="0 0 '+W+' '+H+'">' + V.bpChartSvg(list, W, H, days) + '</svg>';
+      html += '<div class="weight-chart-legend"><span><i class="swatch solid" style="background:var(--accent-2);"></i>Systolic</span><span><i class="swatch solid"></i>Diastolic</span><span><i class="swatch target"></i>120 / 80</span></div>';
+      return html;
+    }
+
+    const firstT = V.dayStart(new Date(now - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,10)) - (days - 1) * DAY;
+    const list = data.steps.filter(e=> V.dayStart(e.date) >= firstT);
+    if (!list.length){
+      return '<div class="weight-chart-empty">' + (data.steps.length ? 'No steps logged in the last ' + days + ' days.' : 'No steps logged yet. The client logs them in Me &gt; Steps.') + '</div>';
+    }
+    // The member's own goal is a per-device setting, so the coach sees
+    // the common 10,000 as a reference instead.
+    const ref = 10000;
+    const avg = list.reduce((a,e)=> a + e.steps, 0) / list.length;
+    const hit = list.filter(e=> e.steps >= ref).length;
+    let html = '<div class="vitals-summary">Avg <b>' + V.fmtInt(avg) + '</b> a logged day · ' + list.length + ' of ' + days + ' days logged · '
+      + hit + ' at 10k+ · best <b>' + V.fmtInt(Math.max(...list.map(e=> e.steps))) + '</b></div>';
+    html += '<svg class="weight-chart-svg" id="coach-steps-chart" viewBox="0 0 '+W+' '+H+'">' + V.stepsChartSvg(data.steps, list, W, H, days, ref, '10k reference') + '</svg>';
+    html += '<div class="weight-chart-legend"><span><i class="swatch bar"></i>10k+</span><span><i class="swatch bar" style="background:var(--accent-dim);"></i>Under 10k</span><span><i class="swatch dash"></i>7-day avg</span></div>';
+    return html;
   }
 
   // Body fat % from the member's own tape measurements (Me > Weight > Body
@@ -1262,6 +1329,8 @@
     html += '<button type="button" class="subtab-btn'+(progressMarker==='exercise'?' active':'')+'" data-marker="exercise">Exercise Load</button>';
     html += '<button type="button" class="subtab-btn'+(progressMarker==='attendance'?' active':'')+'" data-marker="attendance">Attendance</button>';
     html += '<button type="button" class="subtab-btn'+(progressMarker==='compliance'?' active':'')+'" data-marker="compliance">Today\'s Program</button>';
+    html += '<button type="button" class="subtab-btn'+(progressMarker==='bp'?' active':'')+'" data-marker="bp">Blood Pressure</button>';
+    html += '<button type="button" class="subtab-btn'+(progressMarker==='steps'?' active':'')+'" data-marker="steps">Steps</button>';
     html += '</div>';
 
     if (progressMarker === 'assessment'){
@@ -1269,6 +1338,10 @@
       html += '<button type="button" data-field="weight" class="'+(progressAssessmentField==='weight'?'active':'')+'">Weight</button>';
       html += '<button type="button" data-field="bodyfat" class="'+(progressAssessmentField==='bodyfat'?'active':'')+'">Body Fat %</button>';
       html += '<button type="button" data-field="tapefat" class="'+(progressAssessmentField==='tapefat'?'active':'')+'">Tape Body Fat %</button>';
+      html += '</div>';
+    } else if (progressMarker === 'bp' || progressMarker === 'steps'){
+      html += '<div class="unit-switch" id="progress-vitals-days" style="margin-top:2px;">';
+      [30, 90].forEach(d=> html += '<button type="button" data-days="'+d+'" class="'+(progressVitalsDays===d?'active':'')+'">'+d+' days</button>');
       html += '</div>';
     } else if (progressMarker === 'exercise'){
       const names = (window.BNB_MLS && window.BNB_MLS.getExerciseNames) ? window.BNB_MLS.getExerciseNames(progressClientId) : [];
@@ -1301,6 +1374,13 @@
     if (assessToggle) assessToggle.querySelectorAll('button').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         progressAssessmentField = btn.getAttribute('data-field');
+        renderCoachDashboard();
+      });
+    });
+    const vitalsDays = document.getElementById('progress-vitals-days');
+    if (vitalsDays) vitalsDays.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        progressVitalsDays = Number(btn.getAttribute('data-days'));
         renderCoachDashboard();
       });
     });
