@@ -116,8 +116,10 @@
     });
   });
 
-  // points: [{ date, value }]; tip(value) is the dot's hover text after the date
-  function buildLineChart(svgEl, points, tip){
+  // points: [{ date, value }]; tip(value) is the dot's hover text after the date.
+  // target (optional): { value, label } drawn as a dotted line, like the
+  // Weight chart's target.
+  function buildLineChart(svgEl, points, tip, target){
     const W = 700, H = 320, padL = 44, padR = 20, padT = 20, padB = 36;
     const innerW = W - padL - padR, innerH = H - padT - padB;
 
@@ -126,6 +128,7 @@
     let minD = Math.min(...dates), maxD = Math.max(...dates);
     if (minD === maxD) { minD -= 86400000; maxD += 86400000; }
     let minV = Math.min(...values), maxV = Math.max(...values);
+    if (target){ minV = Math.min(minV, target.value); maxV = Math.max(maxV, target.value); }
     if (minV === maxV) { minV -= 2; maxV += 2; }
     const pad = (maxV - minV) * 0.15 || 2;
     minV -= pad; maxV += pad;
@@ -163,6 +166,13 @@
       const yy = y(values[i]);
       svg += `<circle class="data-dot" cx="${xx.toFixed(1)}" cy="${yy.toFixed(1)}" r="3.5"><title>${fmtDate(p.date)}: ${tip(values[i])}</title></circle>`;
     });
+
+    // target drawn last so it's never hidden under the data line
+    if (target){
+      const yy = y(target.value);
+      svg += `<line class="target-line" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}"/>`;
+      svg += `<text class="target-label" x="${W-padR}" y="${(yy-6).toFixed(1)}" text-anchor="end">${target.label}</text>`;
+    }
 
     svgEl.innerHTML = svg;
   }
@@ -237,6 +247,17 @@
   const bcChartEmpty = document.getElementById('bodycomp-chart-empty');
   const bcChartSvg = document.getElementById('bodycomp-chart-svg');
   const bcChartLegend = document.getElementById('bodycomp-chart-legend');
+  const bcChartLegendGoal = document.getElementById('bodycomp-chart-legend-target');
+  const bcGoal = document.getElementById('bodycomp-goal');
+
+  // Body fat goal: a personal preference like the Weight tab's target
+  // weight, so it stays on this device rather than in Supabase.
+  const BC_GOAL_KEY = 'bnb-bodyfat-goal';
+  let bcGoalPct = null;
+  try {
+    const v = parseFloat(localStorage.getItem(BC_GOAL_KEY));
+    if (v > 0) bcGoalPct = v;
+  } catch(e) {}
 
   let bcPrefs = { sex: 'male', unit: 'in' };
   try { Object.assign(bcPrefs, JSON.parse(localStorage.getItem(BC_PREFS_KEY)) || {}); } catch(e) {}
@@ -363,7 +384,9 @@
       bcChartEmpty.style.display = 'none';
       bcChartSvg.style.display = 'block';
       bcChartLegend.style.display = 'flex';
-      buildLineChart(bcChartSvg, points, v => v.toFixed(1) + '% body fat');
+      bcChartLegendGoal.style.display = bcGoalPct != null ? '' : 'none';
+      buildLineChart(bcChartSvg, points, v => v.toFixed(1) + '% body fat',
+        bcGoalPct != null ? { value: bcGoalPct, label: 'Goal: ' + bcGoalPct.toFixed(1) + '%' } : null);
     }
   }
 
@@ -466,6 +489,18 @@
       input.addEventListener('keydown', e => { if (e.key === 'Enter') saveMeasurement(); });
     });
     bcSubmit.addEventListener('click', saveMeasurement);
+    if (bcGoalPct != null) bcGoal.value = bcGoalPct.toFixed(1);
+    bcGoal.addEventListener('change', () => {
+      const v = parseFloat(bcGoal.value);
+      bcGoalPct = v > 0 && v < 100 ? v : null;
+      bcGoal.value = bcGoalPct != null ? bcGoalPct.toFixed(1) : '';
+      try {
+        if (bcGoalPct != null) localStorage.setItem(BC_GOAL_KEY, String(bcGoalPct));
+        else localStorage.removeItem(BC_GOAL_KEY);
+      } catch(e) {}
+      renderBodyComp();
+    });
+    bcGoal.addEventListener('keydown', e => { if (e.key === 'Enter') bcGoal.blur(); });
     refreshMeasurementsFromSupabase(); // async — fills the form and trend once it responds
   }
 

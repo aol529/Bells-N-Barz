@@ -1668,6 +1668,11 @@
 </div>
 <p class="weight-hint" id="bodycomp-status" style="display:none;"></p>
 <p class="weight-hint">Results update as you type and use the height from the BMI Calculator and your latest Weight Log entry. Saving the same date again overwrites that day. Your coach can see saved measurements. Measure the same way each time, relaxed and not sucking in, and watch the trend rather than any single reading.</p>
+<div class="weight-form" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);">
+<label for="bodycomp-goal">Body Fat Goal % (optional)</label>
+<input id="bodycomp-goal" max="60" min="3" placeholder="e.g. 15" step="0.1" type="number"/>
+</div>
+<p class="weight-hint">Shows as a line on the Body Fat Trend chart below. Leave blank to hide it. Saved on this device.</p>
 </div>
 <div class="weight-chart-card">
 <h3>Results</h3>
@@ -1703,6 +1708,7 @@
 <svg class="weight-chart-svg" id="bodycomp-chart-svg" style="display:none;" viewbox="0 0 700 320"></svg>
 <div class="weight-chart-legend" id="bodycomp-chart-legend" style="display:none;">
 <span><i class="swatch solid"></i>Body fat % per saved entry (Navy when neck is measured, otherwise RFM)</span>
+<span id="bodycomp-chart-legend-target" style="display:none;"><i class="swatch target"></i>Goal</span>
 </div>
 </div>
 </div>
