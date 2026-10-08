@@ -166,7 +166,10 @@
     document.addEventListener('DOMContentLoaded', function(){
       const banner = document.createElement('div');
       banner.textContent = '⚠️ STAGING — this is not production data';
-      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#e8b923;color:#1a1a1a;text-align:center;font:600 12px/1 "IBM Plex Mono",monospace;padding:6px;letter-spacing:.04em;';
+      // Pinned to the bottom so it doesn't cover the site nav; the body
+      // padding keeps the footer from sitting underneath it.
+      banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#e8b923;color:#1a1a1a;text-align:center;font:600 12px/1 "IBM Plex Mono",monospace;padding:6px;letter-spacing:.04em;';
+      document.body.style.paddingBottom = '24px';
       document.body.prepend(banner);
     });
   }

@@ -2494,6 +2494,12 @@ details.updated .body{padding:var(--sp-3) var(--sp-4);}
 .sched-scope .form-inline{padding:var(--sp-3); gap:var(--sp-2); margin-bottom:var(--sp-4); border-radius:var(--r);}
 .sched-scope .identity-row{margin-bottom:var(--sp-4); padding-bottom:var(--sp-3);}
 
+/* ---------- Stat cards: side by side everywhere ----------
+   (the original .stat-block rule only reached the Users page, so the
+   Coach dashboard stacked each stat as a full-width row) */
+.stat-block{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:var(--sp-2); margin-bottom:var(--sp-4);}
+.users-scope .stat-card, .sched-scope .stat-card{padding:var(--sp-3) var(--sp-4); border-radius:var(--r); min-width:0;}
+
 /* ---------- Tables ---------- */
 table.block td{padding:7px 12px; font-size:14px;}
 .sched-scope .admin-table{margin-bottom:var(--sp-4);}
