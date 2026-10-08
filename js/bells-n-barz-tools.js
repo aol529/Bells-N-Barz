@@ -43,14 +43,15 @@
   function weightKg(id){ const v = num(id); return v == null ? null : (unit === 'metric' ? v : v * KG_PER_LB); }
   function lengthCm(id){ const v = num(id); return v == null ? null : (unit === 'metric' ? v : v * 2.54); }
 
-  // Signed-in: shortcut to the saved version in Me. Guest: sign up.
-  // A placeholder here; renderSaveNotes() fills it, and re-runs whenever
-  // sign-in state changes (BNB_TOOLS.refresh, called from the shell).
+  // Everyone gets the same "Open in Me" button: members go straight to
+  // the saved version, guests get the site's sign-in dialog (Log In /
+  // Sign Up), which says why rather than a greyed-out button that doesn't.
+  // renderSaveNotes() re-runs when sign-in state changes (BNB_TOOLS.refresh).
   const SAVE_TEXT = {
     weight: ['Saved measurements, a body fat trend chart and a goal line live in Me › Weight.',
-             'Want to track these over time, with trend charts your coach can see? Create a free account.'],
+             'Track these over time, with trend charts your coach can see, in Me › Weight (free account).'],
     nutrition: ['Set these as your daily goals, and log what you eat against them, in Me › Food Log.',
-                'Want to log meals against these targets, or get a meal plan built by a coach? Create a free account.']
+                'Log meals against these targets, or get a meal plan built by a coach, in Me › Food Log (free account).']
   };
   function saveNote(meSection){
     return '<div class="weight-chart-card tools-save" data-tools-save="' + meSection + '"></div>';
@@ -59,10 +60,8 @@
     const member = signedIn();
     document.querySelectorAll('#tab-tools [data-tools-save]').forEach(box => {
       const key = box.getAttribute('data-tools-save');
-      box.innerHTML = member
-        ? '<p>' + SAVE_TEXT[key][0] + '</p><button type="button" class="weight-clear-btn" data-tools-open-me="' + key + '">Open in Me →</button>'
-        : '<p>' + SAVE_TEXT[key][1] + '</p><button type="button" class="weight-clear-btn" data-tools-auth="signup">Sign Up free</button>' +
-          '<button type="button" class="weight-clear-btn" data-tools-auth="login">Log In</button>';
+      box.innerHTML = '<p>' + SAVE_TEXT[key][member ? 0 : 1] + '</p>' +
+        '<button type="button" class="weight-clear-btn" data-tools-open-me="' + key + '">Open in Me →</button>';
     });
   }
 
@@ -243,6 +242,7 @@
       syncSwitches(); renderAll();
     }
     if (auth && typeof window.bnbEnterGym === 'function') window.bnbEnterGym(auth.getAttribute('data-tools-auth'));
+    if (me && !signedIn()){ if (typeof goToLoginPrompt === 'function') goToLoginPrompt(); return; }
     if (me){
       switchTab('me');
       const btn = document.querySelector('#me-section-switch [data-me-section="' + me.getAttribute('data-tools-open-me') + '"]');
