@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=shop-panels-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=home-cards-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -251,17 +251,22 @@
     </div>
   </div>
 
-  <!-- Shortcut into Gym > Member > Me > Recipes (wired in js/bells-n-barz-shell.js) -->
-  <div class="home-recipes">
-    <div class="wrap sched-scope">
-      <button type="button" class="home-recipes-card" id="home-recipes-link">
-        <span class="home-recipes-icon" aria-hidden="true">🥣</span>
-        <span class="home-recipes-info">
-          <span class="home-recipes-title">Recipes</span>
-          <span class="home-recipes-sub">Smoothies, trail mix, porridge, soups, protein balls &amp; energy bars</span>
-        </span>
-        <span class="home-recipes-arrow" aria-hidden="true">→</span>
-      </button>
+  <!-- Home cards: one per part of the site. data-site-jump is wired by the
+       site shell; data-home-gym and #home-recipes-link in js/bells-n-barz-shell.js -->
+  <div class="home-cards">
+    <div class="wrap">
+      <div class="home-moon-banner-head"><span class="home-moon-banner-eyebrow">Explore</span><h2>Where to?</h2></div>
+      <div class="home-card-grid">
+        <button type="button" class="home-card" data-site-jump="gym"><span class="home-card-icon" aria-hidden="true">📘</span><span class="home-card-title">Training Manual</span><span class="home-card-desc">The Bell(e)s n' Barz program, day by day</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-home-gym="member"><span class="home-card-icon" aria-hidden="true">👤</span><span class="home-card-title">Member Area</span><span class="home-card-desc">Log sessions, track progress, book and message your coach</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-home-gym="tools"><span class="home-card-icon" aria-hidden="true">⏱️</span><span class="home-card-title">Free Tools</span><span class="home-card-desc">Timers, challenges and calculators, no account needed</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" id="home-recipes-link"><span class="home-card-icon" aria-hidden="true">🥣</span><span class="home-card-title">Recipes</span><span class="home-card-desc">Smoothies, trail mix, porridge, soups, protein balls &amp; energy bars</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-site-jump="blog"><span class="home-card-icon" aria-hidden="true">📰</span><span class="home-card-title">Blog</span><span class="home-card-desc">Training articles and old-school methods</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-site-jump="gallery"><span class="home-card-icon" aria-hidden="true">🖼️</span><span class="home-card-title">Gallery</span><span class="home-card-desc">Photos and highlights</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-site-jump="shop"><span class="home-card-icon" aria-hidden="true">🛍️</span><span class="home-card-title">Shop</span><span class="home-card-desc">Session packages and merch</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-site-jump="about"><span class="home-card-icon" aria-hidden="true">ℹ️</span><span class="home-card-title">About</span><span class="home-card-desc">Who we are and how we train</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+        <button type="button" class="home-card" data-site-jump="contacts"><span class="home-card-icon" aria-hidden="true">✉️</span><span class="home-card-title">Contacts</span><span class="home-card-desc">Book, message or get in touch</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      </div>
     </div>
   </div>
 
@@ -906,18 +911,29 @@
 </section>
 
 <section class="site-page" id="site-about">
-  <div class="site-stub wrap">
+  <div class="site-stub site-stub-cards wrap">
     <div class="site-stub-eyebrow">Wang' Kalam Agok Buk</div>
     <h1>About</h1>
-    <p>Coming soon — the story behind Wang' Kalam Agok Buk and the coaching philosophy driving the Bell(e)s n' Barz system.</p>
+    <p>The story behind Wang' Kalam Agok Buk and the coaching philosophy driving the Bell(e)s n' Barz system.</p>
+    <div class="home-card-grid">
+      <div class="home-card static"><span class="home-card-icon" aria-hidden="true">📖</span><span class="home-card-title">Our Story</span><span class="home-card-desc">Coming soon</span></div>
+      <button type="button" class="home-card" data-site-jump="gym"><span class="home-card-icon" aria-hidden="true">📘</span><span class="home-card-title">The Training System</span><span class="home-card-desc">Movement preparation with integrated core programming</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-site-jump="shop"><span class="home-card-icon" aria-hidden="true">🧑‍🏫</span><span class="home-card-title">Coaching</span><span class="home-card-desc">1-on-1 session packages with a coach</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-home-gym="tools"><span class="home-card-icon" aria-hidden="true">⏱️</span><span class="home-card-title">Free Tools</span><span class="home-card-desc">Timers, challenges and calculators for everyone</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+    </div>
   </div>
 </section>
-
 <section class="site-page" id="site-contacts">
-  <div class="site-stub wrap">
+  <div class="site-stub site-stub-cards wrap">
     <div class="site-stub-eyebrow">Wang' Kalam Agok Buk</div>
     <h1>Contacts</h1>
-    <p>Coming soon — booking, enquiries, and social links.</p>
+    <p>Booking, enquiries and social links.</p>
+    <div class="home-card-grid">
+      <button type="button" class="home-card" data-home-gym="schedule"><span class="home-card-icon" aria-hidden="true">📅</span><span class="home-card-title">Book a Session</span><span class="home-card-desc">Classes and 1-on-1s (members)</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-home-gym="messages"><span class="home-card-icon" aria-hidden="true">💬</span><span class="home-card-title">Message Your Coach</span><span class="home-card-desc">Chat with your coach (members)</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-site-jump="shop"><span class="home-card-icon" aria-hidden="true">🛍️</span><span class="home-card-title">Session Packages</span><span class="home-card-desc">Buy 1-on-1 sessions in the Shop</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <div class="home-card static"><span class="home-card-icon" aria-hidden="true">📣</span><span class="home-card-title">Social &amp; Enquiries</span><span class="home-card-desc">Coming soon</span></div>
+    </div>
   </div>
 </section>
 

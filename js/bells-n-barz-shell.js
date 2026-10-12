@@ -1756,6 +1756,24 @@ document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => {
 const toolsBackBtn = document.getElementById('tools-back-btn');
 if (toolsBackBtn) toolsBackBtn.addEventListener('click', showToolsCards);
 
+/* ---------------- HOME / ABOUT / CONTACTS CARDS ---------------- */
+// Cards that open a Gym tab (data-home-gym="tools|member|schedule|messages").
+// Tools is open to everyone; the rest go through the MEMBER nav pill when
+// signed out, so guests land on the same membership preview + sign-in.
+document.querySelectorAll('[data-home-gym]').forEach(card => {
+  card.addEventListener('click', () => {
+    const tab = card.getAttribute('data-home-gym');
+    switchSite('gym');
+    if (tab !== 'tools' && !isSignedIn()){
+      const memberPill = document.getElementById('nav-member-btn');
+      if (memberPill) memberPill.click();
+      return;
+    }
+    switchTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
 /* ---------------- MEMBER PREVIEW (signed-out visitors) ---------------- */
 (function(){
   const enter = mode => { if (typeof window.bnbEnterGym === 'function') window.bnbEnterGym(mode); };

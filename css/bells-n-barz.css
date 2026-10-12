@@ -1443,14 +1443,31 @@ body{margin:0;}
   text-transform:uppercase; color:var(--accent);}
 .home-moon-banner-head h2{font-family:'Oswald',sans-serif; font-size:24px; margin:4px 0 0; text-transform:uppercase; letter-spacing:.02em; color:var(--text);}
 
-.home-recipes{padding:26px 0 30px; border-bottom:1px solid var(--line);}
-.home-recipes-card{display:flex; align-items:center; gap:20px; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:22px; color:var(--text); font:inherit; cursor:pointer; transition:border-color .15s ease, background .15s ease;}
-.home-recipes-card:hover, .home-recipes-card:focus-visible{border-color:var(--accent-dim); background:rgba(var(--accent-rgb),.06);}
-.home-recipes-icon{font-size:44px; line-height:1;}
-.home-recipes-info{flex:1; display:flex; flex-direction:column;}
-.home-recipes-title{font-family:'Oswald',sans-serif; font-size:20px; text-transform:uppercase; letter-spacing:.03em;}
-.home-recipes-sub{font-size:13px; color:var(--muted); margin-top:4px;}
-.home-recipes-arrow{font-size:22px; color:var(--accent);}
+/* Home / About / Contacts cards: one per destination, same look as the
+   gym's section cards (icon, title, one-line description). .static is a
+   "coming soon" card with nothing to open. */
+.home-cards{padding:30px 0 36px;}
+.home-card-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; margin-top:16px;}
+.home-card{position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:6px; width:100%; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:20px 20px 22px; color:var(--text); font:inherit;
+  cursor:pointer; transition:border-color .15s ease, background .15s ease;}
+.home-card:hover, .home-card:focus-visible{border-color:var(--accent-dim); background:var(--surface-2);}
+.home-card.static{cursor:default; opacity:.7;}
+.home-card.static:hover{border-color:var(--line); background:var(--surface);}
+.home-card-icon{font-size:28px; line-height:1; margin-bottom:4px;}
+.home-card-title{font-family:'Oswald',sans-serif; font-size:18px; text-transform:uppercase; letter-spacing:.03em;}
+.home-card-desc{font-size:13px; color:var(--muted); line-height:1.4; padding-right:18px;}
+.home-card-arrow{position:absolute; top:18px; right:18px; font-size:18px; color:var(--muted-2);}
+.home-card:hover .home-card-arrow{color:var(--accent);}
+@media (max-width:640px){
+  .home-card-grid{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px;}
+  .home-card{padding:14px;}
+  .home-card-title{font-size:16px;}
+  .home-card-desc{font-size:12px; padding-right:0;}
+  .home-card-arrow{display:none;}
+}
+.site-stub.site-stub-cards{max-width:1080px;}
+.site-stub-cards > p{max-width:720px;}
 
 .site-stub{padding:80px 24px 100px; max-width:720px;}
 .site-stub-eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.08em;
