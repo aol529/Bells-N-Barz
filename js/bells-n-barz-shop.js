@@ -129,15 +129,21 @@
   let activeFilter = 'all';
   const FILTERS = [ ['all','All'], ['package','Session Packages'], ['merch','Merch'], ['supplement','Supplements'], ['digital','Digital / Ebooks'] ];
 
+  // Category cards (icon, name, item count) — same look as Blog/Gallery.
+  const FILTER_ICONS = { all:'🛍️', package:'🎟️', merch:'👕', supplement:'💊', digital:'📱' };
   function renderTypeTabs(){
     const bar = document.getElementById('shop-type-tabs');
+    const live = products.filter(function(p){ return p.active; });
     bar.innerHTML = FILTERS.map(function(f){
-      return '<button data-filter="' + f[0] + '" class="' + (activeFilter===f[0]?'active':'') + '">' + f[1] + '</button>';
+      const n = f[0] === 'all' ? live.length : live.filter(function(p){ return p.type === f[0]; }).length;
+      return '<button type="button" data-filter="' + f[0] + '" class="cat-card' + (activeFilter===f[0]?' active':'') + (n===0?' empty':'') + '">' +
+        '<span class="cat-card-icon" aria-hidden="true">' + FILTER_ICONS[f[0]] + '</span>' +
+        '<span class="cat-card-name">' + f[1] + '</span>' +
+        '<span class="cat-card-count">' + n + ' item' + (n===1?'':'s') + '</span></button>';
     }).join('');
     bar.querySelectorAll('button').forEach(function(btn){
       btn.addEventListener('click', function(){
         activeFilter = btn.dataset.filter;
-        renderTypeTabs();
         renderCatalog();
       });
     });
@@ -192,6 +198,7 @@
   }
 
   function renderCatalog(){
+    renderTypeTabs(); // keeps the category card counts in step with the products
     const visible = products.filter(function(p){ return p.active && (activeFilter==='all' || p.type===activeFilter); });
     const body = document.getElementById('shop-catalog-body');
     document.getElementById('shop-empty-msg').style.display = visible.length ? 'none' : 'block';
