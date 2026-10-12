@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=shop-admin-cards-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=admin-cards-scroll-2" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -330,6 +330,11 @@
 <section class="view" id="view-admin">
   <div class="wrap">
     <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — posts save to this device's local storage. Export JSON to back up or hand off to the full site build.</div>
+    <div class="chip-filter cat-cards" id="blog-admin-subtabs">
+      <button type="button" class="cat-card active" data-blog-admin="posts"><span class="cat-card-icon" aria-hidden="true">📝</span><span class="cat-card-name">Posts</span><span class="cat-card-desc">Write, edit and publish posts</span><span class="cat-card-count" id="blog-admin-posts-count"></span></button>
+      <button type="button" class="cat-card" data-blog-admin="hero"><span class="cat-card-icon" aria-hidden="true">🖼️</span><span class="cat-card-name">Hero Slider</span><span class="cat-card-desc">Banner slides at the top of the blog</span><span class="cat-card-count" id="blog-admin-hero-count"></span></button>
+    </div>
+    <div class="blog-admin-panel" id="blog-admin-posts-panel">
     <div class="admin-toolbar">
       <button class="btn2 primary" id="new-post-btn">+ New Post</button>
       <button class="btn2" id="export-btn">Export Posts JSON</button>
@@ -343,6 +348,8 @@
       <tbody id="admin-tbody"></tbody>
     </table>
 
+    </div>
+    <div class="blog-admin-panel" id="blog-admin-hero-panel" style="display:none;">
     <div class="megatron-admin">
       <h3>Hero Slider (Megatron)</h3>
       <div class="sub">Banner slides shown at the top of the blog list — pulled from the gallery image pool.</div>
@@ -352,6 +359,7 @@
         <input type="text" id="megatron-caption-input" placeholder="Caption (optional)">
         <button class="btn2 primary" id="megatron-add-btn">+ Add Slide</button>
       </div>
+    </div>
     </div>
   </div>
 </section>

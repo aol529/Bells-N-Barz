@@ -129,6 +129,16 @@
   let activeFilter = 'all';
   const FILTERS = [ ['all','All'], ['package','Session Packages'], ['merch','Merch'], ['supplement','Supplements'], ['digital','Digital / Ebooks'] ];
 
+  // Scroll so el sits just below the sticky site nav and this page's own
+  // sticky header (both vary in height, so measure them at click time).
+  function scrollBelowHeaders(el){
+    if (!el) return;
+    const nav = document.querySelector('.outer-header');
+    const head = el.closest('.site-page') && el.closest('.site-page').querySelector('header.site');
+    const offset = (nav ? nav.getBoundingClientRect().height : 0) + (head ? head.getBoundingClientRect().height : 0) + 12;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+  }
+
   // Category cards (icon, name, item count) — same look as Blog/Gallery.
   const FILTER_ICONS = { all:'🛍️', package:'🎟️', merch:'👕', supplement:'💊', digital:'📱' };
   function renderTypeTabs(){
@@ -145,6 +155,8 @@
       btn.addEventListener('click', function(){
         activeFilter = btn.dataset.filter;
         renderCatalog();
+        // Take the shopper straight to the products they picked.
+        scrollBelowHeaders(document.getElementById('shop-catalog-body'));
       });
     });
   }
@@ -599,6 +611,7 @@
       document.getElementById('shop-admin-products-panel').style.display = isProducts ? '' : 'none';
       document.getElementById('shop-admin-orders-panel').style.display = isProducts ? 'none' : '';
       if (!isProducts) renderOrdersTable();
+      scrollBelowHeaders(document.getElementById(isProducts ? 'shop-admin-products-panel' : 'shop-admin-orders-panel'));
     });
   });
 

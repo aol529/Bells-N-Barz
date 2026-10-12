@@ -465,6 +465,8 @@
   }
 
   function renderMegatronAdmin(){
+    const heroCount = document.getElementById('blog-admin-hero-count');
+    if (heroCount) heroCount.textContent = megatronSlides.length + ' slide' + (megatronSlides.length===1?'':'s');
     const gallery = loadGalleryImages();
     const list = document.getElementById('megatron-slide-list');
     if (!megatronSlides.length){
@@ -782,6 +784,26 @@
       if (arrow) arrow.textContent = active ? (sort.dir === 'asc' ? '▴' : '▾') : '▾';
     });
   }
+  // Scroll so el sits just below the sticky site nav and this page's own
+  // sticky header (both vary in height, so measure them at click time).
+  function scrollBelowHeaders(el){
+    if (!el) return;
+    const nav = document.querySelector('.outer-header');
+    const head = el.closest('.site-page') && el.closest('.site-page').querySelector('header.site');
+    const offset = (nav ? nav.getBoundingClientRect().height : 0) + (head ? head.getBoundingClientRect().height : 0) + 12;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
+  }
+
+  // Admin cards: Posts / Hero Slider, one section at a time.
+  document.querySelectorAll('#blog-admin-subtabs [data-blog-admin]').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const key = card.dataset.blogAdmin;
+      document.querySelectorAll('#blog-admin-subtabs [data-blog-admin]').forEach(c=> c.classList.toggle('active', c===card));
+      document.getElementById('blog-admin-posts-panel').style.display = key === 'posts' ? '' : 'none';
+      document.getElementById('blog-admin-hero-panel').style.display = key === 'hero' ? '' : 'none';
+      scrollBelowHeaders(document.getElementById('blog-admin-' + key + '-panel'));
+    });
+  });
   document.querySelectorAll('#admin-thead-row th[data-sort]').forEach(th=>{
     th.addEventListener('click', ()=>{
       const key = th.dataset.sort;
@@ -791,6 +813,8 @@
     });
   });
   function renderAdmin(){
+    const postsCount = document.getElementById('blog-admin-posts-count');
+    if (postsCount) postsCount.textContent = posts.length + ' post' + (posts.length===1?'':'s');
     const tbody = document.getElementById('admin-tbody');
     tbody.innerHTML = '';
     updateSortHeaderUI(document.getElementById('admin-thead-row'), blogSort);
