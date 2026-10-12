@@ -321,6 +321,11 @@ function switchTab(rawTab, scrollTop){
     // any other tile) clears this the same way it already clears
     // member-content-mode above.
     panel.classList.toggle('me-content-mode', tab === 'me');
+    // Me opens on its own cards too: me-section-mode is only set once a
+    // Me card is clicked (ME SUB-SWITCHER below), so entering Me by any
+    // route resets to the cards first. Deep links click their card next.
+    panel.classList.remove('me-section-mode');
+    if (tab === 'me') document.querySelectorAll('#me-section-switch button').forEach(b => b.classList.remove('active'));
   }
   // Same card-screen treatment for Admin — landing via the top-nav
   // ADMIN pill (or a restored #admin hash) shows the Billing/Users/
@@ -480,6 +485,8 @@ let previousLocation = null;
       }
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
+      // Leave Me's card screen for this section (Back to Me returns).
+      document.getElementById('tab-member').classList.add('me-section-mode');
       // Same fix as the Coach sub-switcher above (as me:<key>) — otherwise
       // a refresh on Period/Track/Nutrition silently drops back to Weight.
       history.replaceState(null, '', '#me:' + key);
@@ -1116,9 +1123,18 @@ const memberBackBtn = document.getElementById('member-back-btn');
 if (memberBackBtn){
   memberBackBtn.addEventListener('click', () => {
     // me-content-mode too — Me hides the cards with it while open.
-    document.getElementById('tab-member').classList.remove('member-content-mode', 'me-content-mode');
+    document.getElementById('tab-member').classList.remove('member-content-mode', 'me-content-mode', 'me-section-mode');
     document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     history.replaceState(null, '', '#member');
+  });
+}
+// Me's own Back button — from a tracker back to the Me cards.
+const meBackBtn = document.getElementById('me-back-btn');
+if (meBackBtn){
+  meBackBtn.addEventListener('click', () => {
+    document.getElementById('tab-member').classList.remove('me-section-mode');
+    document.querySelectorAll('#me-section-switch button').forEach(b => b.classList.remove('active'));
+    history.replaceState(null, '', '#me');
   });
 }
 // Coach's card screen Back button — same pattern as Member's.

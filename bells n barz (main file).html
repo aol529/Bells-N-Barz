@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=section-cards-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=me-cards-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -1444,16 +1444,17 @@
 
 <!-- ================= ME ================= -->
 <section class="member-section" id="tab-me">
+<button class="me-back-btn" id="me-back-btn" type="button">&larr; Back to Me</button>
 <div class="sched-sub" id="me-section-switch">
-  <button data-me-section="weight" class="active">Weight</button>
-  <button data-me-section="bp" title="Blood Pressure">BP</button>
-  <button data-me-section="steps">Steps</button>
-  <button data-me-section="period">Period</button>
-  <button data-me-section="track">Track</button>
-  <button data-me-section="nutrition">Food Log</button>
-  <button data-me-section="mealplan">Meal Plan</button>
-  <button data-me-section="fasting">Fasting</button>
-  <button data-me-section="recipes">Recipes</button>
+  <button data-me-section="weight" class="active"><span class="plate-title">Weight</span><span class="plate-desc">Daily weigh-ins and your trend</span></button>
+  <button data-me-section="bp" title="Blood Pressure"><span class="plate-title">BP</span><span class="plate-desc">Blood pressure and pulse readings</span></button>
+  <button data-me-section="steps"><span class="plate-title">Steps</span><span class="plate-desc">Daily step count and goal streak</span></button>
+  <button data-me-section="period"><span class="plate-title">Period</span><span class="plate-desc">Cycle tracking and next-start prediction</span></button>
+  <button data-me-section="track"><span class="plate-title">Track</span><span class="plate-desc">Hepburn progression for your Block A lifts</span></button>
+  <button data-me-section="nutrition"><span class="plate-title">Food Log</span><span class="plate-desc">What you ate each day</span></button>
+  <button data-me-section="mealplan"><span class="plate-title">Meal Plan</span><span class="plate-desc">The plan your coach made for you</span></button>
+  <button data-me-section="fasting"><span class="plate-title">Fasting</span><span class="plate-desc">Daily eating window or 5:2 weekly</span></button>
+  <button data-me-section="recipes"><span class="plate-title">Recipes</span><span class="plate-desc">Smoothies, porridge, soups and snacks</span></button>
 </div>
 
 <!-- ================= MEAL PLAN (member side; coach side is Coach > Meal Plans) ================= -->
