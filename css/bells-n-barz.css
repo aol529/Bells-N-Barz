@@ -1648,6 +1648,12 @@ header.site {
 .shop-scope .field textarea{resize:vertical;}
 .shop-scope .field-hint{font-size:11px; color:var(--muted-2); margin-top:4px;}
 .shop-scope .field-row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+/* Shop's three pop-ups (order, session package, product) — same overlay
+   as Blog/Gallery/Members; without it they rendered inline under the footer. */
+.shop-scope .panel-backdrop{display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; align-items:flex-start; justify-content:center; padding:40px 16px; overflow-y:auto;}
+.shop-scope .panel-backdrop.show{display:flex;}
+.shop-scope .panel{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:26px; max-width:720px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.5);}
+.shop-scope .panel h2{font-size:20px; margin-bottom:18px;}
 .shop-scope .panel-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
 .shop-scope .admin-toolbar{display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;}
 .shop-scope .admin-grid-table{width:100%; border-collapse:collapse; font-size:13.5px;}
