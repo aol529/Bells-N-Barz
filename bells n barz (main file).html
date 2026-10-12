@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=member-cards-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=section-cards-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -2901,10 +2901,10 @@
   <div class="sched-scope">
   <button class="admin-back-btn" id="admin-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="admin-section-switch">
-    <button class="plate active" data-tab="billing">Billing</button>
-    <button class="plate" data-tab="users">Users</button>
-    <button class="plate" data-tab="sessions">Sessions</button>
-    <button class="plate" data-tab="reports">Reports</button>
+    <button class="plate active" data-tab="billing"><span class="plate-title">Billing</span><span class="plate-desc">Invoices, payments and balances</span></button>
+    <button class="plate" data-tab="users"><span class="plate-title">Users</span><span class="plate-desc">Member and staff accounts, roles and notes</span></button>
+    <button class="plate" data-tab="sessions"><span class="plate-title">Sessions</span><span class="plate-desc">Classes, trainer availability and rosters</span></button>
+    <button class="plate" data-tab="reports"><span class="plate-title">Reports</span><span class="plate-desc">Revenue, attendance and retention</span></button>
   </div>
 
 <section class="admin-section active" id="tab-billing">
@@ -3186,12 +3186,12 @@
   <div class="sched-scope">
   <button class="coach-back-btn" id="coach-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="coach-section-switch">
-    <button data-coach-section="dashboard" class="active">Dashboard</button>
-    <button data-coach-section="program">Program Builder</button>
-    <button data-coach-section="roster">Roster &amp; Availability</button>
-    <button data-coach-section="session">Live Session</button>
-    <button data-coach-section="messages">Messages</button>
-    <button data-coach-section="mealplans">Meal Plans</button>
+    <button class="active" data-coach-section="dashboard"><span class="plate-title">Dashboard</span><span class="plate-desc">Your clients' stats and today's schedule</span></button>
+    <button data-coach-section="program"><span class="plate-title">Program Builder</span><span class="plate-desc">Build and assign training programs</span></button>
+    <button data-coach-section="roster"><span class="plate-title">Roster &amp; Availability</span><span class="plate-desc">Your clients, classes and 1-on-1 slots</span></button>
+    <button data-coach-section="session"><span class="plate-title">Live Session</span><span class="plate-desc">Log up to 5 trainees' sets live</span></button>
+    <button data-coach-section="messages"><span class="plate-title">Messages</span><span class="plate-desc">Shared inbox for coaches and admins</span></button>
+    <button data-coach-section="mealplans"><span class="plate-title">Meal Plans</span><span class="plate-desc">Questionnaires, plans and check-ins</span></button>
   </div>
 
   <div class="coach-section active" id="coach-section-dashboard">

@@ -322,24 +322,27 @@ function switchTab(rawTab, scrollTop){
     // member-content-mode above.
     panel.classList.toggle('me-content-mode', tab === 'me');
   }
-  // Same tile-home-screen treatment for Admin — landing via the top-nav
+  // Same card-screen treatment for Admin — landing via the top-nav
   // ADMIN pill (or a restored #admin hash) shows the Billing/Users/
-  // Sessions/Reports tile grid instead of jumping straight into Billing.
+  // Sessions/Reports cards instead of jumping straight into Billing.
   if (nestedParent === 'tab-admin'){
     panel.classList.toggle('admin-content-mode', rawTab !== 'admin');
     if (rawTab === 'admin'){
       document.querySelectorAll('#admin-section-switch .plate').forEach(b => b.classList.remove('active'));
     }
   }
-  // Coach's home screen is the Dashboard (the client cards), on every
-  // width — landing via the top-nav COACH pill always opens it, even if
-  // another section was previously open. On mobile the Back button still
-  // returns to the section tiles. A restored #coach:key hash then opens
-  // its own section on top of this (see the COACH SUB-SWITCHER IIFE below,
-  // since Coach's inner navigation never goes through switchTab() at all).
+  // Same card-screen treatment for Coach — landing via the top-nav COACH
+  // pill always resets to the section cards (the client cards live inside
+  // Dashboard), even if a section was previously open. Entering a
+  // specific section (card click, or a restored #coach:key hash) is
+  // handled separately in the COACH SUB-SWITCHER IIFE below, since
+  // Coach's inner navigation never goes through switchTab() at all.
   if (tab === 'coach'){
-    const dashBtn = document.querySelector('#coach-section-switch [data-coach-section="dashboard"]');
-    if (dashBtn) dashBtn.click();
+    const coachPanel = document.getElementById('tab-coach');
+    if (coachPanel){
+      coachPanel.classList.remove('coach-content-mode');
+      document.querySelectorAll('#coach-section-switch button').forEach(b => b.classList.remove('active'));
+    }
   }
   if (weekdayDropdown && weekdayTabs.includes(tab)) weekdayDropdown.value = tab;
   // Live Session Log's guest/signed-in state can change elsewhere (e.g. the
@@ -405,9 +408,9 @@ let previousLocation = null;
       const key = btn.getAttribute('data-coach-section');
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
-      // Mobile tile-home-screen: selecting any section here (tile tap, or
-      // a restored #coach:key hash) enters content mode — hides the tiles,
-      // shows the Back button. No-op on desktop (see the media query).
+      // Card screen: selecting any section here (card click, or a
+      // restored #coach:key hash) enters content mode — hides the cards,
+      // shows the Back button.
       document.getElementById('tab-coach').classList.add('coach-content-mode');
       // Encode which sub-section is active in the hash too (as coach:<key>),
       // so a refresh restores it — switchTab() only ever wrote the outer
@@ -1118,7 +1121,7 @@ if (memberBackBtn){
     history.replaceState(null, '', '#member');
   });
 }
-// Coach's mobile tile screen's Back button — same pattern as Member's.
+// Coach's card screen Back button — same pattern as Member's.
 const coachBackBtn = document.getElementById('coach-back-btn');
 if (coachBackBtn){
   coachBackBtn.addEventListener('click', () => {
@@ -1127,7 +1130,7 @@ if (coachBackBtn){
     history.replaceState(null, '', '#coach');
   });
 }
-// Admin's mobile tile screen's Back button — same pattern as Member's.
+// Admin's card screen Back button — same pattern as Member's.
 const adminBackBtn = document.getElementById('admin-back-btn');
 if (adminBackBtn){
   adminBackBtn.addEventListener('click', () => {
