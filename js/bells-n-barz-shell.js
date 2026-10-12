@@ -94,6 +94,9 @@ document.querySelectorAll('table').forEach(t => {
     }
     links.forEach(l => l.classList.toggle('active', l.dataset.site === key));
     pages.forEach(p => p.classList.toggle('active', p.id === 'site-' + key));
+    // Shop always opens on its category cards (no-op until its module loads,
+    // and a fresh load starts on the cards anyway).
+    if (key === 'shop' && typeof window.bnbShopShowCards === 'function') window.bnbShopShowCards();
     nav.classList.remove('open');
     window.scrollTo({top:0, behavior:'smooth'});
   }
@@ -109,6 +112,10 @@ document.querySelectorAll('table').forEach(t => {
         if (typeof window.switchTab === 'function') window.switchTab('overview');
       } else {
         switchSite(b.dataset.siteJump);
+        // e.g. Contacts > Session Packages: open that Shop category directly.
+        if (b.dataset.shopFilter && typeof bnbLoadModule === 'function'){
+          bnbLoadModule('shop').then(() => { if (window.bnbShopOpen) window.bnbShopOpen(b.dataset.shopFilter); }).catch(err => console.error(err));
+        }
       }
     });
   });

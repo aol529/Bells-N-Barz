@@ -2000,18 +2000,18 @@ header.site{
 #tab-member.me-section-mode .member-back-btn{display:none;}
 /* Tools: page cards (Timers / Challenges / Body / Calories), same idea —
    tools-page-mode on #tab-tools is set by showToolsPage() in the shell. */
-.tools-back-btn{
+.tools-back-btn, .shop-back-btn{
   display:none; width:100%; margin-bottom:14px; padding:14px;
   border-radius:8px; border:2px solid var(--line); background:var(--surface);
   color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
   text-align:left; cursor:pointer;
 }
-.tools-back-btn:active{transform:scale(0.98);}
+.tools-back-btn:active, .shop-back-btn:active{transform:scale(0.98);}
 #tab-tools:not(.tools-page-mode) .tools-page{display:none !important;}
 #tab-tools.tools-page-mode #tools-page-tabs{display:none;}
 #tab-tools.tools-page-mode .tools-back-btn{display:block;}
 @media (min-width:641px){
-  .coach-back-btn, .admin-back-btn, .me-back-btn, .tools-back-btn{width:auto; padding:8px 16px; font-size:14px; border-width:1px;}
+  .coach-back-btn, .admin-back-btn, .me-back-btn, .tools-back-btn, .shop-back-btn{width:auto; padding:8px 16px; font-size:14px; border-width:1px;}
 }
 
 .sched-scope .chip-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}
@@ -2766,3 +2766,10 @@ body > *{flex-shrink:0;}
 #shop-admin-subtabs.cat-cards{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));}
 #blog-admin-subtabs.cat-cards{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); margin-bottom:20px;}
 .blog-scope #blog-admin-hero-panel .megatron-admin{margin-top:0; padding-top:0; border-top:0;}
+/* Shop landing: category cards only until one is picked (.shop-browse). */
+#shop-view-shop:not(.shop-browse) #shop-catalog-body, #shop-view-shop:not(.shop-browse) #shop-empty-msg{display:none !important;}
+#shop-view-shop.shop-browse #shop-type-tabs{display:none;}
+#shop-view-shop.shop-browse .shop-back-btn{display:block; margin-top:4px;}
+/* On the landing screen no card is "current" — drop the last pick's highlight. */
+#shop-view-shop:not(.shop-browse) #shop-type-tabs .cat-card.active{border-color:var(--line); background:var(--surface);}
+#shop-view-shop:not(.shop-browse) #shop-type-tabs .cat-card.active .cat-card-count{color:var(--muted-2);}

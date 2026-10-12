@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=admin-cards-scroll-2" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=shop-landing-2" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -597,6 +597,10 @@
 <!-- ================= PUBLIC CATALOG ================= -->
 <section class="view active" id="shop-view-shop">
   <div class="wrap">
+    <!-- Shop opens on the category cards only; picking one adds .shop-browse
+         (js/bells-n-barz-shop.js), which swaps the cards for that category's
+         products plus this Back button. -->
+    <button class="shop-back-btn" id="shop-back-btn" type="button">&larr; Back to Shop</button>
     <div class="shop-type-tabs chip-filter cat-cards" id="shop-type-tabs"></div>
     <div id="shop-catalog-body"></div>
     <div class="shop-empty" id="shop-empty-msg" style="display:none;">Nothing here yet — check back soon.</div>
@@ -932,7 +936,7 @@
     <div class="home-card-grid">
       <div class="home-card static"><span class="home-card-icon" aria-hidden="true">📖</span><span class="home-card-title">Our Story</span><span class="home-card-desc">Coming soon</span></div>
       <button type="button" class="home-card" data-site-jump="gym"><span class="home-card-icon" aria-hidden="true">📘</span><span class="home-card-title">The Training System</span><span class="home-card-desc">Movement preparation with integrated core programming</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
-      <button type="button" class="home-card" data-site-jump="shop"><span class="home-card-icon" aria-hidden="true">🧑‍🏫</span><span class="home-card-title">Coaching</span><span class="home-card-desc">1-on-1 session packages with a coach</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-site-jump="shop" data-shop-filter="package"><span class="home-card-icon" aria-hidden="true">🧑‍🏫</span><span class="home-card-title">Coaching</span><span class="home-card-desc">1-on-1 session packages with a coach</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
       <button type="button" class="home-card" data-home-gym="tools"><span class="home-card-icon" aria-hidden="true">⏱️</span><span class="home-card-title">Free Tools</span><span class="home-card-desc">Timers, challenges and calculators for everyone</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
     </div>
   </div>
@@ -945,7 +949,7 @@
     <div class="home-card-grid">
       <button type="button" class="home-card" data-home-gym="schedule"><span class="home-card-icon" aria-hidden="true">📅</span><span class="home-card-title">Book a Session</span><span class="home-card-desc">Classes and 1-on-1s (members)</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
       <button type="button" class="home-card" data-home-gym="messages"><span class="home-card-icon" aria-hidden="true">💬</span><span class="home-card-title">Message Your Coach</span><span class="home-card-desc">Chat with your coach (members)</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
-      <button type="button" class="home-card" data-site-jump="shop"><span class="home-card-icon" aria-hidden="true">🛍️</span><span class="home-card-title">Session Packages</span><span class="home-card-desc">Buy 1-on-1 sessions in the Shop</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
+      <button type="button" class="home-card" data-site-jump="shop" data-shop-filter="package"><span class="home-card-icon" aria-hidden="true">🛍️</span><span class="home-card-title">Session Packages</span><span class="home-card-desc">Buy 1-on-1 sessions in the Shop</span><span class="home-card-arrow" aria-hidden="true">→</span></button>
       <div class="home-card static"><span class="home-card-icon" aria-hidden="true">📣</span><span class="home-card-title">Social &amp; Enquiries</span><span class="home-card-desc">Coming soon</span></div>
     </div>
   </div>

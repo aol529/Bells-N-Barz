@@ -139,6 +139,21 @@
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
   }
 
+  // Shop opens on its category cards (like the Gym sections); a card swaps
+  // them for that category's products plus "Back to Shop".
+  function openShopCategory(filter){
+    activeFilter = filter;
+    renderCatalog();
+    document.getElementById('shop-view-shop').classList.add('shop-browse');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function showShopCards(){
+    document.getElementById('shop-view-shop').classList.remove('shop-browse');
+  }
+  document.getElementById('shop-back-btn').addEventListener('click', ()=>{ showShopCards(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  window.bnbShopShowCards = showShopCards;
+  window.bnbShopOpen = openShopCategory;
+
   // Category cards (icon, name, item count) — same look as Blog/Gallery.
   const FILTER_ICONS = { all:'🛍️', package:'🎟️', merch:'👕', supplement:'💊', digital:'📱' };
   function renderTypeTabs(){
@@ -153,10 +168,7 @@
     }).join('');
     bar.querySelectorAll('button').forEach(function(btn){
       btn.addEventListener('click', function(){
-        activeFilter = btn.dataset.filter;
-        renderCatalog();
-        // Take the shopper straight to the products they picked.
-        scrollBelowHeaders(document.getElementById('shop-catalog-body'));
+        openShopCategory(btn.dataset.filter);
       });
     });
   }
