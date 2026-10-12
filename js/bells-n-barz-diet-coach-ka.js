@@ -11,8 +11,8 @@
    this file.
    ============================================================ */
 (function(){
-  // Coach KA's account (Kevin Aol) — his STAGING users.id. Must match
-  // diet_registry in sql/46; change both for production.
+  // Coach KA's account (Kevin Aol) — his users.id. Must match
+  // diet_registry in sql/46.
   const OWNER_ID = '870adc3b-df42-4435-b3c5-942bb4cc2245';
 
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
