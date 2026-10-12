@@ -302,12 +302,10 @@ function switchTab(rawTab, scrollTop){
       sec.classList.toggle('active', sec.id === 'tab-' + tab);
     });
   }
-  // Mobile-only: Member lands on the 6-tile screen instead of defaulting
-  // into Live Session — rawTab === 'member' means the top-nav pill (or a
-  // restored #member hash) was used, as opposed to a specific tile/deep
-  // link, which should still open straight into its content as normal.
-  // Desktop is untouched — the CSS side of this only exists inside the
-  // max-width:640px media query, so this class does nothing there.
+  // Member lands on its card screen instead of defaulting into Live
+  // Session, at every width — rawTab === 'member' means the top-nav pill
+  // (or a restored #member hash) was used, as opposed to a specific
+  // card/deep link, which should still open straight into its content.
   if (nestedParent === 'tab-member'){
     panel.classList.toggle('member-content-mode', rawTab !== 'member');
     // Landing on the tile screen itself: no tile should look pre-selected
@@ -1108,13 +1106,14 @@ plates.forEach(p => {
     switchTab(tab);
   });
 });
-// Mobile Member tile screen's Back button — returns from a section's
-// content to the tile grid without changing which section is marked
+// Member card screen's Back button — returns from a section's
+// content to the cards without changing which section is marked
 // .active internally (so tapping the same tile again just re-shows it).
 const memberBackBtn = document.getElementById('member-back-btn');
 if (memberBackBtn){
   memberBackBtn.addEventListener('click', () => {
-    document.getElementById('tab-member').classList.remove('member-content-mode');
+    // me-content-mode too — Me hides the cards with it while open.
+    document.getElementById('tab-member').classList.remove('member-content-mode', 'me-content-mode');
     document.querySelectorAll('#member-section-switch .plate').forEach(b => b.classList.remove('active'));
     history.replaceState(null, '', '#member');
   });

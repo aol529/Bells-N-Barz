@@ -1919,28 +1919,27 @@ header.site{
   box-shadow:0 1px 3px rgba(0,0,0,.2);
 }
 
-/* ---- MOBILE: Member tab lands on the tile screen, not Live Session ----
-   Below the mobile breakpoint, landing on Member (top-nav pill or a
-   restored #member hash) shows only the 6-tile launcher — no section
-   pre-selected. Tapping a tile fully replaces the tiles with that
-   section's content plus a Back button (toggled via JS: switchTab()
-   adds/removes #tab-member.member-content-mode; see the plates click
-   handler and #member-back-btn below). Desktop is untouched — this
-   entire block only exists inside the media query. Revert:
-   git checkout pre-atm-ui-experiment -- css/bells-n-barz.css
-   "bells n barz (main file).html" */
-.member-back-btn{display:none;}
-@media (max-width:640px){
-  .member-back-btn{
-    width:100%; margin-bottom:14px; padding:14px;
-    border-radius:8px; border:2px solid var(--line); background:var(--surface);
-    color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
-    text-align:left; cursor:pointer;
-  }
-  .member-back-btn:active{transform:scale(0.98);}
-  #tab-member:not(.member-content-mode) .member-section{display:none !important;}
-  #tab-member.member-content-mode #member-section-switch{display:none;}
-  #tab-member.member-content-mode .member-back-btn{display:block;}
+/* ---- Member tab lands on the card screen, not Live Session ----
+   At every width, landing on Member (top-nav pill or a restored #member
+   hash) shows only the section cards — no section pre-selected. Clicking
+   a card fully replaces the cards with that section's content plus a
+   Back button (toggled via JS: switchTab() adds/removes
+   #tab-member.member-content-mode; see the plates click handler and
+   #member-back-btn). The card look itself is under "Member landing
+   cards" further down. */
+.member-back-btn{
+  display:none;
+  width:100%; margin-bottom:14px; padding:14px;
+  border-radius:8px; border:2px solid var(--line); background:var(--surface);
+  color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
+  text-align:left; cursor:pointer;
+}
+.member-back-btn:active{transform:scale(0.98);}
+#tab-member:not(.member-content-mode) .member-section{display:none !important;}
+#tab-member.member-content-mode #member-section-switch{display:none;}
+#tab-member.member-content-mode .member-back-btn{display:block;}
+@media (min-width:641px){
+  .member-back-btn{width:auto; padding:8px 16px; font-size:14px; border-width:1px;}
 }
 
 /* ---- MOBILE: Coach tab lands on the tile screen too ----
@@ -2653,3 +2652,25 @@ details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
 .smoothie-group li:last-child, .smoothie-recipe li:last-child{border-bottom:0;}
 .smoothie-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:8px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:12px;}
 .smoothie-steps{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.5;}
+
+/* ---------------- Member landing cards ----------------
+   The Member section switch is only ever visible on the landing screen
+   (content mode hides it), so it's always drawn as cards: icon, title
+   and a one-line description, left-aligned. Comes after the shared
+   tile and compact-desktop rules above so it wins at every width. */
+#member-section-switch{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:var(--sp-3); margin-bottom:var(--sp-4);}
+#member-section-switch .plate{
+  min-height:0; padding:var(--sp-4); flex-direction:column; align-items:flex-start; justify-content:flex-start;
+  gap:6px; text-align:left; border-width:1px; border-radius:var(--r); box-shadow:none;
+}
+#member-section-switch .plate::before{font-size:28px; margin-bottom:4px;}
+#member-section-switch .plate.active{border-color:var(--line); background:var(--surface); color:var(--text); font-weight:normal;}
+#member-section-switch .plate:hover{border-color:var(--accent-dim); background:var(--surface-2);}
+#member-section-switch .plate-title{font-family:'Oswald',sans-serif; font-size:18px; text-transform:uppercase; letter-spacing:.03em; color:var(--text);}
+#member-section-switch .plate-desc{font-family:'IBM Plex Sans',sans-serif; font-size:13px; text-transform:none; letter-spacing:0; color:var(--muted); line-height:1.4;}
+@media (max-width:640px){
+  #member-section-switch{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2);}
+  #member-section-switch .plate{padding:var(--sp-3);}
+  #member-section-switch .plate-title{font-size:16px;}
+  #member-section-switch .plate-desc{font-size:12px;}
+}
