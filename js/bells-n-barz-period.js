@@ -35,10 +35,11 @@
   let selectedSymptoms = [];
   let entriesCache = null; // populated by refreshEntriesFromSupabase
 
-  function periodRowToEntry(r){ return { date: r.date, flow: r.flow || null, symptoms: r.symptoms || [], notes: r.notes || '' }; }
+  function periodRowToEntry(r){ return { id: r.id, date: r.date, flow: r.flow || null, symptoms: r.symptoms || [], notes: r.notes || '' }; }
   function entryToPeriodRow(e, userId){
-    return { user_id: userId, date: e.date, flow: e.flow, symptoms: e.symptoms, notes: e.notes || null };
+    return { id: e.id, user_id: userId, date: e.date, flow: e.flow, symptoms: e.symptoms, notes: e.notes || null };
   }
+  const sync = bnbTableSync('period_log');
 
   function loadEntries(){
     // Instant read from cache; starts empty until the first Supabase
@@ -52,27 +53,19 @@
     const { data, error } = await bnbClient.from('period_log').select('*').eq('user_id', me.id);
     if (error) { console.error('Supabase load period_log failed:', error); return; }
     entriesCache = (data || []).map(periodRowToEntry);
+    sync.reset(entriesCache.map(e => entryToPeriodRow(e, me.id)));
     if (typeof render === 'function') render();
   }
   function saveEntries(entries){
     entriesCache = entries;
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return; // guest / nobody logged in — local-only for this session
-    (async () => {
-      try {
-        // Same approach as the Weight tracker: no unique constraint to key
-        // an upsert off of, and this table is small per user — delete this
-        // user's rows, then re-insert the current set.
-        await bnbClient.from('period_log').delete().eq('user_id', me.id);
-        if (entries.length){
-          const rows = entries.map(e => entryToPeriodRow(e, me.id));
-          const { error } = await bnbClient.from('period_log').insert(rows);
-          if (error) throw error;
-        }
-      } catch(e){
-        console.warn('Supabase save period_log failed:', e);
-      }
-    })();
+    // Row-by-row via bnbTableSync (main HTML): only new/changed entries are
+    // written and only removed ones deleted. This used to delete all of the
+    // member's rows and re-insert them, so a dropped connection in between
+    // (or saving before history had loaded) wiped their whole history.
+    entries.forEach(e => { if (!e.id) e.id = window.BNB_UUID(); });
+    sync.save(entries.map(e => entryToPeriodRow(e, me.id)));
   }
 
   function todayIso(){
@@ -107,7 +100,7 @@
   function upsertEntry(date, flow, symptoms, notes){
     const entries = loadEntries();
     const idx = entries.findIndex(e => e.date === date);
-    const entry = { date, flow, symptoms, notes };
+    const entry = { id: idx >= 0 ? entries[idx].id : undefined, date, flow, symptoms, notes };
     if (idx >= 0) entries[idx] = entry; else entries.push(entry);
     entries.sort((a,b) => a.date.localeCompare(b.date));
     saveEntries(entries);

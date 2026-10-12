@@ -35,10 +35,11 @@
     if (!isNaN(v) && v > 0) targetKg = v;
   } catch(e){}
 
-  function weightRowToEntry(r){ return { date: r.date, kg: r.weight }; }
+  function weightRowToEntry(r){ return { id: r.id, date: r.date, kg: Number(r.weight) }; }
   function entryToWeightRow(e, userId){
-    return { user_id: userId, date: e.date, weight: e.kg };
+    return { id: e.id, user_id: userId, date: e.date, weight: e.kg };
   }
+  const sync = bnbTableSync('weight_log');
 
   let entriesCache = null; // populated by refreshEntriesFromSupabase
 
@@ -54,29 +55,19 @@
     const { data, error } = await bnbClient.from('weight_log').select('*').eq('user_id', me.id);
     if (error) { console.error('Supabase load weight_log failed:', error); return; }
     entriesCache = (data || []).map(weightRowToEntry);
+    sync.reset(entriesCache.map(e => entryToWeightRow(e, me.id)));
     if (typeof render === 'function') render();
   }
   function saveEntries(entries){
     entriesCache = entries;
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return; // guest / nobody logged in — local-only for this session
-    (async () => {
-      try {
-        // weight_log has no unique constraint on (user_id, date) to key an
-        // upsert off of, so this table is small per user — simplest
-        // correct approach is: delete this user's rows, then re-insert
-        // the current set. Fine at personal-tracker scale (dozens to a
-        // few hundred entries), not meant for bulk/shared data.
-        await bnbClient.from('weight_log').delete().eq('user_id', me.id);
-        if (entries.length){
-          const rows = entries.map(e => entryToWeightRow(e, me.id));
-          const { error } = await bnbClient.from('weight_log').insert(rows);
-          if (error) throw error;
-        }
-      } catch(e){
-        console.warn('Supabase save weight_log failed:', e);
-      }
-    })();
+    // Row-by-row via bnbTableSync (main HTML): only new/changed entries are
+    // written and only removed ones deleted. This used to delete all of the
+    // member's rows and re-insert them, so a dropped connection in between
+    // (or saving before history had loaded) wiped their whole history.
+    entries.forEach(e => { if (!e.id) e.id = window.BNB_UUID(); });
+    sync.save(entries.map(e => entryToWeightRow(e, me.id)));
   }
 
   function kgToDisplay(kg){ return unit === 'kg' ? kg : kg / KG_PER_LB; }
