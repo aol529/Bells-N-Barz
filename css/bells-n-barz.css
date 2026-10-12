@@ -857,9 +857,9 @@ footer.site{border-top:1px solid var(--line);padding:26px 0;color:var(--muted-2)
 .sched-scope .fasting-notif-btn:hover{border-color:var(--accent-dim); color:var(--text);}
 .sched-scope .fasting-sound-toggle.muted{color:var(--muted-2);}
 .sched-scope .fasting-notif-note{font-size:11px; color:var(--muted-2);}
-.sched-scope .fasting-mode-switch{display:flex; gap:8px; margin:16px 0 22px; border-bottom:1px solid var(--line); padding-bottom:16px;}
-.sched-scope .fasting-mode-switch button{padding:9px 18px; border-radius:2px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; font-size:12.5px; font-family:'IBM Plex Mono',monospace; letter-spacing:.03em; text-transform:uppercase;}
-.sched-scope .fasting-mode-switch button.active{border-color:var(--accent); color:var(--accent); background:rgba(var(--accent-rgb),.08); font-weight:600;}
+.sched-scope .fasting-mode-switch, .sched-scope .recipe-switch{display:flex; gap:8px; margin:16px 0 22px; border-bottom:1px solid var(--line); padding-bottom:16px;}
+.sched-scope .fasting-mode-switch button, .sched-scope .recipe-switch button{padding:9px 18px; border-radius:2px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; font-size:12.5px; font-family:'IBM Plex Mono',monospace; letter-spacing:.03em; text-transform:uppercase;}
+.sched-scope .fasting-mode-switch button.active, .sched-scope .recipe-switch button.active{border-color:var(--accent); color:var(--accent); background:rgba(var(--accent-rgb),.08); font-weight:600;}
 .sched-scope .fasting-522-days{display:flex; gap:6px; flex-wrap:wrap; margin:16px 0 10px;}
 .sched-scope .fasting-522-days button{flex:1; min-width:44px; padding:10px 4px; border-radius:4px; border:1px solid var(--line); background:var(--surface-2); color:var(--muted); cursor:pointer; font-size:12px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase;}
 .sched-scope .fasting-522-days button.active{background:var(--accent); border-color:var(--accent); color:var(--on-accent); font-weight:600;}
@@ -1886,6 +1886,7 @@ header.site{
 #me-section-switch [data-me-section="moon"]::before{content:"🌙";}
 #me-section-switch [data-me-section="fasting"]::before{content:"⏳";}
 #me-section-switch [data-me-section="mealplan"]::before{content:"🥗";}
+#me-section-switch [data-me-section="recipes"]::before{content:"🥣";}
 #coach-section-switch [data-coach-section="dashboard"]::before{content:"📊";}
 #coach-section-switch [data-coach-section="program"]::before{content:"📋";}
 #coach-section-switch [data-coach-section="roster"]::before{content:"🗓️";}
@@ -2624,3 +2625,14 @@ details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
 .cp-card-field{margin:0 0 var(--sp-2);max-width:260px;}
 #coach-dashboard-body{scroll-margin-top:calc(var(--outer-h) + var(--gymbar-h) + 16px);}
 .cp-empty-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-6);align-items:start;}
+
+/* ---------------- RECIPES (Me sub-tab) ---------------- */
+.recipe-panel{display:none;}
+.recipe-panel.active{display:block;}
+.sched-scope .recipe-switch{flex-wrap:wrap;}
+.smoothie-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
+.smoothie-group ul, .smoothie-recipe ul{list-style:none;margin:0;padding:0;}
+.smoothie-group li, .smoothie-recipe li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14px;color:var(--text);}
+.smoothie-group li:last-child, .smoothie-recipe li:last-child{border-bottom:0;}
+.smoothie-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:8px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:12px;}
+.smoothie-steps{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.5;}

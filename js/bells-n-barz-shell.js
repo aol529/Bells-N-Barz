@@ -462,7 +462,8 @@ let previousLocation = null;
     track: document.getElementById('tab-track'),
     nutrition: document.getElementById('tab-nutrition'),
     fasting: document.getElementById('tab-fasting'),
-    mealplan: document.getElementById('tab-mealplan')
+    mealplan: document.getElementById('tab-mealplan'),
+    recipes: document.getElementById('tab-recipes')
   };
   const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan' };
   btns.forEach(btn=>{
@@ -486,6 +487,30 @@ let previousLocation = null;
       history.replaceState(null, '', '#me:' + key);
     });
   });
+})();
+
+/* ---------------- RECIPES (Me sub-tab) ----------------
+   Static guides (Smoothie / Trail Mix / Porridge / Soup), one panel
+   visible at a time — no module, no data, so it's wired here directly.
+   The last-opened guide is remembered on this device. */
+(function(){
+  const switchEl = document.getElementById('recipe-switch');
+  if (!switchEl) return;
+  const btns = switchEl.querySelectorAll('button');
+  function show(key){
+    btns.forEach(b=> b.classList.toggle('active', b.getAttribute('data-recipe') === key));
+    document.querySelectorAll('#tab-recipes .recipe-panel').forEach(p=> p.classList.toggle('active', p.id === 'recipe-' + key));
+  }
+  btns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-recipe');
+      show(key);
+      try { localStorage.setItem('bnb-recipe-view', key); } catch(e){}
+    });
+  });
+  let saved = null;
+  try { saved = localStorage.getItem('bnb-recipe-view'); } catch(e){}
+  if (saved && document.getElementById('recipe-' + saved)) show(saved);
 })();
 
 /* ---------------- MOON PHASE (Me sub-tab) ----------------
