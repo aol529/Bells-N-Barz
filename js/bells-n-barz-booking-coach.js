@@ -1345,33 +1345,70 @@
       renderCoachDashboard();
     });
   }
+  // One stat tile on a client card: big number, small label underneath.
+  // Missing data shows a dash so every card keeps the same layout.
+  function cpStatHtml(value, label, extra, cls){
+    const has = value !== null && value !== undefined && value !== '';
+    return '<span class="cp-stat"><span class="cp-stat-val' + (has && cls ? ' ' + cls : '') + '">' + (has ? value : '—') + '</span>'
+      + '<span class="cp-stat-lbl">' + label + '</span>'
+      + (has && extra ? '<span class="cp-stat-extra">' + extra + '</span>' : '') + '</span>';
+  }
   function clientCardHtml(id){
     const name = isMe(id) ? (memberName(id) || trainerName(id)) : memberName(id);
+    const isSelf = id === selfTrainerId;
+    const pt = ptSessionsForTrainer(selfTrainerId);
     let sub;
-    if (id === selfTrainerId){
+    if (isSelf){
       sub = isMe(id) ? 'You' : 'Coach';
     } else {
-      const sess = ptSessionsForTrainer(selfTrainerId).filter(x=> x.p.userId === id).map(x=> x.sl.date).sort();
+      const sess = pt.filter(x=> x.p.userId === id).map(x=> x.sl.date).sort();
       const next = sess.find(d=> d >= TODAY), last = sess.filter(d=> d < TODAY).pop();
       sub = next ? 'Next 1-on-1 ' + fmtChartDate(next) : last ? 'Last 1-on-1 ' + daysSince(last) + 'd ago' : 'Assigned client';
     }
+
+    // Weight and body fat from Assessments (newest first), with the change
+    // since the previous weigh-in.
+    const a = (window.BNB_USERS && window.BNB_USERS.getAssessments) ? window.BNB_USERS.getAssessments(id) : [];
+    const num = (x, f)=> x[f] !== '' && x[f] != null && !isNaN(Number(x[f]));
+    const weights = a.filter(x=> num(x, 'weight'));
+    const bf = a.find(x=> num(x, 'bodyfat'));
+    let weight = null, weightExtra = '';
+    if (weights.length){
+      weight = Number(weights[0].weight);
+      if (weights.length > 1){
+        const d = weight - Number(weights[1].weight);
+        weightExtra = (d > 0 ? '+' : d < 0 ? '−' : '±') + Math.abs(d).toFixed(1) + ' kg';
+      }
+    }
+
+    // BP and steps from the batched vitals fetch (see prefetchVitals).
     const V = window.BNB_VITALS, data = vitalsCache[id];
-    let badges = '';
+    let bp = null, bpCls = '', steps = null;
     if (V && data && data !== 'loading'){
-      const bp = data.bp[data.bp.length - 1];
-      if (bp){ const c = V.bpCategory(bp.sys, bp.dia); badges += '<span class="cp-badge"><i class="bp-dot ' + c.cls + '"></i>' + bp.sys + '/' + bp.dia + '</span>'; }
+      const last = data.bp[data.bp.length - 1];
+      if (last){ bp = last.sys + '/' + last.dia; bpCls = V.bpCategory(last.sys, last.dia).cls; }
       const weekStart = V.dayStart(TODAY) - 6 * 86400000;
       const wk = data.steps.filter(e=> V.dayStart(e.date) >= weekStart);
-      if (wk.length) badges += '<span class="cp-badge">👟 ' + V.fmtInt(wk.reduce((a,e)=> a + e.steps, 0) / wk.length) + '/day</span>';
+      if (wk.length) steps = V.fmtInt(wk.reduce((s,e)=> s + e.steps, 0) / wk.length);
     }
-    const a = (window.BNB_USERS && window.BNB_USERS.getAssessments) ? window.BNB_USERS.getAssessments(id) : [];
-    const w = a.find(x=> x.weight !== '' && x.weight != null && !isNaN(Number(x.weight)));
-    if (w) badges += '<span class="cp-badge">⚖️ ' + Number(w.weight) + ' kg</span>';
-    return '<button type="button" class="cp-client' + (id === selfTrainerId ? ' self' : '') + '" data-client="' + esc(id) + '">'
-      + '<span class="cp-avatar">' + esc(initials(name)) + '</span>'
-      + '<span class="cp-client-text"><span class="cp-name">' + esc(name) + '</span><span class="cp-sub">' + esc(sub) + '</span>'
-      + (badges ? '<span class="cp-badges">' + badges + '</span>' : '') + '</span>'
-      + '<span class="cp-go">›</span></button>';
+
+    const visits = (window.BNB_USERS && window.BNB_USERS.getWeeklyVisitCounts) ? window.BNB_USERS.getWeeklyVisitCounts(id, 1)[0] : null;
+    // 1-on-1s in the last 30 days: with this client, or all of them on the
+    // coach's own card.
+    const ptMonth = pt.filter(x=> (isSelf || x.p.userId === id) && daysSince(x.sl.date) >= 0 && daysSince(x.sl.date) <= 30).length;
+
+    return '<button type="button" class="cp-client' + (isSelf ? ' self' : '') + '" data-client="' + esc(id) + '">'
+      + '<span class="cp-client-head"><span class="cp-avatar">' + esc(initials(name)) + '</span>'
+      + '<span class="cp-client-text"><span class="cp-name">' + esc(name) + '</span><span class="cp-sub">' + esc(sub) + '</span></span>'
+      + '<span class="cp-go">›</span></span>'
+      + '<span class="cp-stats">'
+      + cpStatHtml(weight, 'Weight kg', weightExtra)
+      + cpStatHtml(bf ? Number(bf.bodyfat) : null, 'Body fat %')
+      + cpStatHtml(bp, 'BP', '', bpCls)
+      + cpStatHtml(steps, 'Steps/day · 7d')
+      + cpStatHtml(visits, 'Visits · 7d')
+      + cpStatHtml(ptMonth, '1-on-1s · 30d')
+      + '</span></button>';
   }
   function clientGridHtml(){
     const ids = progressPeopleIds();

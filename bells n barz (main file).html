@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=coach-grid-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=coach-stats-2" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -248,6 +248,20 @@
         <div class="ekadashi-countdown" id="ekadashi-countdown">—</div>
         <div class="ekadashi-note">Approximate — based on exact tithi timing in UTC, not adjusted for sunrise or your local Panchang (observance can shift by a day depending on tradition). Confirm exact fasting/Parana times with your temple or community calendar.</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Shortcut into Gym > Member > Me > Recipes (wired in js/bells-n-barz-shell.js) -->
+  <div class="home-recipes">
+    <div class="wrap sched-scope">
+      <button type="button" class="home-recipes-card" id="home-recipes-link">
+        <span class="home-recipes-icon" aria-hidden="true">🥣</span>
+        <span class="home-recipes-info">
+          <span class="home-recipes-title">Recipes</span>
+          <span class="home-recipes-sub">Smoothies, trail mix, porridge &amp; pumpkin soups</span>
+        </span>
+        <span class="home-recipes-arrow" aria-hidden="true">→</span>
+      </button>
     </div>
   </div>
 

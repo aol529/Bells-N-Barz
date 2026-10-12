@@ -333,18 +333,15 @@ function switchTab(rawTab, scrollTop){
       document.querySelectorAll('#admin-section-switch .plate').forEach(b => b.classList.remove('active'));
     }
   }
-  // Same tile-home-screen treatment for Coach — landing via the top-nav
-  // COACH pill always resets to the tile screen, even if a section was
-  // previously open. Entering a specific section (tile tap, or a
-  // restored #coach:key hash) is handled separately in the COACH
-  // SUB-SWITCHER IIFE below, since Coach's inner navigation never goes
-  // through switchTab() at all.
+  // Coach's home screen is the Dashboard (the client cards), on every
+  // width — landing via the top-nav COACH pill always opens it, even if
+  // another section was previously open. On mobile the Back button still
+  // returns to the section tiles. A restored #coach:key hash then opens
+  // its own section on top of this (see the COACH SUB-SWITCHER IIFE below,
+  // since Coach's inner navigation never goes through switchTab() at all).
   if (tab === 'coach'){
-    const coachPanel = document.getElementById('tab-coach');
-    if (coachPanel){
-      coachPanel.classList.remove('coach-content-mode');
-      document.querySelectorAll('#coach-section-switch button').forEach(b => b.classList.remove('active'));
-    }
+    const dashBtn = document.querySelector('#coach-section-switch [data-coach-section="dashboard"]');
+    if (dashBtn) dashBtn.click();
   }
   if (weekdayDropdown && weekdayTabs.includes(tab)) weekdayDropdown.value = tab;
   // Live Session Log's guest/signed-in state can change elsewhere (e.g. the
@@ -511,6 +508,14 @@ let previousLocation = null;
   let saved = null;
   try { saved = localStorage.getItem('bnb-recipe-view'); } catch(e){}
   if (saved && document.getElementById('recipe-' + saved)) show(saved);
+  // Home page shortcut card — same route as the #me:recipes deep link.
+  const homeLink = document.getElementById('home-recipes-link');
+  if (homeLink) homeLink.addEventListener('click', ()=>{
+    if (typeof window.switchSite === 'function') window.switchSite('gym');
+    if (typeof window.switchTab === 'function') window.switchTab('me');
+    const meBtn = document.querySelector('#me-section-switch [data-me-section="recipes"]');
+    if (meBtn) meBtn.click();
+  });
 })();
 
 /* ---------------- MOON PHASE (Me sub-tab) ----------------
