@@ -182,16 +182,17 @@
 
   function nutritionRowToEntry(r){
     return {
-      date: r.date, calories: r.calories, proteinG: r.protein_g, carbsG: r.carbs_g,
+      id: r.id, date: r.date, calories: r.calories, proteinG: r.protein_g, carbsG: r.carbs_g,
       fatG: r.fat_g, waterMl: r.water_ml, notes: r.notes || ''
     };
   }
   function entryToNutritionRow(e, userId){
     return {
-      user_id: userId, date: e.date, calories: e.calories, protein_g: e.proteinG,
+      id: e.id, user_id: userId, date: e.date, calories: e.calories, protein_g: e.proteinG,
       carbs_g: e.carbsG, fat_g: e.fatG, water_ml: e.waterMl, notes: e.notes || null
     };
   }
+  const sync = bnbTableSync('nutrition_log');
 
   function loadEntries(){
     // Instant read from cache; starts empty until the first Supabase
@@ -205,27 +206,19 @@
     const { data, error } = await bnbClient.from('nutrition_log').select('*').eq('user_id', me.id);
     if (error) { console.error('Supabase load nutrition_log failed:', error); return; }
     entriesCache = (data || []).map(nutritionRowToEntry);
+    sync.reset(entriesCache.map(e => entryToNutritionRow(e, me.id)));
     if (typeof render === 'function') render();
   }
   function saveEntries(entries){
     entriesCache = entries;
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return; // guest / nobody logged in — local-only for this session
-    (async () => {
-      try {
-        // Same approach as the Weight/Period trackers: no unique constraint
-        // to key an upsert off of, and this table is small per user —
-        // delete this user's rows, then re-insert the current set.
-        await bnbClient.from('nutrition_log').delete().eq('user_id', me.id);
-        if (entries.length){
-          const rows = entries.map(e => entryToNutritionRow(e, me.id));
-          const { error } = await bnbClient.from('nutrition_log').insert(rows);
-          if (error) throw error;
-        }
-      } catch(e){
-        console.warn('Supabase save nutrition_log failed:', e);
-      }
-    })();
+    // Row-by-row via bnbTableSync (main HTML), same as Weight/Period: only
+    // new/changed days are written and only removed ones deleted. This used
+    // to delete all of the member's rows and re-insert them, so a dropped
+    // connection in between wiped their whole food history.
+    entries.forEach(e => { if (!e.id) e.id = window.BNB_UUID(); });
+    sync.save(entries.map(e => entryToNutritionRow(e, me.id)));
   }
 
   function todayIso(){
@@ -241,7 +234,7 @@
   function upsertEntry(entry){
     const entries = loadEntries();
     const idx = entries.findIndex(e => e.date === entry.date);
-    if (idx >= 0) entries[idx] = entry; else entries.push(entry);
+    if (idx >= 0) entries[idx] = Object.assign({}, entry, { id: entries[idx].id }); else entries.push(entry);
     entries.sort((a,b) => a.date.localeCompare(b.date));
     saveEntries(entries);
   }
