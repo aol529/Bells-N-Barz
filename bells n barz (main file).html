@@ -11,11 +11,11 @@
      js/bells-n-barz-fasting.js), and apple-mobile-web-app-capable is
      what makes that Home Screen icon open standalone rather than as a
      normal Safari tab. -->
-<link rel="manifest" href="/manifest.json"/>
+<link rel="manifest" href="manifest.json"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Bell(e)s n' Barz"/>
-<link rel="apple-touch-icon" href="/icon.svg"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
 <title>Bell(e)s n' Barz — Training Manual</title>
 <script>
 (function(){
@@ -58,8 +58,10 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=shop-landing-2" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="css/bells-n-barz.css?v=__BUILD__" rel="stylesheet"/>
+<!-- Pinned (was @2, which picks up every new release untested). Bump
+     deliberately after checking the Supabase changelog. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3"></script>
 <script>
   // ---- Supabase connection ----
   // Picks the project based on where this file is running, so the exact
@@ -94,6 +96,56 @@
   const BNB_SUPABASE_URL = BNB_ENV_CONFIG[BNB_ENV].url;
   const BNB_SUPABASE_ANON_KEY = BNB_ENV_CONFIG[BNB_ENV].anonKey;
   const bnbClient = supabase.createClient(BNB_SUPABASE_URL, BNB_SUPABASE_ANON_KEY);
+  // Cache-busting stamp for css/ and js/ links. The GitHub Pages deploy
+  // swaps __BUILD__ for the commit id (see .github/workflows/pages.yml),
+  // so every release loads fresh files instead of a mix of cached ones.
+  const BNB_BUILD = '__BUILD__';
+
+  /* ---------------- TABLE SYNC (Booking, Shop, Billing, Users) ----------------
+     Remembers the last copy of each row known to match the database, so a
+     save only sends rows that actually changed and deletes rows that were
+     removed. That keeps a tab left open for hours from overwriting rows
+     other people changed in the meantime, and makes deletes real (they
+     used to vanish locally and come back on reload). Anything that fails
+     stays "unsaved" and is retried by the next save; the person is told.
+     Rows are sent one at a time on purpose: under RLS a batch upsert fails
+     entirely if even one row in it is blocked. */
+  function bnbTableSync(table, opts){
+    // opts.deletes === false: never delete rows here (Users — see users.js).
+    const allowDeletes = !(opts && opts.deletes === false);
+    let saved = {};
+    function reset(rows){
+      saved = {};
+      rows.forEach(r => { if (r.id) saved[r.id] = JSON.stringify(r); });
+    }
+    async function save(rows){
+      const keep = new Set(rows.map(r => r.id));
+      const changed = rows.filter(r => r.id && saved[r.id] !== JSON.stringify(r));
+      const removed = allowDeletes ? Object.keys(saved).filter(id => !keep.has(id)) : [];
+      if (!changed.length && !removed.length) return true;
+      const [ups, dels] = await Promise.all([
+        Promise.allSettled(changed.map(r => bnbClient.from(table).upsert([r]))),
+        Promise.allSettled(removed.map(id => bnbClient.from(table).delete().eq('id', id)))
+      ]);
+      const errOf = res => res.status === 'rejected' ? res.reason : (res.value && res.value.error);
+      let failed = 0;
+      ups.forEach((res, i) => {
+        const err = errOf(res);
+        if (err){ failed++; console.warn('Supabase: could not save row in', table, changed[i].id, err); }
+        else saved[changed[i].id] = JSON.stringify(changed[i]);
+      });
+      dels.forEach((res, i) => {
+        const err = errOf(res);
+        if (err){ failed++; console.warn('Supabase: could not delete row in', table, removed[i], err); }
+        else delete saved[removed[i]];
+      });
+      if (failed){
+        alert('Could not save ' + failed + ' change' + (failed === 1 ? '' : 's') + ' to the database (' + table + ') — check your connection. It will be retried on your next save.');
+      }
+      return failed === 0;
+    }
+    return { reset, save };
+  }
 
   /* ---------------- LAZY MODULE LOADER ---------------- */
   // Blog, Gallery, Shop, Booking/Coach, Billing, Weight, BMI, Track, and
@@ -149,7 +201,7 @@
     const depPromise = mod.deps ? Promise.all(mod.deps.map(bnbLoadModule)) : Promise.resolve();
     const promise = depPromise.then(() => new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = mod.file;
+      script.src = mod.file + '?v=' + BNB_BUILD;
       script.onload = () => resolve();
       script.onerror = () => reject(new Error('Failed to load ' + mod.file));
       document.body.appendChild(script);
@@ -329,7 +381,7 @@
 <!-- ================= ADMIN ================= -->
 <section class="view" id="view-admin">
   <div class="wrap">
-    <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — posts save to this device's local storage. Export JSON to back up or hand off to the full site build.</div>
+    <div class="admin-notice">Posts save to the database, so every staff member sees the same list. Export JSON for an offline backup.</div>
     <div class="chip-filter cat-cards" id="blog-admin-subtabs">
       <button type="button" class="cat-card active" data-blog-admin="posts"><span class="cat-card-icon" aria-hidden="true">📝</span><span class="cat-card-name">Posts</span><span class="cat-card-desc">Write, edit and publish posts</span><span class="cat-card-count" id="blog-admin-posts-count"></span></button>
       <button type="button" class="cat-card" data-blog-admin="hero"><span class="cat-card-icon" aria-hidden="true">🖼️</span><span class="cat-card-name">Hero Slider</span><span class="cat-card-desc">Banner slides at the top of the blog</span><span class="cat-card-count" id="blog-admin-hero-count"></span></button>
@@ -464,7 +516,7 @@
 <!-- ================= ADMIN ================= -->
 <section class="view" id="gal-view-admin">
   <div class="wrap">
-    <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — images save to this device's local storage as either a URL reference or an embedded copy of the file you upload. Keep uploads modest in size and export JSON regularly to back up.</div>
+    <div class="admin-notice">Images save to the database: either a link to an image elsewhere, or a file you upload to the site's image storage. Keep uploads modest in size. Export JSON for an offline backup.</div>
     <div class="admin-toolbar">
       <button class="btn2 primary" id="gal-new-img-btn">+ Add Image</button>
       <button class="btn2" id="gal-export-btn">Export Gallery JSON</button>
@@ -500,7 +552,7 @@
       <label>Upload from device</label>
       <div class="upload-drop" id="gal-upload-drop">Click to choose an image file…</div>
       <input type="file" id="gal-f-file" accept="image/*" style="display:none;">
-      <div class="field-hint">Stored as an embedded copy in this browser's local storage — keep files reasonably small.</div>
+      <div class="field-hint">Uploaded to the site's image storage when you save — keep files reasonably small.</div>
     </div>
     <div class="preview-wrap" id="gal-preview-wrap" style="display:none;"><img id="gal-preview-img" alt="Preview"></div>
 
@@ -610,7 +662,7 @@
 <!-- ================= ADMIN ================= -->
 <section class="view" id="shop-view-admin">
   <div class="wrap">
-    <div class="admin-notice">This runs entirely in your browser — products and orders save to this device's local storage. Merch/Supplement orders redirect to whatever checkout link you set per product; you mark payment received manually below. Session Package → Invoice/Credit wiring isn't live yet (build stage 3).</div>
+    <div class="admin-notice">Products and orders save to the database. Merch/Supplement orders redirect to whatever checkout link you set per product; you mark payment received manually below. Buying a Session Package creates an invoice in Admin &gt; Billing.</div>
     <div class="shop-type-tabs chip-filter cat-cards" id="shop-admin-subtabs">
       <button type="button" class="cat-card active" data-admin-tab="products"><span class="cat-card-icon" aria-hidden="true">📦</span><span class="cat-card-name">Products</span><span class="cat-card-desc">Add, edit and hide shop items</span><span class="cat-card-count" id="shop-admin-products-count"></span></button>
       <button type="button" class="cat-card" data-admin-tab="orders"><span class="cat-card-icon" aria-hidden="true">🧾</span><span class="cat-card-name">Orders</span><span class="cat-card-desc">Review and update customer orders</span><span class="cat-card-count" id="shop-admin-orders-count"></span></button>
@@ -2659,7 +2711,7 @@
 <!-- ================= BOOKING (moved under Member) ================= -->
 <section class="member-section" id="tab-schedule">
   <div class="day-head"><h2>Booking — Classes &amp; 1-on-1 Sessions</h2><span class="day-sub">Book classes and trainer slots</span></div>
-  <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage.</div>
+  <div class="admin-notice">Your bookings save to your account, so coaches and the front desk see them straight away.</div>
   <div class="sched-scope">
     <div class="identity-row" id="sched-identity-row"></div>
     <div id="sched-view-body"></div>
@@ -2944,7 +2996,7 @@
 
 <section class="admin-section active" id="tab-billing">
   <div class="day-head"><h2>Billing — Invoices &amp; Payments</h2><span class="day-sub">Member balances, invoice log, and payment history</span></div>
-  <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage. This is a billing <b>log</b>, not a payment processor: no cards are charged and nothing syncs off this device. Each member's Outstanding Balance in Admin &gt; Users is kept in sync with what's logged here.</div>
+  <div class="admin-notice">Invoices and payments save to the database. This is a billing <b>log</b>, not a payment processor: no cards are charged here. Each member's Outstanding Balance in Admin &gt; Users is kept in sync with what's logged here.</div>
   <div class="sched-scope">
     <div class="view-switch" id="bill-view-switch">
       <button data-view="member" class="active">Member</button>
@@ -3050,7 +3102,7 @@
 
     <div class="empty-msg" id="usr-admin-empty" style="display:none;">No members match that search/filter.</div>
 
-    <div class="admin-notice">This editor runs entirely in your browser (no server/database yet) — member records save to this device's local storage. This is the <b>staff-facing</b> Admin CRUD: account, role, membership/billing, and internal notes. Export JSON regularly to back up.</div>
+    <div class="admin-notice">Member records save to the database. This is the <b>staff-facing</b> Admin view: account, role, membership/billing, and internal notes. Export JSON for an offline backup.</div>
     <div class="admin-notice" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
       <div><b>One-time seed data migration.</b> Pushes the built-in demo data (members, sessions, invoices, products, gallery, blog posts, and more) into Supabase as real rows. Safe to re-run — it skips anything already migrated.</div>
       <button class="btn2 primary" id="run-migration-btn">Migrate Seed Data →</button>
@@ -3062,7 +3114,7 @@
 <!-- ================= ADMIN: SESSIONS (moved from Booking's old Admin view) ================= -->
 <section class="admin-section" id="tab-sessions">
   <div class="day-head"><h2>Sessions — Classes &amp; Rosters</h2><span class="day-sub">Class management, trainer availability, and session rosters</span></div>
-  <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage. Sessions are created manually (no auto-generation from recurring templates yet). Waitlist promotion is manual only.</div>
+  <div class="admin-notice">Classes, sessions and bookings save to the database. Sessions are created manually (no auto-generation from recurring templates yet). Waitlist promotion is manual only.</div>
   <div id="admin-sessions-body"></div>
 </section>
 
@@ -3275,7 +3327,7 @@
   </div>
 
   <div class="coach-section" id="coach-section-roster">
-    <div class="admin-notice">This runs entirely in your browser — changes save to this device's local storage. Moved here from Schedule &gt; Trainer so coaches have their own home base.</div>
+    <div class="admin-notice">Your availability slots and 1-on-1 bookings save to the database, so members see them straight away.</div>
     <div class="identity-row" id="coach-identity-row"></div>
     <div id="coach-view-body"></div>
   </div>
@@ -3685,8 +3737,8 @@
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->
-<script src="js/bells-n-barz-users.js"></script>
-<script src="js/bells-n-barz-shell.js"></script>
+<script src="js/bells-n-barz-users.js?v=__BUILD__"></script>
+<script src="js/bells-n-barz-shell.js?v=__BUILD__"></script>
 <script>
 <!-- LAZY-LOADED MODULE: bells-n-barz-bmi.js (loaded on demand — see bnbLoadModule) -->
 </script>
@@ -3779,7 +3831,7 @@
 
 })();
 </script>
-<script src="js/bells-n-barz-training-core.js"></script>
+<script src="js/bells-n-barz-training-core.js?v=__BUILD__"></script>
 
 
 <script>

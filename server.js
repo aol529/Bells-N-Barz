@@ -5,6 +5,8 @@ const path = require('path');
 const ROOT = __dirname;
 const INDEX_FILE = 'bells n barz (main file).html';
 const PORT = process.env.PORT || 3000;
+const PUBLIC_FILES = [INDEX_FILE, 'manifest.json', 'icon.svg', 'sw.js'];
+const PUBLIC_DIRS = ['css', 'js', 'docs'];
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -23,13 +25,30 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  // A malformed escape like %E0%A4%A makes decodeURIComponent throw; left
+  // uncaught, that one request takes the whole server down.
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(req.url.split('?')[0]);
+  } catch (e) {
+    res.writeHead(400, { 'Content-Type': 'text/plain' });
+    res.end('Bad request');
+    return;
+  }
   if (urlPath === '/') urlPath = '/' + INDEX_FILE;
 
+  // Only serve what the site itself uses — the same set the GitHub Pages
+  // deploy publishes — never .git/, sql/, backups or this file. Checked on
+  // the path relative to ROOT, so a sibling folder whose name merely
+  // starts the same (…-subfolders-old) can't slip past a prefix test.
   const filePath = path.normalize(path.join(ROOT, urlPath));
-  if (!filePath.startsWith(ROOT)) {
-    res.writeHead(403);
-    res.end('Forbidden');
+  const rel = path.relative(ROOT, filePath);
+  const top = rel.split(path.sep)[0];
+  const isPublic = !rel.startsWith('..') && !path.isAbsolute(rel) &&
+    (PUBLIC_FILES.includes(rel) || (PUBLIC_DIRS.includes(top) && rel !== top));
+  if (!isPublic) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found: ' + urlPath);
     return;
   }
 

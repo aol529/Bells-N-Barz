@@ -239,6 +239,7 @@
     if (error) { console.error('Supabase load users failed:', error); return; }
     if (data && data.length) {
       users = data.map(rowToUser);
+      usersSync.reset(users.filter(isReal).map(userToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
@@ -277,58 +278,27 @@
   }
   refreshCoachesDirectory();
 
-  function saveUsers(){
-    // Upsert rows ONE AT A TIME, not as a single batch. Under Row Level
-    // Security, a batch upsert containing even one row the current session
-    // isn't allowed to write (e.g. someone else's profile, or a seed row
-    // with no real linked account yet) fails the ENTIRE batch — that's
-    // normal Postgres transaction behavior, not an RLS bug. Per-row upserts
-    // mean a blocked row for someone else's data doesn't stop your own
-    // legitimate save from going through.
-    //
-    // Records without a real UUID id yet (unmigrated seed data — 'u1',
-    // 't2', etc.) are skipped from the Supabase write entirely here: since
-    // userToRow() omits `id` for non-UUID ids, Postgres has nothing to
-    // match on and would INSERT a fresh duplicate row every single save
-    // instead of updating the existing one. Run the seed migration tool
-    // (window.BNB_MIGRATE.runAll()) to give these real ids — until then,
-    // their changes stay local-only rather than silently piling up
-    // duplicate rows in the database.
-    (async () => {
-      const realRows = users.filter(u => u.id && u.id.length === 36);
-      const skippedCount = users.length - realRows.length;
-      if (skippedCount > 0){
-        console.warn('saveUsers: skipping ' + skippedCount + ' unmigrated seed user(s) — run window.BNB_MIGRATE.runAll() to fix.');
-      }
-      const rows = realRows.map(userToRow);
-      const results = await Promise.allSettled(
-        rows.map(row => bnbClient.from('users').upsert([row]))
-      );
-      let successCount = 0;
-      results.forEach((r, i) => {
-        const failed = r.status === 'rejected' || (r.value && r.value.error);
-        if (!failed) { successCount++; return; }
-        const err = r.status === 'rejected' ? r.reason : r.value.error;
-        // Expected/noisy for rows this session has no permission to touch
-        // (e.g. other members' seed data) — log quietly rather than alert.
-        console.warn('Supabase: could not save user', rows[i].email || rows[i].id, err);
-      });
-      // Only alert if literally nothing went through — that points at a
-      // real problem (bad URL/key, network down, RLS misconfigured
-      // entirely) rather than expected per-row permission differences.
-      if (successCount === 0 && rows.length > 0){
-        console.error('Supabase save users failed for all rows.');
-        alert('Could not save to database — check your connection or Supabase setup.');
-      }
-    })();
-  }
+  // Only rows this session changed are sent (bnbTableSync, main HTML), so
+  // a stale tab can't overwrite other people's edits. Records without a
+  // real UUID yet (unmigrated seed data — 'u1', 't2', …) stay local: with
+  // no id to match on, Postgres would insert a duplicate every save. Run
+  // window.BNB_MIGRATE.runAll() to give them real ids.
+  //
+  // Deletes are OFF for users, check-ins and assessments: removing a
+  // member touches 30+ tables that reference them (messages, meal plans,
+  // health logs…), so it needs a deliberate server-side delete/archive
+  // rather than falling out of a client save.
+  const isReal = x => x.id && x.id.length === 36;
+  const usersSync = bnbTableSync('users', { deletes: false });
+  const checkinsSync = bnbTableSync('checkins', { deletes: false });
+  const assessmentsSync = bnbTableSync('assessments', { deletes: false });
+  function saveUsers(){ return usersSync.save(users.filter(isReal).map(userToRow)); }
 
   function checkinToRow(c){
     return { id: (c.id && c.id.length === 36) ? c.id : undefined, user_id: c.userId, date: c.date };
   }
   function rowToCheckin(r){ return { id: r.id, userId: r.user_id, date: r.date }; }
 
-  let checkinsSnapshot = [];
   function loadCheckins(){
     // Instant first paint using seed data; real rows replace it once
     // Supabase responds (see refreshCheckinsFromSupabase below).
@@ -339,24 +309,11 @@
     if (error) { console.error('Supabase load checkins failed:', error); return; }
     if (data && data.length) {
       checkins = data.map(rowToCheckin);
-      checkinsSnapshot = checkins.slice();
+      checkinsSync.reset(checkins.filter(isReal).map(checkinToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
-  function saveCheckins(){
-    const oldIds = new Set(checkinsSnapshot.map(x=>x.id).filter(Boolean));
-    const newIds = new Set(checkins.map(x=>x.id).filter(Boolean));
-    const removedIds = [...oldIds].filter(id => !newIds.has(id));
-    checkinsSnapshot = checkins.slice();
-    (async () => {
-      try {
-        const realRows = checkins.filter(c => c.id && c.id.length === 36);
-        const rows = realRows.map(checkinToRow);
-        await Promise.allSettled(rows.map(row => bnbClient.from('checkins').upsert([row])));
-        await Promise.allSettled(removedIds.map(id => bnbClient.from('checkins').delete().eq('id', id)));
-      } catch(e){ console.warn('Supabase save checkins failed:', e); }
-    })();
-  }
+  function saveCheckins(){ return checkinsSync.save(checkins.filter(isReal).map(checkinToRow)); }
 
   function assessmentToRow(a){
     return {
@@ -380,7 +337,6 @@
     };
   }
 
-  let assessmentsSnapshot = [];
   function loadAssessments(){
     // Instant first paint using seed data; real rows replace it once
     // Supabase responds (see refreshAssessmentsFromSupabase below).
@@ -391,24 +347,11 @@
     if (error) { console.error('Supabase load assessments failed:', error); return; }
     if (data && data.length) {
       assessments = data.map(rowToAssessment);
-      assessmentsSnapshot = assessments.slice();
+      assessmentsSync.reset(assessments.filter(isReal).map(assessmentToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
-  function saveAssessments(){
-    const oldIds = new Set(assessmentsSnapshot.map(x=>x.id).filter(Boolean));
-    const newIds = new Set(assessments.map(x=>x.id).filter(Boolean));
-    const removedIds = [...oldIds].filter(id => !newIds.has(id));
-    assessmentsSnapshot = assessments.slice();
-    (async () => {
-      try {
-        const realRows = assessments.filter(a => a.id && a.id.length === 36);
-        const rows = realRows.map(assessmentToRow);
-        await Promise.allSettled(rows.map(row => bnbClient.from('assessments').upsert([row])));
-        await Promise.allSettled(removedIds.map(id => bnbClient.from('assessments').delete().eq('id', id)));
-      } catch(e){ console.warn('Supabase save assessments failed:', e); }
-    })();
-  }
+  function saveAssessments(){ return assessmentsSync.save(assessments.filter(isReal).map(assessmentToRow)); }
   function userAssessments(userId){
     return assessments.filter(a=>a.userId===userId).sort((a,b)=> b.date.localeCompare(a.date)); // newest first
   }
@@ -416,10 +359,8 @@
   let users = loadUsers();
   refreshUsersFromSupabase(); // async — replaces seed data with real rows once Supabase responds
   let checkins = loadCheckins();
-  checkinsSnapshot = checkins.slice();
   refreshCheckinsFromSupabase(); // async — replaces seed data once Supabase responds
   let assessments = loadAssessments();
-  assessmentsSnapshot = assessments.slice();
   refreshAssessmentsFromSupabase(); // async — replaces seed data once Supabase responds
   let editingId = null;
   let activeRole = 'all';

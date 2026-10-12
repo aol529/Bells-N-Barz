@@ -33,6 +33,15 @@ jobs:
           cp "bells n barz (main file).html" _site/index.html
           cp -r css _site/css
           cp -r js _site/js
+          # PWA manifest + icon (Add to Home Screen), the service worker the
+          # Fasting timer's alerts need, and the printable questionnaire
+          # linked from Meal Plan. All referenced with relative paths, since
+          # Pages serves this site under /Bells-N-Barz/, not the domain root.
+          cp manifest.json icon.svg sw.js _site/
+          cp -r docs _site/docs
+          # Cache-bust css/ and js/ links with this commit's id (the page
+          # uses ?v=__BUILD__ as a placeholder).
+          sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

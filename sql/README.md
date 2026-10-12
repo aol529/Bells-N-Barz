@@ -260,7 +260,54 @@
     actual splits are already represented by the earlier Old School
     presets). Run any time.
 
-38. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+38. **38-member-self-assign-trainer.sql** — lets a member pick their own
+    coach from the active trainer accounts (admin still controls who is a
+    trainer).
+
+39. **39-available-coaches-directory.sql** — a `SECURITY DEFINER`
+    directory of active coaches (id, name, photo, status), because a
+    member's RLS read access is own-row only and couldn't see trainers to
+    pick one.
+
+40. **40-points-system.sql** — points for check-ins and streak
+    milestones, redeemable for a free 1-on-1 credit; enforced in the
+    database.
+
+41. **41-coach-ratings.sql** — clients rate coaches they've trained with
+    (five categories); coaches see averages and comments, never who wrote
+    them. Also adds `gym_local_now()` and `is_admin()`, used by later files.
+
+42. **42-pt-booking-rpcs.sql** — 1-on-1 booking and cancelling via server
+    functions (`book_pt_slot`, `cancel_pt_booking`). Run after 41.
+
+43. **43-lunar-reminders.sql** — one server function for Ekadashi and New
+    Moon reminders, replacing the client-side loop from 15.
+
+44. **44-full-moon-reminders.sql** — adds Full Moon as a third reminder
+    kind. Run after 43.
+
+45. **45-meal-plans.sql** — member questionnaires, coach-built meal plans
+    and check-ins. Run after 41.
+
+46. **46-diets-and-ai.sql** — "Try a diet" and AI meal plan suggestions.
+    Run after 45.
+
+47. **47-shopping-list.sql** — meal plan shopping list and weekly food
+    budget. Run after 45.
+
+48. **48-food-log-privacy.sql** — Me > Food Log privacy rules. Run after 45.
+
+49. **49-body-measurements.sql** — Me > Weight > Body Composition. Run
+    after 45.
+
+50. **50-blood-pressure-and-steps.sql** — Me > BP and Me > Steps logs.
+    Run after 49.
+
+51. **51-fix-broken-blog-links.sql** — content fix, not schema: points two
+    dead bodybuilding.com citations at Internet Archive copies and unlinks
+    one from a site that no longer exists. Safe to re-run.
+
+52. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

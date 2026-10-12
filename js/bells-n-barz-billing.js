@@ -97,6 +97,7 @@
     if (error) { console.error('Supabase load invoices failed:', error); return; }
     if (data && data.length) {
       invoices = data.map(rowToInvoice);
+      invoicesSync.reset(invoices.filter(isReal).map(invoiceToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
@@ -105,48 +106,18 @@
     if (error) { console.error('Supabase load payments failed:', error); return; }
     if (data && data.length) {
       payments = data.map(rowToPayment);
+      paymentsSync.reset(payments.filter(isReal).map(paymentToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
 
-  function saveInvoices(){
-    // Per-row upsert — see saveUsers() for why: a batch upsert fails
-    // entirely if RLS blocks even one row in it.
-    (async () => {
-      const realRows = invoices.filter(i => i.id && i.id.length === 36);
-      const rows = realRows.map(invoiceToRow);
-      const results = await Promise.allSettled(
-        rows.map(row => bnbClient.from('invoices').upsert([row]))
-      );
-      let successCount = 0;
-      results.forEach((r, i) => {
-        const failed = r.status === 'rejected' || (r.value && r.value.error);
-        if (!failed) { successCount++; return; }
-        console.warn('Supabase: could not save invoice', rows[i].id, r.status === 'rejected' ? r.reason : r.value.error);
-      });
-      if (successCount === 0 && rows.length > 0){
-        alert('Could not save to database — check your connection or Supabase setup.');
-      }
-    })();
-  }
-  function savePayments(){
-    (async () => {
-      const realRows = payments.filter(p => p.id && p.id.length === 36);
-      const rows = realRows.map(paymentToRow);
-      const results = await Promise.allSettled(
-        rows.map(row => bnbClient.from('payments').upsert([row]))
-      );
-      let successCount = 0;
-      results.forEach((r, i) => {
-        const failed = r.status === 'rejected' || (r.value && r.value.error);
-        if (!failed) { successCount++; return; }
-        console.warn('Supabase: could not save payment', rows[i].id, r.status === 'rejected' ? r.reason : r.value.error);
-      });
-      if (successCount === 0 && rows.length > 0){
-        alert('Could not save to database — check your connection or Supabase setup.');
-      }
-    })();
-  }
+  // Only changed rows are sent and removed ones really deleted
+  // (bnbTableSync, main HTML).
+  const isReal = x => x.id && x.id.length === 36;
+  const invoicesSync = bnbTableSync('invoices');
+  const paymentsSync = bnbTableSync('payments');
+  function saveInvoices(){ return invoicesSync.save(invoices.filter(isReal).map(invoiceToRow)); }
+  function savePayments(){ return paymentsSync.save(payments.filter(isReal).map(paymentToRow)); }
 
   let invoices = loadInvoices();
   refreshInvoicesFromSupabase(); // async — replaces seed data once Supabase responds
@@ -433,7 +404,7 @@
     if (!confirm('Delete this invoice and any payments logged against it? This cannot be undone.')) return;
     invoices = invoices.filter(i=> i.id !== id);
     payments = payments.filter(p=> p.invoiceId !== id);
-    saveInvoices(); savePayments();
+    savePayments().then(saveInvoices);
     syncAllBalances();
     showToast('Invoice deleted');
     renderBody();

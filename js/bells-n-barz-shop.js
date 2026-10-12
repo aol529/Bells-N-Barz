@@ -56,28 +56,16 @@
     if (error) { console.error('Supabase load products failed:', error); return; }
     if (data && data.length) {
       products = data.map(rowToProduct);
+      productsSync.reset(products.filter(p => p.id && p.id.length === 36).map(productToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
       if (typeof renderCatalog === 'function') renderCatalog();
     }
   }
+  // Sends only changed products and deletes removed ones (bnbTableSync,
+  // main HTML) — deleting a product used to vanish locally only.
+  const productsSync = bnbTableSync('products');
   function saveProducts(){
-    // Per-row upsert — see saveUsers() for why.
-    (async () => {
-      const realProducts = products.filter(p => p.id && p.id.length === 36);
-      const rows = realProducts.map(productToRow);
-      const results = await Promise.allSettled(
-        rows.map(row => bnbClient.from('products').upsert([row]))
-      );
-      let successCount = 0;
-      results.forEach((r, i) => {
-        const failed = r.status === 'rejected' || (r.value && r.value.error);
-        if (!failed) { successCount++; return; }
-        console.warn('Supabase: could not save product', rows[i].id, r.status === 'rejected' ? r.reason : r.value.error);
-      });
-      if (successCount === 0 && rows.length > 0){
-        alert('Could not save to database — check your connection or Supabase setup.');
-      }
-    })();
+    return productsSync.save(products.filter(p => p.id && p.id.length === 36).map(productToRow));
   }
 
   let products = loadProducts();
@@ -287,26 +275,14 @@
     if (error) { console.error('Supabase load orders failed:', error); return; }
     if (data) {
       orders = data.map(rowToOrder);
+      ordersSync.reset(orders.filter(o => o.id && o.id.length === 36).map(orderToRow));
       if (typeof renderAdmin === 'function') renderAdmin();
     }
   }
+  // Same as products: only changed orders, and cancelled ones really go.
+  const ordersSync = bnbTableSync('orders');
   function saveOrders(){
-    // Per-row upsert — see saveUsers() for why.
-    (async () => {
-      const rows = orders.map(orderToRow);
-      const results = await Promise.allSettled(
-        rows.map(row => bnbClient.from('orders').upsert([row]))
-      );
-      let successCount = 0;
-      results.forEach((r, i) => {
-        const failed = r.status === 'rejected' || (r.value && r.value.error);
-        if (!failed) { successCount++; return; }
-        console.warn('Supabase: could not save order', rows[i].id, r.status === 'rejected' ? r.reason : r.value.error);
-      });
-      if (successCount === 0 && rows.length > 0){
-        alert('Could not save to database — check your connection or Supabase setup.');
-      }
-    })();
+    return ordersSync.save(orders.filter(o => o.id && o.id.length === 36).map(orderToRow));
   }
   let orders = loadOrders();
   refreshOrdersFromSupabase(); // async — replaces local (empty) start with real rows once Supabase responds

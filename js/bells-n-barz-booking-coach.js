@@ -220,31 +220,6 @@
 
   // Generic per-row upsert (see saveUsers() elsewhere for why not batch) —
   // shared by all five scheduling tables below.
-  async function upsertRows(table, rows){
-    const results = await Promise.allSettled(rows.map(row => bnbClient.from(table).upsert([row])));
-    let successCount = 0;
-    results.forEach((r, i) => {
-      const failed = r.status === 'rejected' || (r.value && r.value.error);
-      if (!failed) { successCount++; return; }
-      console.warn('Supabase: could not save row in', table, rows[i].id, r.status === 'rejected' ? r.reason : r.value.error);
-    });
-    if (successCount === 0 && rows.length > 0){
-      alert('Could not save to database — check your connection or Supabase setup.');
-    }
-  }
-  // Diff-based delete support, for the two tables (classes, slots) whose
-  // arrays actually shrink via filter() rather than only changing status.
-  function deleteRemoved(table, oldArr, newArr){
-    const oldIds = new Set((oldArr||[]).map(x=>x.id));
-    const newIds = new Set(newArr.map(x=>x.id));
-    const removedIds = [...oldIds].filter(id => !newIds.has(id));
-    removedIds.forEach(id => {
-      bnbClient.from(table).delete().eq('id', id).then(({error})=>{
-        if (error) console.warn('Supabase: could not delete row in', table, id, error);
-      });
-    });
-  }
-
   function loadStore(key, seed){
     // Instant first paint using seed data; real rows replace each store
     // once its matching refresh*FromSupabase() call responds.
@@ -257,44 +232,29 @@
   let bookings = loadStore(BOOKINGS_KEY, SEED_BOOKINGS);
   let slots = loadStore(SLOTS_KEY, SEED_SLOTS);
   let ptBookings = loadStore(PTBOOKINGS_KEY, SEED_PTBOOKINGS);
-  // Snapshots for diff-based delete detection — only classes and slots
-  // ever actually shrink via filter() (deleteSlot, deleteClass); sessions,
-  // bookings, and PT bookings only ever change status in place, so they
-  // don't need delete-diffing, just upsert.
-  let classesSnapshot = classes.slice();
-  let slotsSnapshot = slots.slice();
+  // Each table remembers what the database last had (bnbTableSync, in
+  // the main HTML), so a save only sends rows this tab actually changed
+  // and deletes rows it removed. Seed rows (no real UUID yet) are local
+  // only and never sent.
+  const isReal = x => x.id && x.id.length === 36;
+  const classesSync = bnbTableSync('classes');
+  const sessionsSync = bnbTableSync('class_sessions');
+  const bookingsSync = bnbTableSync('bookings');
+  const slotsSync = bnbTableSync('slots');
+  const ptBookingsSync = bnbTableSync('pt_bookings');
 
-  function saveClasses(){
-    deleteRemoved('classes', classesSnapshot, classes);
-    classesSnapshot = classes.slice();
-    const realRows = classes.filter(c => c.id && c.id.length === 36);
-    upsertRows('classes', realRows.map(classToRow));
-  }
-  function saveSessions(){
-    const realRows = sessions.filter(s => s.id && s.id.length === 36);
-    upsertRows('class_sessions', realRows.map(sessionToRow));
-  }
-  function saveBookings(){
-    const realRows = bookings.filter(b => b.id && b.id.length === 36);
-    upsertRows('bookings', realRows.map(bookingToRow));
-  }
-  function saveSlots(){
-    deleteRemoved('slots', slotsSnapshot, slots);
-    slotsSnapshot = slots.slice();
-    const realRows = slots.filter(s => s.id && s.id.length === 36);
-    upsertRows('slots', realRows.map(slotToRow));
-  }
-  function savePtBookings(){
-    const realRows = ptBookings.filter(p => p.id && p.id.length === 36);
-    upsertRows('pt_bookings', realRows.map(ptBookingToRow));
-  }
+  function saveClasses(){ return classesSync.save(classes.filter(isReal).map(classToRow)); }
+  function saveSessions(){ return sessionsSync.save(sessions.filter(isReal).map(sessionToRow)); }
+  function saveBookings(){ return bookingsSync.save(bookings.filter(isReal).map(bookingToRow)); }
+  function saveSlots(){ return slotsSync.save(slots.filter(isReal).map(slotToRow)); }
+  function savePtBookings(){ return ptBookingsSync.save(ptBookings.filter(isReal).map(ptBookingToRow)); }
 
   async function refreshClassesFromSupabase(){
     const { data, error } = await bnbClient.from('classes').select('*');
     if (error) { console.error('Supabase load classes failed:', error); return; }
     if (data && data.length) {
       classes = data.map(rowToClass);
-      classesSnapshot = classes.slice();
+      classesSync.reset(classes.filter(isReal).map(classToRow));
       if (typeof renderBody === 'function') renderBody();
     }
   }
@@ -303,6 +263,7 @@
     if (error) { console.error('Supabase load class_sessions failed:', error); return; }
     if (data && data.length) {
       sessions = data.map(rowToSession);
+      sessionsSync.reset(sessions.filter(isReal).map(sessionToRow));
       if (typeof renderBody === 'function') renderBody();
     }
   }
@@ -311,6 +272,7 @@
     if (error) { console.error('Supabase load bookings failed:', error); return; }
     if (data && data.length) {
       bookings = data.map(rowToBooking);
+      bookingsSync.reset(bookings.filter(isReal).map(bookingToRow));
       if (typeof renderBody === 'function') renderBody();
     }
   }
@@ -319,7 +281,7 @@
     if (error) { console.error('Supabase load slots failed:', error); return; }
     if (data && data.length) {
       slots = data.map(rowToSlot);
-      slotsSnapshot = slots.slice();
+      slotsSync.reset(slots.filter(isReal).map(slotToRow));
       if (typeof renderBody === 'function') renderBody();
     }
   }
@@ -328,6 +290,7 @@
     if (error) { console.error('Supabase load pt_bookings failed:', error); return; }
     if (data && data.length) {
       ptBookings = data.map(rowToPtBooking);
+      ptBookingsSync.reset(ptBookings.filter(isReal).map(ptBookingToRow));
       if (typeof renderBody === 'function') renderBody();
     }
   }
@@ -567,7 +530,7 @@
   function memberBrowseHtml(){
     const activeClasses = classes.filter(c=>c.status==='active');
     let chips = '<div class="chip-filter" id="sched-class-chips"><button data-filter="all" class="'+(classFilter==='all'?'active':'')+'">All</button>';
-    activeClasses.forEach(c=> chips += '<button data-filter="'+c.id+'" class="'+(classFilter===c.id?'active':'')+'">'+c.name+'</button>');
+    activeClasses.forEach(c=> chips += '<button data-filter="'+c.id+'" class="'+(classFilter===c.id?'active':'')+'">'+esc(c.name)+'</button>');
     chips += '</div>';
 
     let sess = upcomingSessions();
@@ -587,8 +550,8 @@
         const myBooking = memberBookingForSession(s.id, selfMemberId);
         html += '<div class="sess-card">';
         html += '<div class="sc-time">'+fmtTime(s.startTime)+' · '+cls.duration+' min</div>';
-        html += '<h5>'+cls.name+'</h5>';
-        html += '<div class="sc-meta">'+trainerName(s.instructorId)+' · '+confirmed+'/'+cap+' booked</div>';
+        html += '<h5>'+esc(cls.name)+'</h5>';
+        html += '<div class="sc-meta">'+esc(trainerName(s.instructorId))+' · '+confirmed+'/'+cap+' booked</div>';
         html += '<div class="cap-meter"><i class="'+(full?'full':'')+'" style="width:'+pct+'%;"></i></div>';
         html += '<div class="sc-actions">';
         if (myBooking){
@@ -638,7 +601,7 @@
       html += '<table class="admin-table"><tr><th>Class</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr>';
       myClassBookings.sort((a,b)=> (a.s.date+a.s.startTime) < (b.s.date+b.s.startTime) ? -1 : 1).forEach(x=>{
         const cls = getClass(x.s.classId);
-        html += '<tr><td>'+(cls?cls.name:'—')+'</td><td>'+fmtDate(x.s.date)+'</td><td>'+fmtTime(x.s.startTime)+'</td><td><span class="status-pill '+x.b.status+'">'+x.b.status+'</span></td><td><div class="row-actions"><button data-action="member-cancel-booking" data-id="'+x.b.id+'">Cancel</button></div></td></tr>';
+        html += '<tr><td>'+(cls?esc(cls.name):'—')+'</td><td>'+fmtDate(x.s.date)+'</td><td>'+fmtTime(x.s.startTime)+'</td><td><span class="status-pill '+x.b.status+'">'+x.b.status+'</span></td><td><div class="row-actions"><button data-action="member-cancel-booking" data-id="'+x.b.id+'">Cancel</button></div></td></tr>';
       });
       html += '</table>';
     }
@@ -648,7 +611,7 @@
     else {
       html += '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th></th></tr>';
       myPt.sort((a,b)=> (a.sl.date+a.sl.startTime) < (b.sl.date+b.sl.startTime) ? -1 : 1).forEach(x=>{
-        html += '<tr><td>'+trainerName(x.p.trainerId)+'</td><td>'+fmtDate(x.sl.date)+'</td><td>'+fmtTime(x.sl.startTime)+'</td><td><div class="row-actions"><button data-action="member-cancel-pt" data-id="'+x.p.id+'">Cancel</button></div></td></tr>';
+        html += '<tr><td>'+esc(trainerName(x.p.trainerId))+'</td><td>'+fmtDate(x.sl.date)+'</td><td>'+fmtTime(x.sl.startTime)+'</td><td><div class="row-actions"><button data-action="member-cancel-pt" data-id="'+x.p.id+'">Cancel</button></div></td></tr>';
       });
       html += '</table>';
     }
@@ -930,7 +893,7 @@
 
     html += '<table class="admin-table"><tr><th>Client</th><th>Next Session</th><th>Last Session</th><th>Total Sessions</th><th></th></tr>';
     rows.forEach(r=>{
-      html += '<tr><td>'+memberName(r.uid)+'</td>' +
+      html += '<tr><td>'+esc(memberName(r.uid))+'</td>' +
         '<td>'+(r.next ? fmtDate(r.next.sl.date)+' '+fmtTime(r.next.sl.startTime) : '—')+'</td>' +
         '<td>'+(r.last ? fmtDate(r.last.sl.date) : '—')+'</td>' +
         '<td>'+r.total+'</td>' +
@@ -950,7 +913,7 @@
       const cap = sessionCapacity(s);
       const confirmed = sessionConfirmedCount(s.id);
       const wl = sessionWaitlist(s.id).length;
-      html += '<tr><td>'+(cls?cls.name:'—')+'</td><td>'+fmtDate(s.date)+'</td><td>'+fmtTime(s.startTime)+'</td><td>'+confirmed+'/'+cap+' · '+wl+' waitlisted</td><td><div class="row-actions"><button data-action="open-roster" data-id="'+s.id+'">View Roster</button></div></td></tr>';
+      html += '<tr><td>'+(cls?esc(cls.name):'—')+'</td><td>'+fmtDate(s.date)+'</td><td>'+fmtTime(s.startTime)+'</td><td>'+confirmed+'/'+cap+' · '+wl+' waitlisted</td><td><div class="row-actions"><button data-action="open-roster" data-id="'+s.id+'">View Roster</button></div></td></tr>';
     });
     html += '</table>';
     return html;
@@ -963,7 +926,7 @@
     html += '<table class="admin-table"><tr><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     mySlots.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?memberName(pt.userId):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId)):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -1525,7 +1488,7 @@
     } else {
       html += '<table class="admin-table"><tr><th>Time</th><th>Type</th><th>With</th><th>Detail</th><th></th></tr>';
       agenda.forEach(row=>{
-        html += '<tr><td>'+fmtTime(row.time)+'</td><td>'+(row.type==='class'?'Class':'1-on-1')+'</td><td>'+row.label+'</td><td>'+row.meta+'</td><td>';
+        html += '<tr><td>'+fmtTime(row.time)+'</td><td>'+(row.type==='class'?'Class':'1-on-1')+'</td><td>'+esc(row.label)+'</td><td>'+esc(row.meta)+'</td><td>';
         html += row.type==='class' ? '<button class="btn2" data-action="dash-open-roster" data-id="'+row.sessionId+'">View Roster</button>' : '<span class="field-hint">—</span>';
         html += '</td></tr>';
       });
@@ -1536,16 +1499,16 @@
       html += '<div class="section-sub-head"><h3>Needs Attention</h3></div>';
       if (noShows.length){
         html += '<div class="admin-notice">' + noShows.length + ' no-show' + (noShows.length===1?'':'s') + ' in the last week: ' +
-          noShows.map(x=> memberName(x.userId) + ' (' + fmtDate(x.date) + ', ' + x.className + ')').join(', ') + '</div>';
+          noShows.map(x=> esc(memberName(x.userId)) + ' (' + fmtDate(x.date) + ', ' + esc(x.className) + ')').join(', ') + '</div>';
       }
       if (stale.length){
         html += '<div class="admin-notice">' + stale.length + ' client' + (stale.length===1?'':'s') + " haven't had a 1-on-1 with you in over two weeks: " +
-          stale.map(x=> memberName(x.userId) + ' (' + x.days + 'd)').join(', ') + '</div>';
+          stale.map(x=> esc(memberName(x.userId)) + ' (' + x.days + 'd)').join(', ') + '</div>';
       }
       if (unpaid.length){
         const total = unpaid.reduce((sum,i)=> sum + i.amount, 0);
         html += '<div class="admin-notice">' + unpaid.length + ' unpaid invoice' + (unpaid.length===1?'':'s') + ' among your clients, totaling $' + total.toFixed(2) + ': ' +
-          unpaid.map(i=> memberName(i.userId) + ' ($' + i.amount.toFixed(2) + ', ' + i.status + ')').join(', ') + '</div>';
+          unpaid.map(i=> esc(memberName(i.userId)) + ' ($' + i.amount.toFixed(2) + ', ' + esc(i.status) + ')').join(', ') + '</div>';
       }
     }
 
@@ -1631,7 +1594,7 @@
       const classesUpcoming = sessions.filter(s=>s.instructorId===t.id && s.status==='scheduled' && s.date >= TODAY).length;
       const ptUpcoming = ptAll.filter(x=> x.sl.date >= TODAY).length;
       const clients = new Set(ptAll.map(x=>x.p.userId)).size;
-      html += '<tr><td>' + t.name + '</td><td>' + classesWeek + '</td><td>' + ptWeek + '</td><td>' + (classesUpcoming + ptUpcoming) + '</td><td>' + clients + '</td></tr>';
+      html += '<tr><td>' + esc(t.name) + '</td><td>' + classesWeek + '</td><td>' + ptWeek + '</td><td>' + (classesUpcoming + ptUpcoming) + '</td><td>' + clients + '</td></tr>';
     });
     html += '</table>';
     return html;
@@ -1642,7 +1605,7 @@
     if (!classes.length){ html += '<div class="empty-msg">No classes yet.</div>'; return html; }
     html += '<table class="admin-table"><tr><th>Name</th><th>Instructor</th><th>Capacity</th><th>Duration</th><th>Recurring</th><th>Status</th><th></th></tr>';
     classes.forEach(c=>{
-      html += '<tr><td>'+c.name+'</td><td>'+trainerName(c.instructorId)+'</td><td>'+c.capacity+'</td><td>'+c.duration+' min</td><td>'+(c.recurring||'—')+'</td><td><span class="status-pill '+c.status+'">'+c.status+'</span></td><td><div class="row-actions"><button data-action="edit-class" data-id="'+c.id+'">Edit</button><button data-action="toggle-archive-class" data-id="'+c.id+'">'+(c.status==='active'?'Archive':'Reactivate')+'</button><button class="del" data-action="delete-class" data-id="'+c.id+'">Delete</button></div></td></tr>';
+      html += '<tr><td>'+esc(c.name)+'</td><td>'+esc(trainerName(c.instructorId))+'</td><td>'+c.capacity+'</td><td>'+c.duration+' min</td><td>'+(c.recurring||'—')+'</td><td><span class="status-pill '+c.status+'">'+c.status+'</span></td><td><div class="row-actions"><button data-action="edit-class" data-id="'+c.id+'">Edit</button><button data-action="toggle-archive-class" data-id="'+c.id+'">'+(c.status==='active'?'Archive':'Reactivate')+'</button><button class="del" data-action="delete-class" data-id="'+c.id+'">Delete</button></div></td></tr>';
     });
     html += '</table>';
     return html;
@@ -1651,12 +1614,12 @@
   function adminSessionsHtml(){
     let html = '<div class="form-inline">';
     html += '<div class="field"><label>Class</label><select id="sched-new-sess-class">';
-    classes.filter(c=>c.status==='active').forEach(c=> html += '<option value="'+c.id+'">'+c.name+'</option>');
+    classes.filter(c=>c.status==='active').forEach(c=> html += '<option value="'+c.id+'">'+esc(c.name)+'</option>');
     html += '</select></div>';
     html += '<div class="field"><label>Date</label><input type="date" id="sched-new-sess-date" min="'+TODAY+'"></div>';
     html += '<div class="field"><label>Start time</label><input type="time" id="sched-new-sess-time"></div>';
     html += '<div class="field"><label>Instructor override</label><select id="sched-new-sess-instructor"><option value="">Use class default</option>';
-    getSchedTrainers().forEach(t=> html += '<option value="'+t.id+'">'+t.name+'</option>');
+    getSchedTrainers().forEach(t=> html += '<option value="'+t.id+'">'+esc(t.name)+'</option>');
     html += '</select></div>';
     html += '<div class="field"><label>Capacity override</label><input type="number" min="1" id="sched-new-sess-cap" placeholder="optional"></div>';
     html += '<div class="field"><button class="btn2 primary" id="sched-add-session-btn">+ Create Session</button></div>';
@@ -1675,8 +1638,8 @@
         const pct = cap ? Math.min(100, Math.round(confirmed/cap*100)) : 0;
         html += '<div class="sess-card">';
         html += '<div class="sc-time">'+fmtTime(s.startTime)+' · '+cls.duration+' min</div>';
-        html += '<h5>'+cls.name+'</h5>';
-        html += '<div class="sc-meta">'+trainerName(s.instructorId)+' · '+confirmed+'/'+cap+' booked · '+wl+' waitlisted</div>';
+        html += '<h5>'+esc(cls.name)+'</h5>';
+        html += '<div class="sc-meta">'+esc(trainerName(s.instructorId))+' · '+confirmed+'/'+cap+' booked · '+wl+' waitlisted</div>';
         html += '<div class="cap-meter"><i class="'+(confirmed>=cap?'full':'')+'" style="width:'+pct+'%;"></i></div>';
         html += '<div class="sc-actions"><button class="btn2" data-action="open-roster" data-id="'+s.id+'">Roster</button><button class="btn2 danger" data-action="cancel-session" data-id="'+s.id+'">Cancel Session</button></div>';
         html += '</div>';
@@ -1692,7 +1655,7 @@
     let html = '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     all.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+trainerName(sl.trainerId)+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?memberName(pt.userId):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?memberName(pt.userId):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -1892,10 +1855,10 @@
     const cEl = document.getElementById('sched-roster-confirmed');
     const wEl = document.getElementById('sched-roster-waitlisted');
     cEl.innerHTML = confirmedList.length ? confirmedList.map(b=>
-      '<li><span>'+memberName(b.userId)+'</span><div class="row-actions"><button data-action="mark-noshow" data-id="'+b.id+'">No-show</button><button class="del" data-action="roster-remove" data-id="'+b.id+'">Remove</button></div></li>'
+      '<li><span>'+esc(memberName(b.userId))+'</span><div class="row-actions"><button data-action="mark-noshow" data-id="'+b.id+'">No-show</button><button class="del" data-action="roster-remove" data-id="'+b.id+'">Remove</button></div></li>'
     ).join('') : '<li class="empty-row">No confirmed bookings.</li>';
     wEl.innerHTML = waitlist.length ? waitlist.map(b=>
-      '<li><span>'+memberName(b.userId)+'</span><div class="row-actions"><button data-action="promote-booking" data-id="'+b.id+'">Promote</button><button class="del" data-action="roster-remove" data-id="'+b.id+'">Remove</button></div></li>'
+      '<li><span>'+esc(memberName(b.userId))+'</span><div class="row-actions"><button data-action="promote-booking" data-id="'+b.id+'">Promote</button><button class="del" data-action="roster-remove" data-id="'+b.id+'">Remove</button></div></li>'
     ).join('') : '<li class="empty-row">No one waitlisted.</li>';
   }
   function promoteBooking(bookingId){

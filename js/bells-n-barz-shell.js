@@ -529,6 +529,8 @@ let previousLocation = null;
   const homeLink = document.getElementById('home-recipes-link');
   if (homeLink) homeLink.addEventListener('click', ()=>{
     if (typeof window.switchSite === 'function') window.switchSite('gym');
+    // Recipes live in Member > Me, so guests get the membership preview.
+    if (!isSignedIn()){ const pill = document.getElementById('nav-member-btn'); if (pill) pill.click(); return; }
     if (typeof window.switchTab === 'function') window.switchTab('me');
     const meBtn = document.querySelector('#me-section-switch [data-me-section="recipes"]');
     if (meBtn) meBtn.click();
@@ -1114,12 +1116,17 @@ refreshNavAuthGate();
 plates.forEach(p => {
   p.addEventListener('click', () => {
     const tab = p.getAttribute('data-tab');
-    if (GATED_TABS.includes(tab)){
-      // Signed-out MEMBER click: show what membership includes rather
+    // Member's own sections (Me, My Teams, Messages…) and Admin's
+    // (Billing, Users…) are gated like their parent tab, so a deep link
+    // such as #me:recipes or #billing can't open them for the wrong person.
+    const memberOnly = GATED_TABS.includes(tab) || memberSectionTabs.includes(tab);
+    const staffOnly = STAFF_ONLY_TABS.includes(tab) || adminSectionTabs.includes(tab);
+    if (memberOnly || staffOnly){
+      // Signed-out Member click: show what membership includes rather
       // than a bare login pop-up (Coach/Admin/Inbox still use the pop-up).
-      if (!isSignedIn() && tab === 'member'){ hideBackPill(); switchTab('member-preview'); return; }
+      if (!isSignedIn() && (tab === 'member' || memberSectionTabs.includes(tab))){ hideBackPill(); switchTab('member-preview'); return; }
       if (!isSignedIn()){ goToLoginPrompt(); return; }
-      if (STAFF_ONLY_TABS.includes(tab) && !isStaff()){ showStaffOnlyToast(); return; }
+      if (staffOnly && !isStaff()){ showStaffOnlyToast(); return; }
     }
     hideBackPill();
     switchTab(tab);
@@ -1731,9 +1738,31 @@ createIntervalTimer(
 
 /* ---------------- AUTO-REFRESH ---------------- */
 // A tab left open for hours can drift from real data (roster changes,
-// new bookings, moon-phase/Ekadashi date rollover, etc.) — reload every
-// 2 hours so it stays current, same pattern as the Bible reading plan.
-setInterval(() => location.reload(), 2 * 60 * 60 * 1000);
+// new bookings, moon-phase/Ekadashi date rollover, etc.) — so after 2
+// hours it reloads, but only once nothing would be lost: no pop-up form
+// open, no interval timer running, no field focused, and nothing typed
+// in the last 20 minutes. Until then it keeps checking every 5 minutes
+// and whenever the tab comes back into view. (Live Session progress is
+// already saved to this device as you go, so it survives a reload.)
+(function(){
+  const REFRESH_AFTER = 2 * 60 * 60 * 1000;
+  const QUIET_FOR = 20 * 60 * 1000;
+  const loadedAt = Date.now();
+  let lastInputAt = 0;
+  ['input', 'change'].forEach(type => document.addEventListener(type, () => { lastInputAt = Date.now(); }, true));
+  function wouldLoseWork(){
+    if (document.querySelector('.panel-backdrop.show, .t-panel-backdrop.open, .gate-backdrop.show')) return true;
+    if (document.querySelector('.timer-card[data-phase]:not([data-phase="idle"]):not([data-phase="done"])')) return true;
+    const a = document.activeElement;
+    if (a && (a.matches('input, textarea, select') || a.isContentEditable)) return true;
+    return Date.now() - lastInputAt < QUIET_FOR;
+  }
+  function maybeRefresh(){
+    if (Date.now() - loadedAt >= REFRESH_AFTER && !wouldLoseWork()) location.reload();
+  }
+  setInterval(maybeRefresh, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') maybeRefresh(); });
+})();
 
 /* ---------------- WEIGHT TRACKER ---------------- */
 <!-- LAZY-LOADED MODULE: bells-n-barz-weight.js (loaded on demand — see bnbLoadModule) -->

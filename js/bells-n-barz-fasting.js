@@ -117,7 +117,7 @@
   let swRegPromise = null;
   function ensureServiceWorker(){
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
-    if (!swRegPromise) swRegPromise = navigator.serviceWorker.register('/sw.js').catch(() => null);
+    if (!swRegPromise) swRegPromise = navigator.serviceWorker.register('sw.js').catch(() => null);
     return swRegPromise;
   }
   ensureServiceWorker();
