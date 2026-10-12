@@ -189,14 +189,21 @@
   });
 
   /* ---------------- CATEGORY CHIPS ---------------- */
+  // Category cards (icon, name, photo count) — clicking one filters the
+  // grid below, same as the old pills.
+  const CATEGORY_ICONS = { all: '🖼️', 'Sessions': '🏋️', 'Transformations': '🔄', 'Facility': '🏢' };
   function renderCategoryChips(){
     const cats = ['all', ...new Set(images.map(g=>g.category).filter(Boolean))];
     const bar = document.getElementById('gal-cat-filter');
     bar.innerHTML = '';
     cats.forEach(c=>{
+      const n = c === 'all' ? images.length : images.filter(g => g.category === c).length;
       const btn = document.createElement('button');
-      btn.textContent = c === 'all' ? 'All' : c;
-      btn.className = c === activeCategory ? 'active' : '';
+      btn.type = 'button';
+      btn.className = 'cat-card' + (c === activeCategory ? ' active' : '') + (n === 0 ? ' empty' : '');
+      btn.innerHTML = '<span class="cat-card-icon" aria-hidden="true">' + (CATEGORY_ICONS[c] || '📷') + '</span>'
+        + '<span class="cat-card-name">' + esc(c === 'all' ? 'All' : c) + '</span>'
+        + '<span class="cat-card-count">' + n + ' photo' + (n === 1 ? '' : 's') + '</span>';
       btn.onclick = ()=>{ activeCategory = c; renderGallery(); };
       bar.appendChild(btn);
     });

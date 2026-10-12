@@ -589,14 +589,23 @@
 
   /* ---------------- CATEGORY CHIPS ---------------- */
   const BLOG_TOPICS = ['Recreation', 'Health & Appearance', 'Wealth & Finance', 'Love & Relationships', 'Community & Charity', 'Career', 'Personal Development'];
+  // Category cards (icon, name, published-post count) — clicking one
+  // filters the post grid below, same as the old pills.
+  const TOPIC_ICONS = { all: '📚', 'Recreation': '🏕️', 'Health & Appearance': '💪', 'Wealth & Finance': '💰',
+    'Love & Relationships': '❤️', 'Community & Charity': '🤝', 'Career': '💼', 'Personal Development': '🌱' };
   function renderCategoryChips(){
     const cats = ['all', ...BLOG_TOPICS];
     const bar = document.getElementById('cat-filter');
+    const published = posts.filter(p => p.status === 'published');
     bar.innerHTML = '';
     cats.forEach(c=>{
+      const n = c === 'all' ? published.length : published.filter(p => p.category === c).length;
       const btn = document.createElement('button');
-      btn.textContent = c === 'all' ? 'All' : c;
-      btn.className = c === activeCategory ? 'active' : '';
+      btn.type = 'button';
+      btn.className = 'cat-card' + (c === activeCategory ? ' active' : '') + (n === 0 ? ' empty' : '');
+      btn.innerHTML = '<span class="cat-card-icon" aria-hidden="true">' + (TOPIC_ICONS[c] || '🏷️') + '</span>'
+        + '<span class="cat-card-name">' + esc(c === 'all' ? 'All' : c) + '</span>'
+        + '<span class="cat-card-count">' + n + ' post' + (n === 1 ? '' : 's') + '</span>';
       btn.onclick = ()=>{ activeCategory = c; renderList(); };
       bar.appendChild(btn);
     });

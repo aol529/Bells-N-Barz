@@ -2736,3 +2736,26 @@ body > *{flex-shrink:0;}
   width:100%; box-sizing:border-box;
 }
 .site-page.active > footer, .blog-scope > footer, .gallery-scope > footer, .shop-scope > footer, #site-users > .users-scope > footer{margin-top:auto;}
+
+/* ---------------- Blog / Gallery category cards ----------------
+   Replace the category pills: icon, name and a post/photo count.
+   Clicking still just filters the grid below (renderCategoryChips in
+   js/bells-n-barz-blog.js and js/bells-n-barz-gallery.js). */
+.blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; flex:1 1 100%; width:100%;
+}
+.chip-filter.cat-cards .cat-card{
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:left;
+  padding:12px 14px; border-radius:6px; border:1px solid var(--line); background:var(--surface);
+  color:var(--text); font:inherit; cursor:pointer; transition:border-color .15s ease, background .15s ease;
+}
+.chip-filter.cat-cards .cat-card:hover{border-color:var(--accent-dim); background:var(--surface-2);}
+.chip-filter.cat-cards .cat-card.active{border-color:var(--accent); background:rgba(var(--accent-rgb),.12); font-weight:normal; color:var(--text);}
+.cat-card-icon{font-size:22px; line-height:1; margin-bottom:2px;}
+.cat-card-name{font-family:'Oswald',sans-serif; font-size:14px; text-transform:uppercase; letter-spacing:.03em; line-height:1.2;}
+.cat-card-count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted-2);}
+.chip-filter.cat-cards .cat-card.active .cat-card-count{color:var(--accent);}
+.chip-filter.cat-cards .cat-card.empty:not(.active){opacity:.5;}
+@media (max-width:640px){
+  .blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;}
+}
