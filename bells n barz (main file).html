@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=me-cards-1" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=tools-cards-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -3045,11 +3045,12 @@
 <section class="tab-panel" id="tab-tools">
 <div class="sched-scope">
 <div class="day-head"><h2>Tools</h2><span class="day-sub">Free for everyone, no account needed</span></div>
+<button class="tools-back-btn" id="tools-back-btn" type="button">&larr; Back to Tools</button>
 <div class="sched-sub" id="tools-page-tabs">
-<button class="active" data-tools-page="timers" type="button">Timers</button>
-<button data-tools-page="challenges" type="button">Challenges</button>
-<button data-tools-page="body" type="button">Body Calculators</button>
-<button data-tools-page="calories" type="button">Calories &amp; Macros</button>
+<button data-tools-page="timers" type="button"><span class="plate-title">Timers</span><span class="plate-desc">Tabata clock and a custom interval timer</span></button>
+<button data-tools-page="challenges" type="button"><span class="plate-title">Challenges</span><span class="plate-desc">Themed workouts built around a beat</span></button>
+<button data-tools-page="body" type="button"><span class="plate-title">Body Calculators</span><span class="plate-desc">BMI, body fat % and waist measures</span></button>
+<button data-tools-page="calories" type="button"><span class="plate-title">Calories &amp; Macros</span><span class="plate-desc">Daily calorie needs and macro split</span></button>
 </div>
 <div class="tools-page" id="tools-page-timers">
 <div class="day-focus">A ready-made Tabata clock, plus a fully editable interval timer for anything else</div>

@@ -342,6 +342,8 @@ function switchTab(rawTab, scrollTop){
   // specific section (card click, or a restored #coach:key hash) is
   // handled separately in the COACH SUB-SWITCHER IIFE below, since
   // Coach's inner navigation never goes through switchTab() at all.
+  // Tools opens on its page cards too, whichever way it was reached.
+  if (tab === 'tools' && typeof showToolsCards === 'function') showToolsCards();
   if (tab === 'coach'){
     const coachPanel = document.getElementById('tab-coach');
     if (coachPanel){
@@ -1734,14 +1736,25 @@ setInterval(() => location.reload(), 2 * 60 * 60 * 1000);
 // Timers and Challenges are static markup driven by this file; the Body
 // and Calories pages are filled by js/bells-n-barz-tools.js, lazy-loaded
 // the first time the Tools tab opens (TAB_TO_MODULE above).
+// Tools opens on a card per page; picking one sets tools-page-mode on
+// #tab-tools, which swaps the cards for that page plus "Back to Tools".
 function showToolsPage(page){
   document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => b.classList.toggle('active', b.getAttribute('data-tools-page') === page));
   document.querySelectorAll('#tab-tools .tools-page').forEach(el => { el.style.display = el.id === 'tools-page-' + page ? 'block' : 'none'; });
+  const panel = document.getElementById('tab-tools');
+  if (panel) panel.classList.add('tools-page-mode');
+}
+function showToolsCards(){
+  const panel = document.getElementById('tab-tools');
+  if (panel) panel.classList.remove('tools-page-mode');
+  document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => b.classList.remove('active'));
 }
 window.bnbShowToolsPage = showToolsPage;
 document.querySelectorAll('#tools-page-tabs [data-tools-page]').forEach(b => {
-  b.addEventListener('click', () => showToolsPage(b.getAttribute('data-tools-page')));
+  b.addEventListener('click', () => { showToolsPage(b.getAttribute('data-tools-page')); window.scrollTo({ top: 0, behavior: 'smooth' }); });
 });
+const toolsBackBtn = document.getElementById('tools-back-btn');
+if (toolsBackBtn) toolsBackBtn.addEventListener('click', showToolsCards);
 
 /* ---------------- MEMBER PREVIEW (signed-out visitors) ---------------- */
 (function(){

@@ -1975,8 +1975,20 @@ header.site{
 #tab-member.me-section-mode #me-section-switch{display:none;}
 #tab-member.me-section-mode .me-back-btn{display:block;}
 #tab-member.me-section-mode .member-back-btn{display:none;}
+/* Tools: page cards (Timers / Challenges / Body / Calories), same idea —
+   tools-page-mode on #tab-tools is set by showToolsPage() in the shell. */
+.tools-back-btn{
+  display:none; width:100%; margin-bottom:14px; padding:14px;
+  border-radius:8px; border:2px solid var(--line); background:var(--surface);
+  color:var(--text); font-family:'Oswald',sans-serif; font-size:15px;
+  text-align:left; cursor:pointer;
+}
+.tools-back-btn:active{transform:scale(0.98);}
+#tab-tools:not(.tools-page-mode) .tools-page{display:none !important;}
+#tab-tools.tools-page-mode #tools-page-tabs{display:none;}
+#tab-tools.tools-page-mode .tools-back-btn{display:block;}
 @media (min-width:641px){
-  .coach-back-btn, .admin-back-btn, .me-back-btn{width:auto; padding:8px 16px; font-size:14px; border-width:1px;}
+  .coach-back-btn, .admin-back-btn, .me-back-btn, .tools-back-btn{width:auto; padding:8px 16px; font-size:14px; border-width:1px;}
 }
 
 .sched-scope .chip-filter{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px;}
@@ -2651,24 +2663,33 @@ details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
 .smoothie-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:8px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-size:12px;}
 .smoothie-steps{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.5;}
 
-/* ---------------- Member / Me / Coach / Admin landing cards ----------------
+/* ---------------- Member / Me / Coach / Admin / Tools landing cards ----------------
    Each section switch is only ever visible on its landing screen
    (content mode hides it), so it's always drawn as cards: icon, title
    and a one-line description, left-aligned. Comes after the shared
    tile and compact-desktop rules above so it wins at every width. */
-#member-section-switch, #coach-section-switch, #me-section-switch, #admin-section-switch{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:var(--sp-3); margin-bottom:var(--sp-4);}
-#member-section-switch .plate, #coach-section-switch button, #me-section-switch button, #admin-section-switch .plate{
+#member-section-switch, #coach-section-switch, #me-section-switch, #tools-page-tabs, #admin-section-switch{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:var(--sp-3); margin-bottom:var(--sp-4);}
+#member-section-switch .plate, #coach-section-switch button, #me-section-switch button, #tools-page-tabs button, #admin-section-switch .plate{
   min-height:0; padding:var(--sp-4); flex-direction:column; align-items:flex-start; justify-content:flex-start;
   gap:6px; text-align:left; border-width:1px; border-radius:var(--r); box-shadow:none;
 }
-#member-section-switch .plate::before, #coach-section-switch button::before, #me-section-switch button::before, #admin-section-switch .plate::before{font-size:28px; margin-bottom:4px;}
-#member-section-switch .plate.active, #coach-section-switch button.active, #me-section-switch button.active, #admin-section-switch .plate.active{border-color:var(--line); background:var(--surface); color:var(--text); font-weight:normal;}
-#member-section-switch .plate:hover, #coach-section-switch button:hover, #me-section-switch button:hover, #admin-section-switch .plate:hover{border-color:var(--accent-dim); background:var(--surface-2);}
-#member-section-switch .plate-title, #coach-section-switch .plate-title, #me-section-switch .plate-title, #admin-section-switch .plate-title{font-family:'Oswald',sans-serif; font-size:18px; text-transform:uppercase; letter-spacing:.03em; color:var(--text);}
-#member-section-switch .plate-desc, #coach-section-switch .plate-desc, #me-section-switch .plate-desc, #admin-section-switch .plate-desc{font-family:'IBM Plex Sans',sans-serif; font-size:13px; text-transform:none; letter-spacing:0; color:var(--muted); line-height:1.4;}
+#member-section-switch .plate::before, #coach-section-switch button::before, #me-section-switch button::before, #tools-page-tabs button::before, #admin-section-switch .plate::before{font-size:28px; margin-bottom:4px;}
+#member-section-switch .plate.active, #coach-section-switch button.active, #me-section-switch button.active, #tools-page-tabs button.active, #admin-section-switch .plate.active{border-color:var(--line); background:var(--surface); color:var(--text); font-weight:normal;}
+#member-section-switch .plate:hover, #coach-section-switch button:hover, #me-section-switch button:hover, #tools-page-tabs button:hover, #admin-section-switch .plate:hover{border-color:var(--accent-dim); background:var(--surface-2);}
+#member-section-switch .plate-title, #coach-section-switch .plate-title, #me-section-switch .plate-title, #tools-page-tabs .plate-title, #admin-section-switch .plate-title{font-family:'Oswald',sans-serif; font-size:18px; text-transform:uppercase; letter-spacing:.03em; color:var(--text);}
+#member-section-switch .plate-desc, #coach-section-switch .plate-desc, #me-section-switch .plate-desc, #tools-page-tabs .plate-desc, #admin-section-switch .plate-desc{font-family:'IBM Plex Sans',sans-serif; font-size:13px; text-transform:none; letter-spacing:0; color:var(--muted); line-height:1.4;}
 @media (max-width:640px){
-  #member-section-switch, #coach-section-switch, #me-section-switch, #admin-section-switch{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2);}
-  #member-section-switch .plate, #coach-section-switch button, #me-section-switch button, #admin-section-switch .plate{padding:var(--sp-3);}
-  #member-section-switch .plate-title, #coach-section-switch .plate-title, #me-section-switch .plate-title, #admin-section-switch .plate-title{font-size:16px;}
-  #member-section-switch .plate-desc, #coach-section-switch .plate-desc, #me-section-switch .plate-desc, #admin-section-switch .plate-desc{font-size:12px;}
+  #member-section-switch, #coach-section-switch, #me-section-switch, #tools-page-tabs, #admin-section-switch{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-2);}
+  #member-section-switch .plate, #coach-section-switch button, #me-section-switch button, #tools-page-tabs button, #admin-section-switch .plate{padding:var(--sp-3);}
+  #member-section-switch .plate-title, #coach-section-switch .plate-title, #me-section-switch .plate-title, #tools-page-tabs .plate-title, #admin-section-switch .plate-title{font-size:16px;}
+  #member-section-switch .plate-desc, #coach-section-switch .plate-desc, #me-section-switch .plate-desc, #tools-page-tabs .plate-desc, #admin-section-switch .plate-desc{font-size:12px;}
 }
+/* Tools page cards: not part of the shared tile rules above, so they get
+   the card base (border, surface, icon) here. */
+#tools-page-tabs{display:grid;}
+#tools-page-tabs button{display:flex; background:var(--surface); border:1px solid var(--line); color:var(--text); cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease;}
+#tools-page-tabs button::before{line-height:1;}
+#tools-page-tabs [data-tools-page="timers"]::before{content:"⏱️";}
+#tools-page-tabs [data-tools-page="challenges"]::before{content:"🎵";}
+#tools-page-tabs [data-tools-page="body"]::before{content:"📏";}
+#tools-page-tabs [data-tools-page="calories"]::before{content:"🔥";}
