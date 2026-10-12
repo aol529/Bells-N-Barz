@@ -312,7 +312,18 @@
     deleting them (status `suspended` + `archived_at`; every record is
     kept, and they can be restored). Safe to re-run.
 
-53. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+53. **53-period-log.sql** — creates `period_log` (Me > Period) with its
+    RLS where it's missing; staging didn't have it. Safe to re-run.
+
+54. **54-users-staff-column-trigger.sql** — attaches the
+    `trg_protect_staff_only_user_columns` trigger to `users` (staging had
+    the function but no trigger) and extends it to sign-up inserts, so a
+    member can't give themselves admin roles, credits or balance changes.
+    Run on both projects. Safe to re-run.
+
+55. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+    For a one-row pass/fail summary (RLS, the staff-column trigger,
+    `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed
