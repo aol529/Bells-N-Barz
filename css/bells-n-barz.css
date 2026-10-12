@@ -2693,3 +2693,23 @@ details.tools-how .mp-how-step{padding:var(--sp-3) 0;}
 #tools-page-tabs [data-tools-page="challenges"]::before{content:"🎵";}
 #tools-page-tabs [data-tools-page="body"]::before{content:"📏";}
 #tools-page-tabs [data-tools-page="calories"]::before{content:"🔥";}
+
+/* ---------------- Sticky footer ----------------
+   Each site page fills at least the window below the site nav, and its
+   footer is pushed to the bottom when the content is short (on long
+   pages it simply follows the content). Blog/Gallery/Shop/Members keep
+   their footer inside a *-scope wrapper, so that wrapper stretches too.
+   Children get width:100% because a flex item with margin:0 auto would
+   otherwise shrink to its content instead of filling its max-width.
+   The body is the column (not a calc) so the header's border and the
+   staging banner's padding-bottom are accounted for automatically. */
+body{display:flex; flex-direction:column; min-height:100vh; box-sizing:border-box;}
+body > *{flex-shrink:0;}
+.site-page.active{display:flex; flex-direction:column; flex:1 0 auto;}
+#site-blog > .blog-scope, #site-gallery > .gallery-scope, #site-shop > .shop-scope, #site-users > .users-scope{
+  flex:1 0 auto; display:flex; flex-direction:column;
+}
+.site-page.active > *, #site-blog > .blog-scope > *, #site-gallery > .gallery-scope > *, #site-shop > .shop-scope > *, #site-users > .users-scope > *{
+  width:100%; box-sizing:border-box;
+}
+.site-page.active > footer, .blog-scope > footer, .gallery-scope > footer, .shop-scope > footer, #site-users > .users-scope > footer{margin-top:auto;}
