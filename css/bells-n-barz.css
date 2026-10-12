@@ -2737,11 +2737,11 @@ body > *{flex-shrink:0;}
 }
 .site-page.active > footer, .blog-scope > footer, .gallery-scope > footer, .shop-scope > footer, #site-users > .users-scope > footer{margin-top:auto;}
 
-/* ---------------- Blog / Gallery / Shop category cards ----------------
+/* ---------------- Blog / Gallery / Shop / Members cards ----------------
    Replace the category pills: icon, name and a post/photo count.
    Clicking still just filters the grid below (renderCategoryChips in
    js/bells-n-barz-blog.js and js/bells-n-barz-gallery.js). */
-.blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards, .shop-scope .chip-filter.cat-cards{
+.blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards, .shop-scope .chip-filter.cat-cards, .users-scope .chip-filter.cat-cards{
   display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; flex:1 1 100%; width:100%;
 }
 .chip-filter.cat-cards .cat-card{
@@ -2757,5 +2757,8 @@ body > *{flex-shrink:0;}
 .chip-filter.cat-cards .cat-card.active .cat-card-count{color:var(--accent);}
 .chip-filter.cat-cards .cat-card.empty:not(.active){opacity:.5;}
 @media (max-width:640px){
-  .blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards, .shop-scope .chip-filter.cat-cards{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;}
+  .blog-scope .chip-filter.cat-cards, .gallery-scope .chip-filter.cat-cards, .shop-scope .chip-filter.cat-cards, .users-scope .chip-filter.cat-cards{grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;}
 }
+/* Members: Log In / My Profile / Sign Up cards, with a one-line description. */
+.users-scope .chip-filter.cat-cards.usr-mode-cards{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); margin:24px 0 8px;}
+.cat-card-desc{font-size:12.5px; color:var(--muted); line-height:1.4; text-transform:none; letter-spacing:0; font-weight:normal;}

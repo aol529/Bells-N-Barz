@@ -560,6 +560,9 @@
         b.style.display = signedIn ? 'none' : '';
       }
     });
+    // Only My Profile would be left — hide the whole card row then.
+    const switchEl = document.getElementById('usr-mode-switch');
+    if (switchEl) switchEl.style.display = signedIn ? 'none' : '';
   }
   function onAuthStateChanged(){
     refreshModeSwitchVisibility();

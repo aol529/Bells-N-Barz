@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=shop-cards-2" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=members-cards-2" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -767,13 +767,19 @@
       <div class="eyebrow">Wang' Kalam Agok Buk</div>
       <h1>Members</h1>
     </div>
-    <div class="mode-switch" id="usr-mode-switch">
-      <button class="active" data-mode="login">Log In</button>
-      <button data-mode="profile">My Profile</button>
-      <button data-mode="signup">Sign Up</button>
-    </div>
   </div>
 </header>
+
+<!-- Members view cards (was a pill switch in the header). Same ids and
+     data-mode as before, so js/bells-n-barz-users.js drives them unchanged;
+     hidden once signed in, when only My Profile is left. -->
+<div class="wrap">
+  <div class="chip-filter cat-cards usr-mode-cards" id="usr-mode-switch">
+    <button type="button" class="cat-card active" data-mode="login"><span class="cat-card-icon" aria-hidden="true">🔑</span><span class="cat-card-name">Log In</span><span class="cat-card-desc">Already a member? Sign in with your email</span></button>
+    <button type="button" class="cat-card" data-mode="profile"><span class="cat-card-icon" aria-hidden="true">👤</span><span class="cat-card-name">My Profile</span><span class="cat-card-desc">Edit your own profile details</span></button>
+    <button type="button" class="cat-card" data-mode="signup"><span class="cat-card-icon" aria-hidden="true">✨</span><span class="cat-card-name">Sign Up</span><span class="cat-card-desc">New here? Create your account</span></button>
+  </div>
+</div>
 
 <!-- ================= MEMBER: LOG IN ================= -->
 <section class="view active" id="usr-view-login">
