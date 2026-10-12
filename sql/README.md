@@ -307,7 +307,12 @@
     dead bodybuilding.com citations at Internet Archive copies and unlinks
     one from a site that no longer exists. Safe to re-run.
 
-52. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+52. **52-member-archive.sql** — adds `users.archived_at` and protects it
+    as a staff-only column. Admin > Users now archives members instead of
+    deleting them (status `suspended` + `archived_at`; every record is
+    kept, and they can be restored). Safe to re-run.
+
+53. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     Run any time to see what RLS state actually looks like.
 
 ## Fresh vs. reconstructed

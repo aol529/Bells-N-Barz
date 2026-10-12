@@ -210,7 +210,10 @@
       pref_time: u.prefTime, trainer: u.trainer, trainer_id: u.trainerId || null, plan: u.plan, mstatus: u.mstatus,
       contract_end: u.contractEnd || null, balance: u.balance || 0, comp: u.comp,
       last_checkin: u.lastCheckin || null, auto_renew: !!u.autoRenew, flag: u.flag,
-      lead_source: u.leadSource, internal_notes: u.internalNotes, credits: u.credits || 0
+      lead_source: u.leadSource, internal_notes: u.internalNotes, credits: u.credits || 0,
+      // Only once sql/52 has added the column (rowToUser leaves archivedAt
+      // undefined before that), so saves keep working on an older database.
+      ...(u.archivedAt !== undefined ? { archived_at: u.archivedAt || null } : {})
     };
   }
   function rowToUser(r){
@@ -223,7 +226,8 @@
       prefTime: r.pref_time, trainer: r.trainer, trainerId: r.trainer_id || '', plan: r.plan, mstatus: r.mstatus,
       contractEnd: r.contract_end||'', balance: r.balance||0, comp: r.comp,
       lastCheckin: r.last_checkin||'', autoRenew: r.auto_renew, flag: r.flag,
-      leadSource: r.lead_source, internalNotes: r.internal_notes, credits: r.credits||0
+      leadSource: r.lead_source, internalNotes: r.internal_notes, credits: r.credits||0,
+      archivedAt: ('archived_at' in r) ? r.archived_at : undefined
     };
   }
 
@@ -617,6 +621,7 @@
   /* ---- Shared: given an authenticated Supabase user, find their profile
      row, sign them in locally, and route to the right landing view.
      Used by Login, session restore, and after a password reset. ---- */
+  let lastSignInArchived = false;
   async function signInLocallyAs(authUser){
     let matched = users.find(u => u.authId === authUser.id);
     if (!matched){
@@ -627,6 +632,13 @@
       }
     }
     if (!matched) return null;
+    // Archived members (see toggleArchive) can't sign in.
+    if (matched.archivedAt){
+      lastSignInArchived = true;
+      try { await bnbClient.auth.signOut(); } catch(e){}
+      return null;
+    }
+    lastSignInArchived = false;
     selfId = matched.id;
     saveSelfId(matched.id);
     // Keep the older "Viewing as" key (still read by Schedule/Billing at
@@ -719,7 +731,9 @@
 
     const matched = await signInLocallyAs(data.user);
     if (!matched){
-      showLoginError('Logged in, but no matching member profile was found. Contact your coach.');
+      showLoginError(lastSignInArchived
+        ? 'This account has been archived. Contact the gym if you\'d like it restored.'
+        : 'Logged in, but no matching member profile was found. Contact your coach.');
       return;
     }
 
@@ -1103,12 +1117,13 @@
 
   /* ================= ADMIN: USERS TABLE ================= */
   function renderRoleChips(){
-    const roles = ['all', 'member', 'trainer', 'staff', 'admin'];
+    // 'archived' isn't a role: it lists archived members (and only it does).
+    const roles = ['all', 'member', 'trainer', 'staff', 'admin', 'archived'];
     const bar = document.getElementById('usr-role-filter');
     bar.innerHTML = '';
     roles.forEach(r=>{
       const btn = document.createElement('button');
-      btn.textContent = r === 'all' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1);
+      btn.textContent = r === 'all' ? 'All Roles' : r === 'archived' ? 'Archived (' + users.filter(isArchived).length + ')' : r.charAt(0).toUpperCase() + r.slice(1);
       btn.className = r === activeRole ? 'active' : '';
       btn.onclick = ()=>{ activeRole = r; renderAdmin(); };
       bar.appendChild(btn);
@@ -1125,9 +1140,38 @@
     });
   });
 
+  /* ---- Archive instead of delete ----
+     A member is referenced by 30+ tables (messages, meal plans, health
+     logs, invoices…), so "removing" one archives them: status becomes
+     'suspended' — which every server function already excludes — and
+     archived_at records when. All their records stay. Archived members
+     are hidden from these lists (see the Archived filter), can't sign in
+     (signInLocallyAs), and Restore makes them active again. Needs the
+     archived_at column from sql/52-member-archive.sql. */
+  function isArchived(u){ return !!(u && u.archivedAt); }
+  function toggleArchive(u){
+    if (u.archivedAt === undefined){
+      alert('Archiving needs a database update first: run sql/52-member-archive.sql in the Supabase SQL editor, then reload.');
+      return;
+    }
+    if (isArchived(u)){
+      if (!confirm('Restore "' + u.fullName + '"? They become an active member again and can sign in.')) return;
+      u.archivedAt = null;
+      u.status = 'active';
+      showToast(u.fullName + ' restored.');
+    } else {
+      if (!confirm('Archive "' + u.fullName + '"? They\'ll be hidden from lists and won\'t be able to sign in. All their records are kept, and you can restore them from the Archived filter.')) return;
+      u.archivedAt = new Date().toISOString();
+      u.status = 'suspended';
+      showToast(u.fullName + ' archived.');
+    }
+    saveUsers();
+    renderAdmin();
+  }
+
   function visibleUsers(){
-    let visible = users.slice();
-    if (activeRole !== 'all') visible = visible.filter(u=>Array.isArray(u.roles) && u.roles.includes(activeRole));
+    let visible = activeRole === 'archived' ? users.filter(isArchived) : users.filter(u => !isArchived(u));
+    if (activeRole !== 'all' && activeRole !== 'archived') visible = visible.filter(u=>Array.isArray(u.roles) && u.roles.includes(activeRole));
     if (searchTerm){
       const q = searchTerm.toLowerCase();
       visible = visible.filter(u => (u.fullName||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q));
@@ -1187,20 +1231,14 @@
         </div>
         <div class="card-actions">
           <button class="edit-btn" title="Edit" aria-label="Edit">✎</button>
-          <button class="del del-btn" title="Delete" aria-label="Delete">✕</button>
+          <button class="del del-btn" title="${isArchived(u) ? 'Restore' : 'Archive'}" aria-label="${isArchived(u) ? 'Restore' : 'Archive'}">${isArchived(u) ? '↺' : '✕'}</button>
         </div>
       </div>
     `).join('');
     grid.querySelectorAll('.member-card').forEach((card, i)=>{
       const u = visible[i];
       card.querySelector('.edit-btn').onclick = ()=> openEditor(u.id);
-      card.querySelector('.del-btn').onclick = ()=>{
-        if (!confirm('Delete "' + u.fullName + '"? This cannot be undone.')) return;
-        users = users.filter(x=>x.id!==u.id);
-        checkins = checkins.filter(c=>c.userId!==u.id);
-        assessments = assessments.filter(a=>a.userId!==u.id);
-        saveUsers(); saveCheckins(); saveAssessments(); renderAdmin();
-      };
+      card.querySelector('.del-btn').onclick = ()=> toggleArchive(u);
     });
   }
 
@@ -1244,17 +1282,11 @@
         <td class="mono">${currentStreak(u.id)}d</td>
         <td><div class="row-actions">
           <button class="edit-btn">Edit</button>
-          <button class="del del-btn">Delete</button>
+          <button class="del del-btn">${isArchived(u) ? 'Restore' : 'Archive'}</button>
         </div></td>
       `;
       tr.querySelector('.edit-btn').onclick = ()=> openEditor(u.id);
-      tr.querySelector('.del-btn').onclick = ()=>{
-        if (!confirm('Delete "' + u.fullName + '"? This cannot be undone.')) return;
-        users = users.filter(x=>x.id!==u.id);
-        checkins = checkins.filter(c=>c.userId!==u.id);
-        assessments = assessments.filter(a=>a.userId!==u.id);
-        saveUsers(); saveCheckins(); saveAssessments(); renderAdmin();
-      };
+      tr.querySelector('.del-btn').onclick = ()=> toggleArchive(u);
       tbody.appendChild(tr);
     });
   }
