@@ -406,6 +406,7 @@
   }
 
   function renderAdminTable(){
+    updateAdminCounts();
     const tbody = document.getElementById('shop-admin-tbody');
     if (!products.length){
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px 0; color:var(--muted);">No products yet — add your first one above.</td></tr>';
@@ -519,6 +520,7 @@
   }
 
   function renderOrdersTable(){
+    updateAdminCounts();
     const tbody = document.getElementById('shop-orders-tbody');
     if (!orders.length){
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px 0; color:var(--muted);">No orders yet.</td></tr>';
@@ -579,6 +581,14 @@
     orders = orders.filter(function(x){ return x.id !== id; });
     saveOrders();
     renderOrdersTable();
+  }
+
+  // Counts on the Admin Products / Orders cards.
+  function updateAdminCounts(){
+    const p = document.getElementById('shop-admin-products-count');
+    const o = document.getElementById('shop-admin-orders-count');
+    if (p) p.textContent = products.length + ' product' + (products.length===1?'':'s');
+    if (o) o.textContent = orders.length + ' order' + (orders.length===1?'':'s');
   }
 
   const adminSubtabs = document.getElementById('shop-admin-subtabs');

@@ -2762,3 +2762,5 @@ body > *{flex-shrink:0;}
 /* Members: Log In / My Profile / Sign Up cards, with a one-line description. */
 .users-scope .chip-filter.cat-cards.usr-mode-cards{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); margin:24px 0 8px;}
 .cat-card-desc{font-size:12.5px; color:var(--muted); line-height:1.4; text-transform:none; letter-spacing:0; font-weight:normal;}
+/* Shop Admin: Products / Orders cards, wider like the Members ones. */
+#shop-admin-subtabs.cat-cards{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));}

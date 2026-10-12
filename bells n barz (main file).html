@@ -58,7 +58,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
-<link href="css/bells-n-barz.css?v=members-cards-2" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=shop-admin-cards-1" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ---- Supabase connection ----
@@ -599,9 +599,9 @@
 <section class="view" id="shop-view-admin">
   <div class="wrap">
     <div class="admin-notice">This runs entirely in your browser — products and orders save to this device's local storage. Merch/Supplement orders redirect to whatever checkout link you set per product; you mark payment received manually below. Session Package → Invoice/Credit wiring isn't live yet (build stage 3).</div>
-    <div class="shop-type-tabs" id="shop-admin-subtabs">
-      <button data-admin-tab="products" class="active">Products</button>
-      <button data-admin-tab="orders">Orders</button>
+    <div class="shop-type-tabs chip-filter cat-cards" id="shop-admin-subtabs">
+      <button type="button" class="cat-card active" data-admin-tab="products"><span class="cat-card-icon" aria-hidden="true">📦</span><span class="cat-card-name">Products</span><span class="cat-card-desc">Add, edit and hide shop items</span><span class="cat-card-count" id="shop-admin-products-count"></span></button>
+      <button type="button" class="cat-card" data-admin-tab="orders"><span class="cat-card-icon" aria-hidden="true">🧾</span><span class="cat-card-name">Orders</span><span class="cat-card-desc">Review and update customer orders</span><span class="cat-card-count" id="shop-admin-orders-count"></span></button>
     </div>
 
     <div id="shop-admin-products-panel">
