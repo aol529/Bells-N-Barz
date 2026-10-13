@@ -420,7 +420,14 @@
     Sunday evening a coach with no slots next week is reminded to add
     some. Each once. Run after 69. Safe to re-run.
 
-71. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+71. **71-invoice-reminders.sql** — `send_invoice_reminders()` (called
+    from `send_booking_reminders`, 9 AM–8 PM): members get a reminder 3
+    days before an invoice is due and up to four overdue reminders (day
+    1, 8, 15, 22); admin/staff get a Monday summary of what's overdue.
+    Each once (`invoice_reminders`, `billing_digest_sent`). Run after
+    70. Safe to re-run.
+
+72. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
