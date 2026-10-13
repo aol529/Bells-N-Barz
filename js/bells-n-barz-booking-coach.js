@@ -399,8 +399,9 @@
   let trainerSubTab = 'roster';
   let adminSubTab = 'classes';
   let classFilter = 'all';
-  let calWeekStart = null; // Calendar's Monday (YYYY-MM-DD); null = this week
-  let coachCalWeekStart = null; // same, for the coach's calendar
+  // Each calendar's Monday (YYYY-MM-DD); null = this week.
+  const calWeeks = { member: null, coach: null, admin: null };
+  let adminCalTrainer = 'all'; // admin calendar's coach filter
   let editingClassId = null;
   let activeSlotFormTrainer = null;
   let activeRosterSessionId = null;
@@ -703,19 +704,19 @@
   function wireCalNav(root, rerender){
     root.querySelectorAll('[data-cal]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        const coach = btn.getAttribute('data-cal-scope') === 'coach';
-        const start = (coach ? coachCalWeekStart : calWeekStart) || mondayOf(TODAY);
+        const scope = btn.getAttribute('data-cal-scope');
+        const start = calWeeks[scope] || mondayOf(TODAY);
         const v = btn.getAttribute('data-cal');
         let next = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
         if (next && next <= mondayOf(TODAY)) next = null;
-        if (coach) coachCalWeekStart = next; else calWeekStart = next;
+        calWeeks[scope] = next;
         rerender();
       });
     });
   }
 
   function memberCalendarHtml(){
-    const start = calWeekStart || mondayOf(TODAY);
+    const start = calWeeks.member || mondayOf(TODAY);
     const items = calendarItems(start, addDays(start, 6));
     let html = calHeadHtml(start, 'member', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours');
 
@@ -735,19 +736,22 @@
      The coach's own week: the classes they teach (with how full they
      are and a Roster button) and all their 1-on-1 slots — open, blocked
      or booked (with who) — plus "+ Slot" on each day to add availability. */
-  function coachCalendarItems(from, to){
+  // trainerId 'all' = every coach (admin calendar).
+  function coachCalendarItems(from, to, trainerId){
+    const mine = id => trainerId === 'all' || id === trainerId;
     const items = [];
-    sessions.filter(s=> s.instructorId===selfTrainerId && s.status==='scheduled' && s.date >= from && s.date <= to).forEach(s=>{
+    sessions.filter(s=> mine(s.instructorId) && s.status==='scheduled' && s.date >= from && s.date <= to).forEach(s=>{
       const cls = getClass(s.classId);
       if (cls) items.push({ kind:'class', date:s.date, time:s.startTime, s, cls });
     });
-    slots.filter(sl=> sl.trainerId===selfTrainerId && sl.date >= from && sl.date <= to).forEach(sl=>{
+    slots.filter(sl=> mine(sl.trainerId) && sl.date >= from && sl.date <= to).forEach(sl=>{
       items.push({ kind:'slot', date:sl.date, time:sl.startTime, sl, pt: ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed') });
     });
     return items.sort((a,b)=> (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
   }
-  function coachCalItemHtml(it){
+  function coachCalItemHtml(it, showCoach, admin){
     const past = isPast(it.date, it.time);
+    const coachLine = who => showCoach ? '<div class="cal-meta">' + esc(trainerName(who)) + '</div>' : '';
     let cls = 'cal-item' + (past ? ' past' : '');
     let html = '';
     if (it.kind === 'class'){
@@ -756,14 +760,18 @@
       cls += ' cal-class';
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.cls.duration + 'm</div>';
       html += '<div class="cal-title">' + esc(it.cls.name) + '</div>';
+      html += coachLine(it.s.instructorId);
       html += '<div class="cal-meta">' + confirmed + '/' + cap + ' booked' + (wl ? ' · ' + wl + ' waiting' : '') + '</div>';
-      html += '<div class="cal-actions"><button class="btn2" data-action="open-roster" data-id="' + it.s.id + '">Roster</button></div>';
+      html += '<div class="cal-actions"><button class="btn2" data-action="open-roster" data-id="' + it.s.id + '">Roster</button>';
+      if (admin && !past) html += '<button class="cal-link" data-action="cancel-session" data-id="' + it.s.id + '">Cancel</button>';
+      html += '</div>';
     } else {
       const sl = it.sl;
       const booked = sl.status === 'booked' && it.pt;
       cls += booked ? ' mine' : ' cal-slot' + (sl.status === 'blocked' ? ' blocked' : '');
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + sl.duration + 'm</div>';
       html += '<div class="cal-title">' + (booked ? esc(memberName(it.pt.userId)) : '1-on-1') + '</div>';
+      html += coachLine(sl.trainerId);
       html += '<div class="cal-actions"><span class="status-pill ' + sl.status + '">' + (booked ? '1-on-1' : sl.status) + '</span>';
       if (!past){
         if (sl.status === 'open') html += '<button class="cal-link" data-action="block-slot" data-id="' + sl.id + '">Block</button>';
@@ -775,10 +783,26 @@
     return '<div class="' + cls + '">' + html + '</div>';
   }
   function trainerCalendarHtml(){
-    const start = coachCalWeekStart || mondayOf(TODAY);
-    const items = coachCalendarItems(start, addDays(start, 6));
+    const start = calWeeks.coach || mondayOf(TODAY);
+    const items = coachCalendarItems(start, addDays(start, 6), selfTrainerId);
     let html = calHeadHtml(start, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
-    html += calGridHtml(start, items, coachCalItemHtml, day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
+    html += calGridHtml(start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
+    return html;
+  }
+
+  /* ---------------- ADMIN CALENDAR ----------------
+     Every coach's classes and 1-on-1 slots for the week, filterable by
+     coach. "+ Session" jumps to the Sessions form with that day filled in. */
+  function adminCalendarHtml(){
+    const trainers = getSchedTrainers();
+    if (adminCalTrainer !== 'all' && !trainers.some(t=>t.id===adminCalTrainer)) adminCalTrainer = 'all';
+    const start = calWeeks.admin || mondayOf(TODAY);
+    const items = coachCalendarItems(start, addDays(start, 6), adminCalTrainer);
+    let html = calHeadHtml(start, 'admin', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
+    html += '<div class="form-inline cal-filter"><div class="field"><label>Coach</label><select id="sched-admin-cal-trainer"><option value="all">All coaches</option>';
+    trainers.forEach(t=> html += '<option value="' + t.id + '"' + (t.id===adminCalTrainer ? ' selected' : '') + '>' + esc(t.name) + '</option>');
+    html += '</select></div></div>';
+    html += calGridHtml(start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
     return html;
   }
 
@@ -1768,13 +1792,15 @@
      ============================================================ */
   function adminViewHtml(){
     let html = '<div class="sched-sub">';
+    html += subBtn('calendar', adminSubTab, 'Calendar');
     html += subBtn('classes', adminSubTab, 'Classes');
     html += subBtn('sessions', adminSubTab, 'Sessions');
     html += subBtn('pt', adminSubTab, '1-on-1 Oversight');
     html += subBtn('load', adminSubTab, 'Trainer Load');
     html += subBtn('ratings', adminSubTab, 'Coach Ratings');
     html += '</div>';
-    if (adminSubTab === 'classes') html += adminClassesHtml();
+    if (adminSubTab === 'calendar') html += adminCalendarHtml();
+    else if (adminSubTab === 'classes') html += adminClassesHtml();
     else if (adminSubTab === 'sessions') html += adminSessionsHtml();
     else if (adminSubTab === 'pt') html += adminPtHtml();
     else if (adminSubTab === 'ratings') html += adminRatingsHtml();
@@ -2178,6 +2204,18 @@
     });
 
     wireCalNav(body, renderBody);
+    const calTrainer = body.querySelector('#sched-admin-cal-trainer');
+    if (calTrainer) calTrainer.addEventListener('change', ()=>{ adminCalTrainer = calTrainer.value; renderBody(); });
+    body.querySelectorAll('[data-cal-addsession]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const day = btn.getAttribute('data-cal-addsession');
+        adminSubTab = 'sessions';
+        renderBody();
+        const date = document.getElementById('sched-new-sess-date');
+        if (date){ date.value = day; date.scrollIntoView({ block:'center' }); }
+        const cls = document.getElementById('sched-new-sess-class'); if (cls) cls.focus();
+      });
+    });
 
     const mbtSel = body.querySelector('#sched-mbt-trainer');
     if (mbtSel) mbtSel.addEventListener('change', ()=>{ memberTrainerId = mbtSel.value; renderBody(); });

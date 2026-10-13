@@ -2107,6 +2107,10 @@ header.site{
 .sched-scope .cal-item.cal-slot.blocked{border-color:#8a3a32; opacity:.7;}
 .sched-scope .cal-add{all:unset; cursor:pointer; margin-top:auto; text-align:center; padding:5px; border:1px dashed var(--line); border-radius:3px; color:var(--muted-2); font-family:'IBM Plex Mono',monospace; font-size:11px;}
 .sched-scope .cal-add:hover{color:var(--accent); border-color:var(--accent-dim);}
+.sched-scope .form-inline.cal-filter{margin-bottom:14px; background:none; border:0; padding:0;}
+.sched-scope .form-inline.cal-filter .field{flex-direction:row; align-items:center; gap:10px; margin:0; width:auto;}
+.sched-scope .form-inline.cal-filter label{margin:0;}
+.sched-scope .form-inline.cal-filter select{width:auto;}
 .sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
 @media (max-width:900px){
   .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}
