@@ -2229,6 +2229,30 @@ header.site{
 .sched-scope .cal-tl-bar:hover{filter:brightness(1.15);}
 .sched-scope .cal-tl-bar.cal-slot{border:1px dashed var(--muted-2); background:var(--surface);}
 .sched-scope .cal-tl-bar.cal-slot.mine{border:1px solid var(--accent-3); border-left-width:3px;}
+.sched-scope .cal-year{display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px;}
+.sched-scope .cal-ymonth{border:1px solid var(--line); border-radius:4px; background:var(--surface); padding:8px 10px 10px;}
+.sched-scope .cal-ymonth.this{border-color:var(--accent-dim); box-shadow:inset 0 2px 0 var(--accent);}
+.sched-scope .cal-ymonth.past{opacity:.8;}
+.sched-scope .cal-ymonth-name{all:unset; cursor:pointer; display:block; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:14px; color:var(--text); margin-bottom:6px;}
+.sched-scope .cal-ymonth.this .cal-ymonth-name{color:var(--accent);}
+.sched-scope .cal-ymonth-name:hover, .sched-scope .cal-ymonth-name:focus-visible{color:var(--accent); text-decoration:underline;}
+.sched-scope .cal-ygrid{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:2px;}
+.sched-scope .cal-ywd{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted-2); text-align:center; padding-bottom:2px;}
+.sched-scope .cal-yday{position:relative; display:flex; align-items:center; justify-content:center; aspect-ratio:1; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--muted); border-radius:2px; cursor:pointer; background:var(--surface-2);}
+.sched-scope .cal-yday:hover, .sched-scope .cal-yday:focus-visible{outline:1px solid var(--accent); outline-offset:0;}
+.sched-scope .cal-yday.l1{background:rgba(var(--accent-rgb),.18); color:var(--text);}
+.sched-scope .cal-yday.l2{background:rgba(var(--accent-rgb),.32); color:var(--text);}
+.sched-scope .cal-yday.l3{background:rgba(var(--accent-rgb),.5); color:var(--text);}
+.sched-scope .cal-yday.l4{background:rgba(var(--accent-rgb),.72); color:var(--on-accent);}
+.sched-scope .cal-yday.mine::after{content:''; position:absolute; right:2px; top:2px; width:5px; height:5px; border-radius:50%; background:var(--accent-3);}
+.sched-scope .cal-yday.today{outline:2px solid var(--accent); outline-offset:-1px; font-weight:700;}
+.sched-scope .cal-yday.gone{opacity:.5;}
+.sched-scope .cal-yday.drop-ok{outline:2px dashed var(--accent);}
+.sched-scope .cal-yleg{display:flex; align-items:center; justify-content:flex-end; gap:4px; margin-top:12px; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted-2);}
+.sched-scope .cal-yleg .cal-yday{width:14px; height:14px; aspect-ratio:auto; cursor:default;}
+.sched-scope .cal-yleg span{margin:0 4px;}
+@media (max-width:1100px){ .sched-scope .cal-year{grid-template-columns:repeat(3, minmax(0,1fr));} }
+@media (max-width:760px){ .sched-scope .cal-year{grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px;} .sched-scope .cal-ymonth{padding:6px;} .sched-scope .cal-yday{font-size:9px;} }
 .sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
 @media (max-width:900px){
   .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}

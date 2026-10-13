@@ -401,7 +401,7 @@
   let classFilter = 'all';
   // Each calendar's Monday (YYYY-MM-DD); null = this week.
   const calWeeks = { member: null, coach: null, admin: null };
-  // Day, week, month or list view per calendar (remembered on this device), and the
+  // Day, week, month, year, list or timeline view per calendar (remembered on this device), and the
   // month shown (first of the month; null = this month).
   const calViews = (function(){
     const v = { member: 'week', coach: 'week', admin: 'week' };
@@ -411,6 +411,7 @@
   const calMonths = { member: null, coach: null, admin: null };
   const calDays = { member: null, coach: null, admin: null }; // day view's date; null = today
   const calListDays = { member: 28, coach: 28, admin: 28 };   // list view: how many days ahead
+  const calYears = { member: null, coach: null, admin: null };  // year view's year ('YYYY'); null = this year
   let adminCalTrainer = 'all'; // admin calendar's coach filter
   let editingClassId = null;
   let activeSlotFormTrainer = null;
@@ -781,6 +782,10 @@
   // What a calendar is showing: { month, start, from, to } — `start` is the
   // Monday (week) or the 1st (month); from/to is the date range drawn.
   function calRange(scope){
+    if (calViews[scope] === 'year'){
+      const y = calYears[scope] || TODAY.slice(0, 4);
+      return { year: true, start: y + '-01-01', from: y + '-01-01', to: y + '-12-31' };
+    }
     if (calViews[scope] === 'list'){
       return { list: true, start: TODAY, from: TODAY, to: addDays(TODAY, calListDays[scope] - 1), days: calListDays[scope] };
     }
@@ -800,12 +805,12 @@
   // Header: ‹ range › This week/month, Week | Month, legend. Shared by the
   // member, coach and admin calendars; `scope` keeps their state apart.
   function calHeadHtml(range, scope, legend){
-    const isNow = range.day ? range.start === TODAY : range.month ? range.start === monthStartOf(TODAY) : range.start === mondayOf(TODAY);
+    const isNow = range.year ? range.start.slice(0, 4) === TODAY.slice(0, 4) : range.day ? range.start === TODAY : range.month ? range.start === monthStartOf(TODAY) : range.start === mondayOf(TODAY);
     const fmtShort = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
-    const label = range.day ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' })
+    const label = range.year ? range.start.slice(0, 4) : range.day ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' })
       : range.month ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { month:'long', year:'numeric' })
       : fmtShort(range.start) + ' – ' + fmtShort(addDays(range.start, 6));
-    const unit = range.day ? 'day' : range.month ? 'month' : 'week';
+    const unit = range.year ? 'year' : range.day ? 'day' : range.month ? 'month' : 'week';
     let html = '<div class="cal-head">';
     if (range.list){
       html += '<div class="cal-range">Next ' + (range.days % 7 ? range.days + ' days' : range.days / 7 + ' weeks') + '</div>';
@@ -816,10 +821,43 @@
     if (!isNow) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">' + (range.day ? 'Today' : 'This ' + unit) + '</button>';
     }
     html += '<div class="cal-view" role="group" aria-label="Calendar view">';
-    ['day', 'week', 'month', 'list', 'timeline'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>');
+    ['day', 'week', 'month', 'year', 'list', 'timeline'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>');
     html += '</div>';
     html += '<div class="cal-legend">' + legend + '</div>';
     return html + '</div>';
+  }
+
+  // Year view: twelve small months, each day shaded by how much is on
+  // (classes and 1-on-1s) with a dot where `isMine` (your booking / a
+  // booked 1-on-1). A month name opens the month, a day opens the day;
+  // upcoming days take drops (moving there, same time).
+  function calYearHtml(range, items, isMine){
+    const y = Number(range.start.slice(0, 4));
+    const byDay = {};
+    items.forEach(it=>{ const b = byDay[it.date] = byDay[it.date] || { classes: 0, pt: 0, mine: false }; if (it.kind === 'class') b.classes++; else b.pt++; if (isMine(it)) b.mine = true; });
+    const level = n => n === 0 ? 0 : n === 1 ? 1 : n === 2 ? 2 : n <= 4 ? 3 : 4;
+    const initials = []; for (let i = 0; i < 7; i++) initials.push(new Date(addDays(mondayOf(TODAY), i) + 'T00:00:00').toLocaleDateString(undefined, { weekday:'narrow' }));
+    let html = '<div class="cal-year">';
+    for (let m = 0; m < 12; m++){
+      const first = y + '-' + String(m + 1).padStart(2, '0') + '-01';
+      const next = addMonths(first, 1);
+      const isThis = first === monthStartOf(TODAY);
+      html += '<div class="cal-ymonth' + (isThis ? ' this' : '') + (next <= TODAY ? ' past' : '') + '">';
+      html += '<button class="cal-ymonth-name" data-cal-openmonth="' + first + '">' + new Date(first + 'T00:00:00').toLocaleDateString(undefined, { month:'long' }) + '</button>';
+      html += '<div class="cal-ygrid">' + initials.map(c=> '<span class="cal-ywd">' + c + '</span>').join('');
+      for (let pad = (new Date(first + 'T00:00:00').getDay() + 6) % 7; pad > 0; pad--) html += '<span></span>';
+      for (let day = first; day < next; day = addDays(day, 1)){
+        const b = byDay[day] || { classes: 0, pt: 0, mine: false };
+        const n = b.classes + b.pt;
+        const tip = fmtDate(day) + (n ? ': ' + [b.classes ? b.classes + ' class' + (b.classes === 1 ? '' : 'es') : '', b.pt ? b.pt + ' 1-on-1' + (b.pt === 1 ? '' : 's') : ''].filter(Boolean).join(', ') : ': nothing on');
+        html += '<span class="cal-yday l' + level(n) + (b.mine ? ' mine' : '') + (day === TODAY ? ' today' : '') + (day < TODAY ? ' gone' : '') + '"'
+          + ' data-cal-openday="' + day + '"' + (day < TODAY ? '' : ' data-cal-day="' + day + '"') + ' role="button" tabindex="0" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + Number(day.slice(8)) + '</span>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+    html += '<div class="cal-yleg"><span>Less</span>' + [0, 1, 2, 3, 4].map(l=> '<i class="cal-yday l' + l + '"></i>').join('') + '<span>More</span><i class="cal-yday l2 mine"></i><span>' + 'Booked</span></div>';
+    return html;
   }
 
   // Timeline view: the week as rows (Mon–Sun) on an hour axis; each item
@@ -965,6 +1003,7 @@
     if (view === 'day') calDays[scope] = date <= TODAY ? null : date;
     else if (view === 'week' || view === 'timeline'){ const w = mondayOf(date); calWeeks[scope] = w <= mondayOf(TODAY) ? null : w; }
     else if (view === 'list'){ /* always from today */ }
+    else if (view === 'year'){ const y = date.slice(0, 4); calYears[scope] = y <= TODAY.slice(0, 4) ? null : y; }
     else { const m = monthStartOf(date); calMonths[scope] = m <= monthStartOf(TODAY) ? null : m; }
     calViews[scope] = view;
     try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
@@ -974,7 +1013,11 @@
       btn.addEventListener('click', ()=>{
         const scope = btn.getAttribute('data-cal-scope');
         const v = btn.getAttribute('data-cal');
-        if (calViews[scope] === 'day'){
+        if (calViews[scope] === 'year'){
+          const y = Number(calYears[scope] || TODAY.slice(0, 4));
+          const next = v === 'today' ? null : String(y + (v === 'next' ? 1 : -1));
+          calYears[scope] = next && next > TODAY.slice(0, 4) ? next : null;
+        } else if (calViews[scope] === 'day'){
           const start = calDays[scope] || TODAY;
           let next = v === 'today' ? null : addDays(start, v === 'next' ? 1 : -1);
           if (next && next <= TODAY) next = null;
@@ -1001,7 +1044,8 @@
         // Keep roughly the same place: the date being looked at now,
         // never earlier than today.
         const cur = calViews[scope];
-        let anchor = cur === 'day' ? calDays[scope] : cur === 'month' ? calMonths[scope] : (cur === 'week' || cur === 'timeline') ? calWeeks[scope] : null;
+        let anchor = cur === 'day' ? calDays[scope] : cur === 'month' ? calMonths[scope] : (cur === 'week' || cur === 'timeline') ? calWeeks[scope]
+          : cur === 'year' && calYears[scope] ? calYears[scope] + '-01-01' : null;
         if (!anchor || anchor < TODAY) anchor = TODAY;
         calGoTo(scope, view, anchor);
         if (scope === 'member') memberMoveFrom = null;
@@ -1011,12 +1055,17 @@
     root.querySelectorAll('[data-cal-more]').forEach(btn=>{
       btn.addEventListener('click', ()=>{ const scope = btn.getAttribute('data-cal-scope'); calListDays[scope] = Math.min(calListDays[scope] + 28, 364); rerender(); });
     });
+    // Year view: a month's name opens that month.
+    root.querySelectorAll('[data-cal-openmonth]').forEach(btn=>{
+      const scope = root.querySelector('[data-cal-view]') ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
+      btn.addEventListener('click', ()=>{ if (!scope) return; calGoTo(scope, 'month', btn.getAttribute('data-cal-openmonth')); rerender(); });
+    });
     // Timeline: tapping a bar opens its day.
     root.querySelectorAll('[data-tl-open]').forEach(bar=>{
       const scope = root.querySelector('[data-cal-view]') ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
       bar.addEventListener('click', ()=>{ if (!scope) return; calGoTo(scope, 'day', bar.getAttribute('data-tl-open')); rerender(); });
     });
-    // Week and list views: a day's heading opens that day.
+    // Week, list and year views: a day's heading / cell opens that day.
     root.querySelectorAll('[data-cal-openday]').forEach(head=>{
       const scope = root.querySelector('[data-cal-view]') ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
       const open = ()=>{ if (!scope) return; calGoTo(scope, 'day', head.getAttribute('data-cal-openday')); rerender(); };
@@ -1056,6 +1105,7 @@
     }
     if (range.list) return html + calListHtml(range, items, calItemHtml, 'member');
     if (range.timeline) return html + calTimelineHtml(range, items, memberChipHtml);
+    if (range.year) return html + calYearHtml(range, items, it=> it.kind === 'mypt' || (it.kind === 'class' && !!memberBookingForSession(it.s.id, selfMemberId)));
     html += range.month ? calMonthHtml(range, items, memberChipHtml) : range.day ? calDayHtml(range, items, calItemHtml) : calGridHtml(range.start, items, calItemHtml);
     if (!items.length) html += '<div class="empty-msg">Nothing on this ' + (range.month ? 'month' : range.day ? 'day' : 'week') + '.</div>';
     return html;
@@ -1152,6 +1202,7 @@
     let html = calHeadHtml(range, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
     if (range.list) return html + calListHtml(range, items, it=> coachCalItemHtml(it, false), 'coach');
     if (range.timeline) return html + calTimelineHtml(range, items, (it, make)=> coachChipHtml(it, false, make));
+    if (range.year) return html + calYearHtml(range, items, it=> it.kind === 'slot' && !!it.pt);
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, false));
     if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, false), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addslot="' + day + 'T' + t + '" aria-label="Add a slot at ' + fmtTime(t) + '">+ Slot</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
@@ -1172,6 +1223,7 @@
     html += '</select></div></div>';
     if (range.list) return html + calListHtml(range, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), 'admin');
     if (range.timeline) return html + calTimelineHtml(range, items, (it, make)=> coachChipHtml(it, adminCalTrainer === 'all', make));
+    if (range.year) return html + calYearHtml(range, items, it=> it.kind === 'slot' && !!it.pt);
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, adminCalTrainer === 'all'));
     if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addsession="' + day + 'T' + t + '" aria-label="Add a session at ' + fmtTime(t) + '">+ Session</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
