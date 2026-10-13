@@ -348,7 +348,14 @@
     `rename_chat_group()`, `leave_chat_group()`, `mark_chat_group_read()`
     and `toggle_group_reaction()`. Run after 58. Safe to re-run.
 
-60. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+60. **60-message-attachments.sql** — photo and file sharing in messages:
+    private `message-files` bucket (10 MB; photos, PDF, Office, text/CSV),
+    upload only to your own folder, read only if the file is attached to
+    a message you can read; `attachment` on the three message tables; the
+    three send functions take an optional attachment. Run after 59. Safe
+    to re-run.
+
+61. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

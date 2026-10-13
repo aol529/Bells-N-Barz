@@ -80,7 +80,8 @@
       const who = mine ? 'You' : nameOf(m.sender_id);
       return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}" data-msg-id="${escAttr(m.id)}">
         <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))}</div>
-        <div class="msg-body">${esc(m.body)}</div>
+        ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
+        ${m.attachment && window.bnbAttach ? window.bnbAttach.bubbleHtml(m.attachment) : ''}
         ${reactions && window.bnbReactions ? window.bnbReactions.bubbleExtrasHtml(reactions[m.id], meId) : ''}
       </div>`;
     }).join('');
@@ -108,6 +109,9 @@
   let members = [];            // open group's members [{user_id, full_name, role, read_at}]
   let groupForm = null;        // { mode: 'create' | 'add', picked: [{id, name}] } while creating/adding
   let renaming = false;        // open group's name is being edited
+  const pendingFiles = {};     // conversation key -> picked file not sent yet (survives re-renders)
+  const attachState = { get: () => pendingFiles[convKey(sel)] || null,
+                        set: v => { const k = convKey(sel); if (v) pendingFiles[k] = v; else delete pendingFiles[k]; } };
 
   function convKey(s){ return !s ? null : s.kind === 'dm' ? 'dm-user:' + s.userId : 'grp:' + s.groupId; }
   function memberName(id){ const m = members.find(x => x.user_id === id); return m ? m.full_name : 'Former member'; }
@@ -323,12 +327,15 @@
       });
     showReceipt('inbox-receipt', receipt);
     if (typing && markedReadAt !== undefined) typing.read('user', markedReadAt);
+    if (window.bnbAttach) window.bnbAttach.fill(body);
 
     wireCompose();
   }
 
   function composeHtml(placeholder){
-    return `<div class="msg-compose">
+    const att = window.bnbAttach;
+    return `${att ? att.pendingHtml('inbox') : ''}<div class="msg-compose">
+      ${att ? att.composeExtrasHtml('inbox') : ''}
       <textarea class="msg-input" id="inbox-input" placeholder="${escAttr(placeholder)}"></textarea>
       <button class="weight-submit" id="inbox-send" type="button">Send</button>
     </div>`;
@@ -337,19 +344,34 @@
     const sendBtn = document.getElementById('inbox-send');
     if (!sendBtn) return;
     const input = document.getElementById('inbox-input');
+    if (window.bnbAttach) window.bnbAttach.wire('inbox', attachState);
     sendBtn.addEventListener('click', async () => {
       const text = input.value.trim();
-      if (!text || !sel) return;
+      const pending = attachState.get();
+      if ((!text && !pending) || !sel) return;
       sendBtn.disabled = true;
-      const { error } = sel.kind === 'group'
-        ? await bnbClient.rpc('send_group_message', { p_group_id: sel.groupId, p_body: text })
-        : await bnbClient.rpc('send_direct_message', { p_recipient_id: sel.userId, p_body: text });
-      sendBtn.disabled = false;
+      const label = sendBtn.textContent;
+      let attachment = null;
+      if (pending){
+        sendBtn.textContent = 'Uploading…';
+        try { attachment = await window.bnbAttach.upload(pending, selfUser().id); }
+        catch(err){
+          sendBtn.disabled = false; sendBtn.textContent = label;
+          console.error('Upload failed:', err);
+          toast((err && err.message) || 'Could not upload that file — check your connection and try again.');
+          return;
+        }
+      }
+      const args = sel.kind === 'group' ? { p_group_id: sel.groupId, p_body: text } : { p_recipient_id: sel.userId, p_body: text };
+      if (attachment) args.p_attachment = attachment;
+      const { error } = await bnbClient.rpc(sel.kind === 'group' ? 'send_group_message' : 'send_direct_message', args);
+      sendBtn.disabled = false; sendBtn.textContent = label;
       if (error){
         console.error('Supabase send failed:', error);
         toast(error.message || 'Could not send — check your connection and try again.');
         return;
       }
+      attachState.set(null);
       if (typing) typing.stop('user');
       input.value = '';
       renderInbox();

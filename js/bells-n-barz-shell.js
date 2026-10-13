@@ -1983,6 +1983,167 @@ window.bnbTyping = function(){
   };
 };
 
+/* ---------------- MESSAGE ATTACHMENTS ----------------
+   Photos and files in Inbox and Messages (sql/60-message-attachments.sql).
+   Files go to the private message-files bucket under the sender's own
+   folder; bubbles show them through short-lived signed URLs, which
+   Storage only issues to people allowed to read that message. Each view:
+     composeExtrasHtml(p) / pendingHtml(p)   📎 button + picked-file chip
+     wire(p, { get, set })                   handles picking/clearing
+     upload(pending, me.id) -> attachment    then pass it to the send RPC
+     bubbleHtml(m.attachment) + fill(root)   show it in the thread
+*/
+window.bnbAttach = (function(){
+  const MAX = 10 * 1024 * 1024;
+  // Must match allowed_mime_types on the bucket (sql/60).
+  const TYPES = {
+    'image/jpeg':1, 'image/png':1, 'image/gif':1, 'image/webp':1, 'image/heic':1, 'image/heif':1,
+    'application/pdf':1, 'text/plain':1, 'text/csv':1,
+    'application/msword':1, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':1,
+    'application/vnd.ms-excel':1, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':1,
+    'application/vnd.ms-powerpoint':1, 'application/vnd.openxmlformats-officedocument.presentationml.presentation':1
+  };
+  // Some systems report '' for these; go by the extension instead.
+  const BY_EXT = { csv:'text/csv', txt:'text/plain', heic:'image/heic', heif:'image/heif', pdf:'application/pdf',
+    doc:'application/msword', docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls:'application/vnd.ms-excel', xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ppt:'application/vnd.ms-powerpoint', pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation' };
+  const ACCEPT = 'image/*,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+  const isImage = type => /^image\/(jpeg|png|gif|webp)$/.test(type || ''); // ones browsers can show inline
+  function fileIcon(type){
+    if (/pdf/.test(type)) return '📕';
+    if (/sheet|excel|csv/.test(type)) return '📊';
+    if (/presentation|powerpoint/.test(type)) return '📽️';
+    if (/^image\//.test(type)) return '🖼️';
+    return '📄';
+  }
+  function toast(msg){
+    const t = document.getElementById('t-toast');
+    if (t){ t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+  }
+
+  // Big photos are shrunk to 1600px (JPEG) before upload — phone photos
+  // are often 4–8 MB and nobody needs that in a chat. GIFs stay as they
+  // are (they may be animated).
+  async function shrinkImage(file){
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 600 * 1024) return null;
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      if (scale === 1 && file.size < 1.5 * 1048576) return null;
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); // PNG transparency -> white
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.85));
+      return blob && blob.size < file.size ? blob : null;
+    } catch(e){ return null; }
+  }
+  // -> { blob, name, type, size } or null (and a message) if not allowed.
+  async function prepare(file){
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    let type = TYPES[file.type] ? file.type : (BY_EXT[ext] || '');
+    if (!type){ toast('That kind of file can\'t be sent — try a photo, PDF, Office document or text file.'); return null; }
+    let blob = file, name = file.name;
+    const smaller = await shrinkImage(file);
+    if (smaller){ blob = smaller; type = 'image/jpeg'; name = name.replace(/\.(png|webp|jpe?g)$/i, '') + '.jpg'; }
+    if (blob.size > MAX){ toast('That file is ' + fmtSize(blob.size) + ' — the limit is 10 MB.'); return null; }
+    return { blob, name, type, size: blob.size };
+  }
+  async function upload(pending, meId){
+    const safe = pending.name.replace(/[^\w.\-]+/g, '_').slice(-80) || 'file';
+    const path = meId + '/' + (window.BNB_UUID ? window.BNB_UUID() : Date.now()) + '-' + safe;
+    const { error } = await bnbClient.storage.from('message-files').upload(path, pending.blob, { contentType: pending.type, upsert: false });
+    if (error) throw error;
+    return { path, name: pending.name, size: pending.size, type: pending.type };
+  }
+
+  // ---- Compose: 📎 button, hidden file input, picked-file chip ----
+  function composeExtrasHtml(p){
+    return '<button type="button" class="msg-attach-btn" id="' + p + '-attach" title="Attach a photo or file" aria-label="Attach a photo or file">📎</button>'
+      + '<input type="file" id="' + p + '-file" accept="' + ACCEPT + '" hidden>';
+  }
+  function pendingHtml(p){ return '<div class="msg-pending" id="' + p + '-pending" hidden></div>'; }
+  function drawPending(p, pending, onClear){
+    const box = document.getElementById(p + '-pending');
+    if (!box) return;
+    box.hidden = !pending;
+    if (!pending){ box.innerHTML = ''; return; }
+    box.innerHTML = '<span class="msg-pending-icon" aria-hidden="true">' + fileIcon(pending.type) + '</span>'
+      + '<span class="msg-pending-name">' + esc(pending.name) + '</span><span class="msg-pending-size">' + fmtSize(pending.size) + '</span>'
+      + '<button type="button" class="msg-pending-clear" aria-label="Remove attachment">×</button>';
+    box.querySelector('.msg-pending-clear').addEventListener('click', onClear);
+  }
+  // state: { get: () => pending, set: pending => … } — kept by the view so a
+  // re-render (auto-refresh) doesn't drop a picked file.
+  function wire(p, state){
+    const btn = document.getElementById(p + '-attach'), input = document.getElementById(p + '-file');
+    if (!btn || !input) return;
+    const clear = () => { state.set(null); drawPending(p, null); };
+    drawPending(p, state.get(), clear);
+    btn.addEventListener('click', () => input.click());
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      btn.disabled = true;
+      const pending = await prepare(file);
+      btn.disabled = false;
+      if (!pending) return;
+      state.set(pending);
+      drawPending(p, pending, clear);
+    });
+  }
+
+  // ---- Showing attachments in bubbles ----
+  function bubbleHtml(att){
+    if (!att || !att.path) return '';
+    return '<div class="msg-att" data-att="' + esc(encodeURIComponent(JSON.stringify(att))) + '"><span class="msg-att-loading">' + fileIcon(att.type) + ' ' + esc(att.name) + '</span></div>';
+  }
+  const urlCache = {}; // path -> { url, until }
+  async function signedUrls(paths){
+    const now = Date.now(), need = paths.filter(p => !(urlCache[p] && urlCache[p].until > now));
+    if (need.length){
+      const { data, error } = await bnbClient.storage.from('message-files').createSignedUrls(need, 3600);
+      if (!error) (data || []).forEach(d => { if (d.signedUrl) urlCache[d.path] = { url: d.signedUrl, until: now + 50 * 60 * 1000 }; });
+    }
+    const out = {};
+    paths.forEach(p => { if (urlCache[p]) out[p] = urlCache[p].url; });
+    return out;
+  }
+  async function fill(root){
+    if (!root) return;
+    const els = [...root.querySelectorAll('.msg-att[data-att]:not([data-filled])')];
+    if (!els.length) return;
+    const atts = els.map(el => { try { return JSON.parse(decodeURIComponent(el.getAttribute('data-att'))); } catch(e){ return null; } });
+    const urls = await signedUrls([...new Set(atts.filter(Boolean).map(a => a.path))]);
+    els.forEach((el, i) => {
+      const a = atts[i], url = a && urls[a.path];
+      el.setAttribute('data-filled', '1');
+      if (!a || !url){ el.innerHTML = '<span class="msg-att-missing">' + fileIcon(a && a.type) + ' ' + esc(a ? a.name : 'File') + ' (unavailable)</span>'; return; }
+      if (isImage(a.type)){
+        el.innerHTML = '<a class="msg-att-img" href="' + esc(url) + '" target="_blank" rel="noopener" title="Open full size">'
+          + '<img src="' + esc(url) + '" alt="' + esc(a.name) + '" loading="lazy"></a>';
+      } else {
+        const dl = url + (url.includes('?') ? '&' : '?') + 'download=' + encodeURIComponent(a.name);
+        el.innerHTML = '<a class="msg-att-file" href="' + esc(dl) + '" rel="noopener">'
+          + '<span class="msg-att-icon" aria-hidden="true">' + fileIcon(a.type) + '</span>'
+          + '<span class="msg-att-meta"><span class="msg-att-name">' + esc(a.name) + '</span><span class="msg-att-size">' + fmtSize(a.size || 0) + ' · Download</span></span></a>';
+      }
+    });
+    // Keep the thread pinned to the bottom once photos have their height.
+    root.querySelectorAll('.msg-att-img img').forEach(img => img.addEventListener('load', () => {
+      const thread = img.closest('.msg-thread');
+      if (thread && thread.scrollHeight - thread.scrollTop - thread.clientHeight < 400) thread.scrollTop = thread.scrollHeight;
+    }, { once: true }));
+  }
+
+  return { composeExtrasHtml, pendingHtml, wire, upload, bubbleHtml, fill, drawPending };
+})();
+
 /* ---------------- MESSAGE REACTIONS ----------------
    Shared by Inbox and Messages. Each bubble gets a small ☺ button that
    opens a row of six emoji; reactions show as chips under the bubble

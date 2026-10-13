@@ -65,7 +65,8 @@
       const who = m.sender_is_staff ? 'Staff' : 'Member';
       return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}" data-msg-id="${escAttr(m.id)}">
         <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))}</div>
-        <div class="msg-body">${esc(m.body)}</div>
+        ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
+        ${m.attachment && window.bnbAttach ? window.bnbAttach.bubbleHtml(m.attachment) : ''}
         ${reactions && window.bnbReactions ? window.bnbReactions.bubbleExtrasHtml(reactions[m.id], meId) : ''}
       </div>`;
     }).join('');
@@ -81,6 +82,37 @@
     return map;
   }
   let memberReactions = null, staffReactions = null;
+  // Picked-but-not-sent files, kept across re-renders (auto-refresh).
+  let memberPending = null;
+  const staffPending = {}; // member id -> picked file
+  const memberAttach = { get: () => memberPending, set: v => { memberPending = v; } };
+  const staffAttach = { get: () => staffPending[selectedMemberId] || null,
+                        set: v => { if (v) staffPending[selectedMemberId] = v; else delete staffPending[selectedMemberId]; } };
+  // Upload a picked file (if any) and send; returns true when sent.
+  async function sendWithAttachment(sendBtn, body, state, memberId){
+    const pending = state.get();
+    if (!body && !pending) return false;
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    sendBtn.disabled = true;
+    const label = sendBtn.textContent;
+    const fail = msg => {
+      sendBtn.disabled = false; sendBtn.textContent = label;
+      const t = document.getElementById('t-toast');
+      if (t){ t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
+      return false;
+    };
+    const args = { p_member_id: memberId, p_body: body };
+    if (pending){
+      sendBtn.textContent = 'Uploading…';
+      try { args.p_attachment = await window.bnbAttach.upload(pending, me.id); }
+      catch(err){ console.error('Upload failed:', err); return fail((err && err.message) || 'Could not upload that file — check your connection and try again.'); }
+    }
+    const { error } = await bnbClient.rpc('send_message', args);
+    if (error){ console.error('Supabase send_message failed:', error); return fail(error.message || 'Could not send — check your connection and try again.'); }
+    sendBtn.disabled = false; sendBtn.textContent = label;
+    state.set(null);
+    return true;
+  }
   function selfId(){ const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf(); return me ? me.id : null; }
 
   /* ---------------- MEMBER VIEW ---------------- */
@@ -129,7 +161,9 @@
       <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false, memberReactions, me.id)}</div>
       ${receiptLineHtml('msg-member-receipt')}
       ${typingLineHtml('msg-member-typing')}
+      ${window.bnbAttach ? window.bnbAttach.pendingHtml('msg-member') : ''}
       <div class="msg-compose">
+        ${window.bnbAttach ? window.bnbAttach.composeExtrasHtml('msg-member') : ''}
         <textarea class="msg-input" id="msg-member-input" placeholder="Write a message to staff..."></textarea>
         <button class="weight-submit" id="msg-member-send" type="button">Send</button>
       </div>
@@ -156,18 +190,9 @@
       if (draft.focused){ input.focus(); input.setSelectionRange(draft.start, draft.end); }
     }
 
+    if (window.bnbAttach){ window.bnbAttach.wire('msg-member', memberAttach); window.bnbAttach.fill(memberBody); }
     sendBtn.addEventListener('click', async () => {
-      const body = input.value.trim();
-      if (!body) return;
-      sendBtn.disabled = true;
-      const { error } = await bnbClient.rpc('send_message', { p_member_id: null, p_body: body });
-      sendBtn.disabled = false;
-      if (error){
-        console.error('Supabase send_message failed:', error);
-        const t = document.getElementById('t-toast');
-        if (t){ t.textContent = 'Could not send — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
-        return;
-      }
+      if (!await sendWithAttachment(sendBtn, input.value.trim(), memberAttach, null)) return;
       if (memberTyping) memberTyping.stop('member');
       input.value = '';
       renderMemberView();
@@ -249,7 +274,9 @@
         <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true, staffReactions, me.id)}</div>
         ${receiptLineHtml('msg-staff-receipt')}
         ${typingLineHtml('msg-staff-typing')}
+        ${window.bnbAttach ? window.bnbAttach.pendingHtml('msg-staff') : ''}
         <div class="msg-compose">
+          ${window.bnbAttach ? window.bnbAttach.composeExtrasHtml('msg-staff') : ''}
           <textarea class="msg-input" id="msg-staff-input" placeholder="Message ${escAttr(nameFor(selectedMemberId))}..."></textarea>
           <button class="weight-submit" id="msg-staff-send" type="button">Send</button>
         </div>
@@ -294,18 +321,9 @@
     const sendBtn = document.getElementById('msg-staff-send');
     if (sendBtn){
       const input = document.getElementById('msg-staff-input');
+      if (window.bnbAttach){ window.bnbAttach.wire('msg-staff', staffAttach); window.bnbAttach.fill(staffBody); }
       sendBtn.addEventListener('click', async () => {
-        const body = input.value.trim();
-        if (!body) return;
-        sendBtn.disabled = true;
-        const { error } = await bnbClient.rpc('send_message', { p_member_id: selectedMemberId, p_body: body });
-        sendBtn.disabled = false;
-        if (error){
-          console.error('Supabase send_message failed:', error);
-          const t = document.getElementById('t-toast');
-          if (t){ t.textContent = 'Could not send — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
-          return;
-        }
+        if (!await sendWithAttachment(sendBtn, input.value.trim(), staffAttach, selectedMemberId)) return;
         if (staffTyping) staffTyping.stop('staff');
         input.value = '';
         renderStaffView();
