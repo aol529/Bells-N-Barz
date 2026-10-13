@@ -2075,6 +2075,7 @@ header.site{
 .sched-scope .field-row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 .sched-scope .field-row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
 .sched-scope .field-hint{font-size:11px; color:var(--muted-2); margin-top:4px;}
+.sched-scope .sched-recurring-preview.bad{color:#e0736a;}
 .sched-scope .panel-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
 .sched-scope .roster-list{list-style:none; margin:0 0 10px; padding:0; border:1px solid var(--line-soft); border-radius:2px; max-height:220px; overflow-y:auto;}
 .sched-scope .roster-list li{padding:8px 12px; border-bottom:1px solid var(--line-soft); font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
@@ -2904,3 +2905,10 @@ body > *{flex-shrink:0;}
 .cw-ex{margin:8px 0 0;padding-left:18px;font-size:13.5px;}
 .cw-ex li{margin:3px 0;}
 .cw-ex span{color:var(--muted);}
+.admin-incoming{border:1px solid var(--accent);border-radius:4px;padding:12px 14px;margin:0 0 20px;background:var(--surface);}
+.admin-incoming-text{font-size:13.5px;margin-bottom:8px;}
+.admin-incoming-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.admin-incoming-row select{min-width:140px;max-width:100%;}
+.admin-load-workout{max-width:260px;background:var(--bg);border:1px solid var(--line-soft);color:var(--text);
+  font-family:inherit;font-size:13px;padding:8px 10px;border-radius:2px;cursor:pointer;}
+#coach-section-program .crud-actions{flex-wrap:wrap;}

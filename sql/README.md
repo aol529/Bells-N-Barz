@@ -360,7 +360,17 @@
     coach who saved it; only staff can add one. Run after 60. Safe to
     re-run.
 
-62. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+62. **62-class-booking.sql** — class booking through the server
+    (`book_class` / `cancel_class_booking`, real "X/12 booked" counts via
+    `class_session_counts`; members can no longer write `bookings`
+    directly), automatic waitlist promotion, recurring classes
+    (`ensure_class_sessions` makes sessions 3 weeks ahead from a class's
+    "Repeats" text), coach/member booking notifications, and 24-hour
+    reminders (every 15 min via pg_cron if available, else on app open).
+    Run after 61. Safe to re-run — and re-run it after gym.sql, which
+    would restore the old member write policies on `bookings`.
+
+63. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

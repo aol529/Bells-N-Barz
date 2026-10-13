@@ -276,6 +276,30 @@
       if (typeof renderBody === 'function') renderBody();
     }
   }
+  // How full each class is. Members can only read their own bookings,
+  // so the counts come from class_session_counts() (sql/62), which also
+  // gives the signed-in member's place on a waitlist.
+  let sessionCounts = null; // sessionId -> { confirmed, waitlisted, myPlace }; null until loaded
+  async function refreshSessionCounts(){
+    const { data, error } = await bnbClient.rpc('class_session_counts');
+    if (error) { console.warn('Supabase class_session_counts failed:', error); return; }
+    sessionCounts = {};
+    (data || []).forEach(r=>{ sessionCounts[r.session_id] = { confirmed: r.confirmed, waitlisted: r.waitlisted, myPlace: r.my_place }; });
+    if (typeof renderBody === 'function') renderBody();
+  }
+  // Creates recurring classes' upcoming sessions (sql/62). Fails quietly
+  // before sign-in.
+  async function ensureRecurringSessions(){
+    const { data, error } = await bnbClient.rpc('ensure_class_sessions');
+    if (error) return;
+    if (data) await refreshSessionsFromSupabase();
+  }
+  async function afterBookingChange(){
+    await Promise.all([refreshBookingsFromSupabase(), refreshSessionCounts()]);
+    renderBody();
+    if (activeRosterSessionId && document.getElementById('sched-session-panel-backdrop').classList.contains('show')) renderRosterLists();
+  }
+
   async function refreshSlotsFromSupabase(){
     const { data, error } = await bnbClient.from('slots').select('*');
     if (error) { console.error('Supabase load slots failed:', error); return; }
@@ -312,7 +336,12 @@
     return (sess.capacityOverride != null && sess.capacityOverride !== '') ? Number(sess.capacityOverride) : (cls ? cls.capacity : 0);
   }
   function sessionConfirmedCount(sessId){
+    if (sessionCounts) return sessionCounts[sessId] ? sessionCounts[sessId].confirmed : 0;
     return bookings.filter(b=>b.sessionId===sessId && b.status==='confirmed').length;
+  }
+  function myWaitlistPlace(sessId){
+    const c = sessionCounts && sessionCounts[sessId];
+    return c && c.myPlace ? c.myPlace : null;
   }
   function sessionWaitlist(sessId){
     return bookings.filter(b=>b.sessionId===sessId && b.status==='waitlisted').sort((a,b)=> a.bookedAt < b.bookedAt ? -1 : 1);
@@ -555,7 +584,8 @@
         html += '<div class="cap-meter"><i class="'+(full?'full':'')+'" style="width:'+pct+'%;"></i></div>';
         html += '<div class="sc-actions">';
         if (myBooking){
-          html += '<span class="status-pill '+myBooking.status+'">'+(myBooking.status==='confirmed'?'Booked':'Waitlisted')+'</span>';
+          const place = myBooking.status==='waitlisted' ? myWaitlistPlace(s.id) : null;
+          html += '<span class="status-pill '+myBooking.status+'">'+(myBooking.status==='confirmed'?'Booked':'Waitlisted'+(place?' · #'+place:''))+'</span>';
           html += '<button class="row-actions" data-action="member-cancel-booking" data-id="'+myBooking.id+'" style="all:unset;cursor:pointer;color:var(--muted);font-size:11.5px;font-family:\'IBM Plex Mono\',monospace;text-decoration:underline;">Cancel</button>';
         } else {
           html += '<button class="btn2 primary" data-action="member-book-session" data-id="'+s.id+'">'+(full?'Join Waitlist':'Book')+'</button>';
@@ -601,7 +631,7 @@
       html += '<table class="admin-table"><tr><th>Class</th><th>Date</th><th>Time</th><th>Status</th><th></th></tr>';
       myClassBookings.sort((a,b)=> (a.s.date+a.s.startTime) < (b.s.date+b.s.startTime) ? -1 : 1).forEach(x=>{
         const cls = getClass(x.s.classId);
-        html += '<tr><td>'+(cls?esc(cls.name):'—')+'</td><td>'+fmtDate(x.s.date)+'</td><td>'+fmtTime(x.s.startTime)+'</td><td><span class="status-pill '+x.b.status+'">'+x.b.status+'</span></td><td><div class="row-actions"><button data-action="member-cancel-booking" data-id="'+x.b.id+'">Cancel</button></div></td></tr>';
+        html += '<tr><td>'+(cls?esc(cls.name):'—')+'</td><td>'+fmtDate(x.s.date)+'</td><td>'+fmtTime(x.s.startTime)+'</td><td><span class="status-pill '+x.b.status+'">'+x.b.status+(x.b.status==='waitlisted'&&myWaitlistPlace(x.s.id)?' #'+myWaitlistPlace(x.s.id):'')+'</span></td><td><div class="row-actions"><button data-action="member-cancel-booking" data-id="'+x.b.id+'">Cancel</button></div></td></tr>';
       });
       html += '</table>';
     }
@@ -1605,7 +1635,7 @@
     if (!classes.length){ html += '<div class="empty-msg">No classes yet.</div>'; return html; }
     html += '<table class="admin-table"><tr><th>Name</th><th>Instructor</th><th>Capacity</th><th>Duration</th><th>Recurring</th><th>Status</th><th></th></tr>';
     classes.forEach(c=>{
-      html += '<tr><td>'+esc(c.name)+'</td><td>'+esc(trainerName(c.instructorId))+'</td><td>'+c.capacity+'</td><td>'+c.duration+' min</td><td>'+(c.recurring||'—')+'</td><td><span class="status-pill '+c.status+'">'+c.status+'</span></td><td><div class="row-actions"><button data-action="edit-class" data-id="'+c.id+'">Edit</button><button data-action="toggle-archive-class" data-id="'+c.id+'">'+(c.status==='active'?'Archive':'Reactivate')+'</button><button class="del" data-action="delete-class" data-id="'+c.id+'">Delete</button></div></td></tr>';
+      html += '<tr><td>'+esc(c.name)+'</td><td>'+esc(trainerName(c.instructorId))+'</td><td>'+c.capacity+'</td><td>'+c.duration+' min</td><td>'+(c.recurring ? esc(describeRecurring(c.recurring) || c.recurring) : '—')+'</td><td><span class="status-pill '+c.status+'">'+c.status+'</span></td><td><div class="row-actions"><button data-action="edit-class" data-id="'+c.id+'">Edit</button><button data-action="toggle-archive-class" data-id="'+c.id+'">'+(c.status==='active'?'Archive':'Reactivate')+'</button><button class="del" data-action="delete-class" data-id="'+c.id+'">Delete</button></div></td></tr>';
     });
     html += '</table>';
     return html;
@@ -1668,7 +1698,7 @@
   /* ============================================================
      ACTIONS
      ============================================================ */
-  function memberBookSession(sessId){
+  async function memberBookSession(sessId){
     if (memberBookingForSession(sessId, selfMemberId)){ toast('Already booked into this session.'); return; }
     // Warn, don't block, same "trust the coach's judgment" pattern as the
     // zero-credits check on 1-on-1 booking below — an outstanding balance
@@ -1679,21 +1709,20 @@
     if (me && Number(me.balance) > 0){
       if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
     }
-    const sess = getSession(sessId); if (!sess) return;
-    const cap = sessionCapacity(sess);
-    const confirmed = sessionConfirmedCount(sessId);
-    const status = confirmed < cap ? 'confirmed' : 'waitlisted';
-    bookings.push({ id: uid('b'), sessionId: sessId, userId: selfMemberId, status, bookedAt: new Date().toISOString() });
-    saveBookings();
-    toast(status === 'confirmed' ? 'Booked!' : 'Session full — added to waitlist.');
-    renderBody();
+    // book_class() (sql/62) checks capacity on the server, so two people
+    // can't both take the last spot.
+    const { data: status, error } = await bnbClient.rpc('book_class', { p_session_id: sessId, p_member_id: selfMemberId });
+    if (error){ toast(error.message || 'Could not book that class.'); afterBookingChange(); return; }
+    toast(status === 'confirmed' ? 'Booked!' : 'Class full — you\'re on the waitlist. We\'ll book you in if a spot opens.');
+    afterBookingChange();
   }
-  function memberCancelBooking(bookingId){
+  async function memberCancelBooking(bookingId){
     const b = bookings.find(x=>x.id===bookingId); if (!b) return;
-    b.status = 'cancelled';
-    saveBookings();
-    toast('Booking cancelled.');
-    renderBody();
+    if (!confirm(b.status === 'waitlisted' ? 'Leave the waitlist for this class?' : 'Cancel your spot on this class?')) return;
+    const { error } = await bnbClient.rpc('cancel_class_booking', { p_booking_id: bookingId });
+    if (error){ toast(error.message || 'Could not cancel that booking.'); return; }
+    toast(b.status === 'waitlisted' ? 'Removed from the waitlist.' : 'Booking cancelled.');
+    afterBookingChange();
   }
   // Booking and cancelling go through book_pt_slot() / cancel_pt_booking()
   // (sql/42), which do the booking row, slot status, and credit change in
@@ -1764,6 +1793,58 @@
   // A coach/staff cancel always refunds a spent credit (sql/42).
   function cancelPtTrainer(ptId){ cancelPtBooking(ptId); }
 
+  // Reads a class's Recurring text the same way the server does
+  // (recurring_slots() in sql/62): comma-separated groups of days then a
+  // time — "Mon/Wed/Fri 06:00", "Tue-Thu 5:30pm", "Weekdays 7am, Sat 9am".
+  // Returns [{ dow: 1 (Mon)..7 (Sun), time: 'HH:MM' }].
+  const DAY_KEYS = ['mon','tue','wed','thu','fri','sat','sun'];
+  function parseRecurring(text){
+    const out = [], seen = {};
+    String(text || '').toLowerCase().split(/\s*[,;]\s*/).forEach(grp=>{
+      const m = grp.match(/(\d{1,2})(?:[:.](\d{2}))?\s*([ap])?\.?m?\.?\s*$/);
+      if (!m) return;
+      let hh = Number(m[1]); const mm = Number(m[2] || 0);
+      if (m[3] === 'p' && hh < 12) hh += 12;
+      if (m[3] === 'a' && hh === 12) hh = 0;
+      if (hh > 23 || mm > 59) return;
+      let dpart = grp.replace(/\d.*$/, '');
+      const days = [];
+      if (/(daily|every ?day)/.test(dpart)) days.push(1,2,3,4,5,6,7);
+      if (/weekday/.test(dpart)) days.push(1,2,3,4,5);
+      if (/weekend/.test(dpart)) days.push(6,7);
+      const range = /(mon|tue|wed|thu|fri|sat|sun)[a-z]*\s*(?:-|–|to)\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*/g;
+      let r;
+      while ((r = range.exec(dpart))){
+        let i = DAY_KEYS.indexOf(r[1]) + 1; const b = DAY_KEYS.indexOf(r[2]) + 1;
+        for (;;){ days.push(i); if (i === b) break; i = i % 7 + 1; }
+      }
+      dpart = dpart.replace(range, ' ');
+      (dpart.match(/(mon|tue|wed|thu|fri|sat|sun)/g) || []).forEach(d=> days.push(DAY_KEYS.indexOf(d) + 1));
+      const time = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+      days.forEach(d=>{ const k = d + ' ' + time; if (!seen[k]){ seen[k] = 1; out.push({ dow: d, time }); } });
+    });
+    return out.sort((a,b)=> a.time === b.time ? a.dow - b.dow : (a.time < b.time ? -1 : 1));
+  }
+  function describeRecurring(text){
+    const slots = parseRecurring(text);
+    if (!slots.length) return '';
+    const names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const byTime = {};
+    slots.forEach(s=> (byTime[s.time] = byTime[s.time] || []).push(s.dow));
+    return Object.keys(byTime).map(t=> byTime[t].sort().map(d=>names[d-1]).join(', ') + ' at ' + fmtTime(t)).join('; ');
+  }
+  function renderRecurringPreview(){
+    const input = document.getElementById('sched-class-recurring');
+    const el = document.getElementById('sched-class-recurring-preview');
+    if (!input || !el) return;
+    const text = input.value.trim();
+    const desc = describeRecurring(text);
+    el.classList.toggle('bad', !!text && !desc);
+    el.textContent = !text ? 'Leave blank for one-off sessions you add by hand.'
+      : desc ? 'Runs ' + desc + '. Sessions are added 3 weeks ahead automatically.'
+      : 'Couldn\'t read that — try e.g. "Mon/Wed/Fri 06:00" or "Tue-Thu 5:30pm".';
+  }
+
   function saveClass(){
     const name = document.getElementById('sched-class-name').value.trim();
     if (!name){ toast('Give the class a name.'); return; }
@@ -1782,9 +1863,9 @@
     } else {
       classes.push(Object.assign({ id: uid('c') }, data));
     }
-    saveClasses();
+    saveClasses().then(ensureRecurringSessions);
     closeClassPanel();
-    toast('Class saved.');
+    toast(parseRecurring(data.recurring).length && data.status === 'active' ? 'Class saved — its sessions for the next 3 weeks are being added.' : 'Class saved.');
     renderBody();
   }
   function openClassPanel(id){
@@ -1800,11 +1881,12 @@
     document.getElementById('sched-class-capacity').value = c ? c.capacity : 10;
     document.getElementById('sched-class-duration').value = c ? c.duration : 45;
     document.getElementById('sched-class-recurring').value = c ? c.recurring : '';
+    renderRecurringPreview();
     document.getElementById('sched-class-description').value = c ? c.description : '';
     document.getElementById('sched-class-panel-backdrop').classList.add('show');
   }
   function closeClassPanel(){ document.getElementById('sched-class-panel-backdrop').classList.remove('show'); editingClassId = null; }
-  function toggleArchiveClass(id){ const c = getClass(id); if (c){ c.status = c.status==='active' ? 'archived' : 'active'; saveClasses(); renderBody(); } }
+  function toggleArchiveClass(id){ const c = getClass(id); if (c){ c.status = c.status==='active' ? 'archived' : 'active'; saveClasses().then(ensureRecurringSessions); renderBody(); } }
   function deleteClass(id){
     if (!confirm('Delete this class? Existing sessions referencing it will remain but show as orphaned.')) return;
     classes = classes.filter(c=>c.id!==id); saveClasses(); renderBody();
@@ -1832,9 +1914,11 @@
     if (!confirm('Cancel this session? All bookings for it will be cancelled too.')) return;
     const s = getSession(id); if (!s) return;
     s.status = 'cancelled';
-    bookings.filter(b=>b.sessionId===id).forEach(b=> b.status='cancelled');
-    saveSessions(); saveBookings();
-    toast('Session cancelled.');
+    bookings.filter(b=>b.sessionId===id && (b.status==='confirmed' || b.status==='waitlisted')).forEach(b=> b.status='cancelled');
+    // Session first: everyone booked is notified as each booking is
+    // cancelled, and the message reads right once the class is cancelled.
+    saveSessions().then(()=> saveBookings()).then(afterBookingChange);
+    toast('Session cancelled — everyone booked has been notified.');
     renderBody();
   }
 
@@ -1867,7 +1951,7 @@
     if (sessionConfirmedCount(activeRosterSessionId) >= cap){ toast('Session is at capacity — cancel or remove a confirmed booking first.'); return; }
     const b = bookings.find(x=>x.id===bookingId); if (!b) return;
     b.status = 'confirmed';
-    saveBookings();
+    saveBookings().then(afterBookingChange);
     toast('Promoted from waitlist.');
     renderRosterLists();
     renderBody();
@@ -1875,16 +1959,17 @@
   function markNoShow(bookingId){
     const b = bookings.find(x=>x.id===bookingId); if (!b) return;
     b.status = 'no-show';
-    saveBookings();
+    saveBookings().then(afterBookingChange);
     renderRosterLists();
     renderBody();
   }
-  function rosterRemove(bookingId){
+  // Through cancel_class_booking() so a freed spot goes to the waitlist.
+  async function rosterRemove(bookingId){
     const b = bookings.find(x=>x.id===bookingId); if (!b) return;
-    b.status = 'cancelled';
-    saveBookings();
-    renderRosterLists();
-    renderBody();
+    const { data: moved, error } = await bnbClient.rpc('cancel_class_booking', { p_booking_id: bookingId });
+    if (error){ toast(error.message || 'Could not remove that booking.'); return; }
+    toast(moved ? 'Removed — the next person on the waitlist is now booked in.' : 'Removed.');
+    afterBookingChange();
   }
 
   /* ---------------- WIRE UP ---------------- */
@@ -1962,6 +2047,7 @@
   /* ---------------- STATIC PANEL WIRING (once) ---------------- */
   document.getElementById('sched-class-cancel').addEventListener('click', closeClassPanel);
   document.getElementById('sched-class-save').addEventListener('click', saveClass);
+  document.getElementById('sched-class-recurring').addEventListener('input', renderRecurringPreview);
   document.getElementById('sched-class-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-class-panel-backdrop') closeClassPanel(); });
 
   document.getElementById('sched-slot-cancel').addEventListener('click', ()=> document.getElementById('sched-slot-panel-backdrop').classList.remove('show'));
@@ -1994,7 +2080,9 @@
 
   // Ratings are refetched on every tab open (not just page load) since
   // the module loads before sign-in, when there's no one to fetch for.
-  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); };
+  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); ensureRecurringSessions(); refreshSessionCounts(); };
+  // A booking notification arrived (shell.js) — pull the latest.
+  window.schedRefreshBookings = function(){ refreshSlotsFromSupabase(); refreshPtBookingsFromSupabase(); afterBookingChange(); };
   // Booking/Roster data refreshes on its own whenever a schedule action fires,
   // but Billing invoice changes (e.g. marking one paid) don't call back into
   // this module — so the Dashboard's "unpaid invoices" line can go stale
@@ -2013,6 +2101,6 @@
       renderCoachDashboard();
     }, 200);
   });
-  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); };
+  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); ensureRecurringSessions(); };
 
 })();

@@ -780,7 +780,10 @@
   // can refresh the picker's member list each time Program Builder is
   // opened — same cross-closure export pattern already used by
   // mlsOnTabShown/schedOnTabShown/bnbAccountabilityOnTabShown.
-  window.bnbProgramBuilderOnShown = populateAdminClientPicker;
+  window.bnbProgramBuilderOnShown = function(){
+    populateAdminClientPicker();
+    fillAdminLoadWorkout();
+  };
 
   async function loadAdminProgramFor(ownerId){
     adminOwnerId = ownerId;
@@ -2898,6 +2901,99 @@
     showToast('Loaded into ' + who + ' — ' + dayLabel);
   }
 
+  /* Send to Program Builder: opens Program Builder with a bar on top —
+     pick the client (the usual picker) and the day, then add the variant
+     as a new block or replace that day with it. "8 x 3 (Heavy)" splits
+     into Sets 8 / Reps "3 (Heavy)"; anything else goes into Reps as is. */
+  function workoutVariantToBlock(variant, title){
+    return {
+      name: variant.name && variant.name !== 'Workout' ? title + ' — ' + variant.name : title,
+      exercises: (variant.exercises || []).map(ex => {
+        const m = String(ex.presc || '').match(/^\s*(\d+)\s*[x×]\s*(.+)$/i);
+        return { name: ex.name, sets: m ? m[1] : '', reps: m ? m[2].trim() : (ex.presc || ''),
+                 rest:'', tempo:'', equipment:'', alternates:'' };
+      })
+    };
+  }
+  function sendWorkoutToProgramBuilder(variants, title, vIdx){
+    vIdx = vIdx || 0;
+    let variant = variants[vIdx];
+    const btn = document.querySelector('#coach-section-switch [data-coach-section="program"]');
+    if (btn) btn.click();
+    const host = document.getElementById('coach-section-program');
+    if (!host) return;
+    let bar = document.getElementById('admin-incoming');
+    if (!bar){
+      bar = document.createElement('div');
+      bar.id = 'admin-incoming';
+      bar.className = 'admin-incoming';
+      const picker = document.getElementById('admin-client-picker');
+      (picker ? picker.closest('.field') : host.firstChild).after(bar);
+    }
+    const labelOf = v => v.name && v.name !== 'Workout' ? title + ' — ' + v.name : title;
+    const countOf = v => v.exercises.length + ' exercise' + (v.exercises.length === 1 ? '' : 's');
+    bar.innerHTML = `
+      <div class="admin-incoming-text">${variants.length > 1
+        ? `Add <b>${esc(title)}</b> to the program for the client picked above — which version, and on which day?`
+        : `Add <b>${esc(labelOf(variant))}</b> (${countOf(variant)}) to the program for the client picked above, on`}</div>
+      <div class="admin-incoming-row">
+        ${variants.length > 1 ? `<select id="admin-incoming-variant">${variants.map((v, i) => `<option value="${i}"${i === vIdx ? ' selected' : ''}>${esc(v.name)} (${countOf(v)})</option>`).join('')}</select>` : ''}
+        <select id="admin-incoming-day">${DAY_ORDER.map(d => `<option value="${d}"${d === adminDay ? ' selected' : ''}>${esc(DAY_META[d].title.split('—')[0].trim())}</option>`).join('')}</select>
+        <button class="btn2 primary" type="button" data-inc="add">Add as New Block</button>
+        <button class="btn2" type="button" data-inc="replace">Replace That Day</button>
+        <button class="btn2" type="button" data-inc="cancel">Cancel</button>
+      </div>`;
+    const daySel = bar.querySelector('#admin-incoming-day');
+    const varSel = bar.querySelector('#admin-incoming-variant');
+    if (varSel) varSel.onchange = ()=>{ variant = variants[+varSel.value]; };
+    daySel.onchange = ()=>{ adminDay = daySel.value; renderAdminDayTabs(); renderAdminBlocks(); };
+    daySel.onchange();
+    bar.querySelectorAll('[data-inc]').forEach(b => b.onclick = ()=>{
+      const act = b.dataset.inc;
+      if (act === 'cancel'){ bar.remove(); return; }
+      const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+      if (!me || !adminOwnerId){ showToast('Sign in and pick a client first.'); return; }
+      const day = daySel.value;
+      const picker = document.getElementById('admin-client-picker');
+      const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent : 'this client';
+      const dayLabel = DAY_META[day].title.split('—')[0].trim();
+      const block = workoutVariantToBlock(variant, title);
+      const label = labelOf(variant);
+      if (act === 'replace'){
+        if ((adminProgramData[day] || []).length &&
+            !confirm('Replace everything on ' + who + "'s " + dayLabel + ' with "' + label + '"?')) return;
+        adminProgramData[day] = [block];
+      } else {
+        (adminProgramData[day] = adminProgramData[day] || []).push(block);
+      }
+      adminDay = day;
+      saveAdminProgram(); renderAdminDayTabs(); renderAdminBlocks();
+      bar.remove();
+      showToast((act === 'replace' ? 'Replaced ' : 'Added to ') + who + "'s " + dayLabel);
+    });
+    bar.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  // Program Builder's "Load a saved workout…" dropdown: every variant of
+  // the coach's Workouts to Try, grouped by workout. Picking one opens the
+  // same add/replace bar as Send to Program Builder.
+  async function fillAdminLoadWorkout(){
+    const sel = document.getElementById('admin-load-workout');
+    if (!sel) return;
+    await refreshCoachWorkouts();
+    const list = coachWorkouts || [];
+    sel.innerHTML = '<option value="">' + (list.length ? 'Load a saved workout…' : 'No saved workouts yet (Workouts to Try)') + '</option>' +
+      list.map((w, wIdx) => '<optgroup label="' + esc(w.title) + '">' +
+        (w.variants || []).map((v, vIdx) => '<option value="' + wIdx + ':' + vIdx + '">' + esc(v.name) + ' (' + (v.exercises || []).length + ')</option>').join('') +
+        '</optgroup>').join('');
+    sel.onchange = ()=>{
+      const [wIdx, vIdx] = sel.value.split(':').map(Number);
+      const w = list[wIdx];
+      sel.value = '';
+      if (w && w.variants[vIdx]) sendWorkoutToProgramBuilder(w.variants, w.title, vIdx);
+    };
+  }
+
   let coachWorkouts = null;       // null = not loaded yet
   let coachWorkoutsError = '';
   let coachWorkoutEditing = null; // id being edited, or null for a new one
@@ -2940,7 +3036,7 @@
             ${(w.variants || []).map((v, vIdx) => `
               <div class="cw-variant">
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
-                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
+                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
                 <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
               </div>`).join('')}
           </div>`).join('')}
@@ -2952,6 +3048,7 @@
         <div class="cw-preview" id="cw-preview"></div>
         <div class="crud-actions" style="padding-left:0;">
           <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
+          <button class="btn2" id="cw-save-load" type="button">Save &amp; Load to Program Builder</button>
           ${editing ? '<button class="btn2" id="cw-cancel" type="button">Cancel</button>' : ''}
         </div>
       </div>`;
@@ -2968,7 +3065,7 @@
     textEl.oninput = drawPreview;
     drawPreview();
 
-    body.querySelector('#cw-save').onclick = async (e)=>{
+    const saveWorkout = async (btn, thenLoad)=>{
       const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
       if (!me){ showToast('Sign in to save workouts.'); return; }
       const title = titleEl.value.trim();
@@ -2976,17 +3073,20 @@
       if (!title){ showToast('Give it a title first.'); titleEl.focus(); return; }
       if (!variants.length){ showToast('No exercises found — one per line, like "Back Squats: 3 x 8".'); textEl.focus(); return; }
       const row = { title, source: textEl.value.trim(), variants, updated_at: new Date().toISOString() };
-      e.target.disabled = true;
+      btn.disabled = true;
       const { error } = editing
         ? await bnbClient.from('coach_workouts').update(row).eq('id', editing.id)
         : await bnbClient.from('coach_workouts').insert([{ ...row, owner_id: me.id }]);
-      e.target.disabled = false;
+      btn.disabled = false;
       if (error){ console.error('Supabase save coach_workouts failed:', error); showToast('Couldn’t save — ' + (error.message || 'try again')); return; }
       coachWorkoutEditing = null;
-      showToast(editing ? 'Workout updated' : 'Workout saved');
       await refreshCoachWorkouts();
       renderCoachWorkouts();
+      if (thenLoad) sendWorkoutToProgramBuilder(variants, title, 0);
+      else showToast(editing ? 'Workout updated' : 'Workout saved');
     };
+    body.querySelector('#cw-save').onclick = e => saveWorkout(e.currentTarget, false);
+    body.querySelector('#cw-save-load').onclick = e => saveWorkout(e.currentTarget, true);
     const cancel = body.querySelector('#cw-cancel');
     if (cancel) cancel.onclick = ()=>{ coachWorkoutEditing = null; renderCoachWorkouts(); };
 
@@ -2997,6 +3097,7 @@
         btn.onclick = async ()=>{
           const act = btn.dataset.cw;
           if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
+          if (act === 'send') return sendWorkoutToProgramBuilder(w.variants, w.title, +btn.dataset.v);
           if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' }); body.querySelector('#cw-title').focus({ preventScroll:true }); return; }
           if (act === 'delvar'){
             const v = w.variants[+btn.dataset.v];

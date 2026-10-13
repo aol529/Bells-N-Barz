@@ -998,7 +998,10 @@ async function loadNotificationList(){
         // A few links point at a sub-section inside a tab rather than a
         // tab of its own — e.g. Meal Plan lives inside Me (sql/45's
         // notifications use link_tab 'mealplan').
-        const SUB_SECTION_LINKS = { mealplan: ['me', '#me-section-switch [data-me-section="mealplan"]'] };
+        const SUB_SECTION_LINKS = {
+          mealplan: ['me', '#me-section-switch [data-me-section="mealplan"]'],
+          roster: ['coach', '#coach-section-switch [data-coach-section="roster"]']
+        };
         const sub = SUB_SECTION_LINKS[link];
         window.switchTab(sub ? sub[0] : link);
         if (sub){ const b = document.querySelector(sub[1]); if (b) b.click(); }
@@ -1020,6 +1023,17 @@ async function checkCoachRatingNudge(){
   refreshUnreadCount();
 }
 
+/* ---- Booking reminders (sql/62) ----
+   Reminders for classes and 1-on-1s within the next 24 hours. pg_cron
+   sends these every 15 minutes where it's switched on; this covers it
+   where it isn't. Safe for anyone to call — it only tells each person
+   about their own bookings, and only once. */
+async function checkBookingReminders(){
+  const { data, error } = await bnbClient.rpc('send_booking_reminders');
+  if (error) { console.warn('Supabase booking reminders failed:', error); return; }
+  if (data) refreshUnreadCount();
+}
+
 function refreshNotificationBell(signedIn){
   if (!notifBell) return;
   notifBell.style.display = signedIn ? '' : 'none';
@@ -1033,6 +1047,7 @@ function refreshNotificationBell(signedIn){
   checkBirthdaysAndNotify();
   checkLunarRemindersAndNotify();
   checkCoachRatingNudge();
+  checkBookingReminders();
   // Only real polling loop in this codebase (confirmed none existed
   // before) — justified because a notification feature that only
   // updates on login/logout would feel broken while just sitting open.
@@ -1782,6 +1797,9 @@ createIntervalTimer(
     });
   }
 
+  // Booking notifications (sql/62) also get the chime and pop-up.
+  const BOOKING_TYPES = ['class_booked', 'class_cancelled', 'waitlist_promoted', 'pt_booked', 'pt_cancelled', 'booking_reminder'];
+
   // Which screen shows each kind of message (notification link_tab).
   function viewFor(link){
     if (link === 'inbox') return { el: document.getElementById('tab-inbox'), active: el => el.classList.contains('active'), refresh: window.bnbInboxOnTabShown };
@@ -1795,9 +1813,9 @@ createIntervalTimer(
   }
   function openConversation(link){
     if (typeof window.switchSite === 'function') window.switchSite('gym');
-    if (link === 'coach'){
+    if (link === 'coach' || link === 'roster'){
       switchTab('coach');
-      const b = document.querySelector('#coach-section-switch [data-coach-section="messages"]');
+      const b = document.querySelector('#coach-section-switch [data-coach-section="' + (link === 'roster' ? 'roster' : 'messages') + '"]');
       if (b) b.click();
     } else {
       switchTab(link);
@@ -1814,7 +1832,8 @@ createIntervalTimer(
       popup.setAttribute('role', 'status');
       document.body.appendChild(popup);
     }
-    popup.innerHTML = '<span class="msg-alert-icon" aria-hidden="true">💬</span><span class="msg-alert-text"></span><span class="msg-alert-go" aria-hidden="true">Open →</span>';
+    const icon = BOOKING_TYPES.includes(n.type) ? '📅' : '💬';
+    popup.innerHTML = '<span class="msg-alert-icon" aria-hidden="true">' + icon + '</span><span class="msg-alert-text"></span><span class="msg-alert-go" aria-hidden="true">Open →</span>';
     popup.querySelector('.msg-alert-text').textContent = n.message;
     popup.onclick = () => { popup.classList.remove('show'); openConversation(n.link_tab); };
     popup.classList.add('show');
@@ -1840,6 +1859,14 @@ createIntervalTimer(
     if (typeof refreshUnreadCount === 'function') refreshUnreadCount();
     if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
     const MESSAGE_TYPES = ['new_direct_message', 'new_message', 'new_group_message', 'group_added'];
+    if (BOOKING_TYPES.includes(n.type)){
+      // Bookings changed — redraw Booking/Coach if open, then alert.
+      if (typeof window.schedRefreshBookings === 'function') window.schedRefreshBookings();
+      chime();
+      showPopup(n);
+      systemNotify(n);
+      return;
+    }
     if (!MESSAGE_TYPES.includes(n.type)) return;
     const v = viewFor(n.link_tab);
     const looking = onScreen(n.link_tab);

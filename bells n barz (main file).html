@@ -3084,7 +3084,7 @@
 <!-- ================= ADMIN: SESSIONS (moved from Booking's old Admin view) ================= -->
 <section class="admin-section" id="tab-sessions">
   <div class="day-head"><h2>Sessions — Classes &amp; Rosters</h2><span class="day-sub">Class management, trainer availability, and session rosters</span></div>
-  <div class="admin-notice">Classes, sessions and bookings save to the database. Sessions are created manually (no auto-generation from recurring templates yet). Waitlist promotion is manual only.</div>
+  <div class="admin-notice">Classes, sessions and bookings save to the database. A class with "Repeats" set (e.g. Mon/Wed/Fri 06:00) gets its sessions added 3 weeks ahead automatically; you can still add one-off sessions below. When someone cancels, the first person on the waitlist is booked in and told.</div>
   <div id="admin-sessions-body"></div>
 </section>
 
@@ -3273,6 +3273,7 @@
     <div class="crud-actions" style="padding-left:0;">
       <button class="btn2 primary" id="admin-add-block">+ Add Block</button>
       <button class="btn2" id="admin-reset-day">Reset This Day to Manual Default</button>
+      <select id="admin-load-workout" class="admin-load-workout" aria-label="Load one of your saved Workouts to Try"><option value="">Load a saved workout…</option></select>
     </div>
 
     <div class="divider-block">
@@ -3419,7 +3420,7 @@
         <div class="field"><label>Capacity</label><input type="number" min="1" id="sched-class-capacity"></div>
         <div class="field"><label>Duration (min)</label><input type="number" min="5" id="sched-class-duration"></div>
       </div>
-      <div class="field"><label>Recurring (day-of-week + time)</label><input type="text" id="sched-class-recurring" placeholder="e.g. Mon/Wed/Fri 06:00"></div>
+      <div class="field"><label>Repeats (days + time)</label><input type="text" id="sched-class-recurring" placeholder="e.g. Mon/Wed/Fri 06:00, Sat 9am"><div class="field-hint sched-recurring-preview" id="sched-class-recurring-preview"></div></div>
       <div class="field"><label>Description</label><textarea id="sched-class-description" rows="3"></textarea></div>
       <div class="panel-actions">
         <button class="btn2" id="sched-class-cancel">Cancel</button>
