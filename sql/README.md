@@ -407,7 +407,13 @@
     with their place) and moves leftover waitlist places to 'expired'
     once the class starts, telling them. Run after 67. Safe to re-run.
 
-69. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+69. **69-coach-agenda.sql** — a "Tomorrow" summary for each coach, once
+    a day from 6 PM gym time: their booked 1-on-1s (with notes), classes
+    (fill and waitlist) and open slots, in time order
+    (`send_coach_agendas`, called from `send_booking_reminders`;
+    `coach_agenda_sent` keeps it to once). Run after 68. Safe to re-run.
+
+70. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
