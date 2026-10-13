@@ -56,17 +56,32 @@
            d.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
   }
 
-  function messageListHtml(messages, meIsStaff){
+  // reactions: { messageId: [{user_id, emoji}] }, or null before sql/58
+  // (then bubbles get no reaction button).
+  function messageListHtml(messages, meIsStaff, reactions, meId){
     if (!messages.length) return '<div class="empty-msg">No messages yet — say hello.</div>';
     return messages.map(m => {
       const mine = m.sender_is_staff === meIsStaff;
       const who = m.sender_is_staff ? 'Staff' : 'Member';
-      return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}">
+      return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}" data-msg-id="${escAttr(m.id)}">
         <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))}</div>
         <div class="msg-body">${esc(m.body)}</div>
+        ${reactions && window.bnbReactions ? window.bnbReactions.bubbleExtrasHtml(reactions[m.id], meId) : ''}
       </div>`;
     }).join('');
   }
+  // Reactions for a set of messages, grouped by message; null if the
+  // table isn't there yet (sql/58).
+  async function loadReactions(ids){
+    if (!ids.length) return {};
+    const { data, error } = await bnbClient.from('message_reactions').select('message_id, user_id, emoji').in('message_id', ids);
+    if (error) return null;
+    const map = {};
+    (data || []).forEach(r => { (map[r.message_id] = map[r.message_id] || []).push(r); });
+    return map;
+  }
+  let memberReactions = null, staffReactions = null;
+  function selfId(){ const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf(); return me ? me.id : null; }
 
   /* ---------------- MEMBER VIEW ---------------- */
   let memberRenderSeq = 0;
@@ -97,6 +112,8 @@
       if (error) { console.error('Supabase load messages failed:', error); return; }
       if (seq !== memberRenderSeq) return;
       messages = data || [];
+      memberReactions = await loadReactions(messages.map(m => m.id));
+      if (seq !== memberRenderSeq) return;
       const last = messages[messages.length - 1];
       receipt = { myLastAt: last && last.sender_is_staff === false ? last.created_at : null, otherReadAt: thread.staff_read_at };
       // Opening it with a staff reply I haven't seen: mark it read.
@@ -109,7 +126,7 @@
     memberBody.innerHTML = `
       <div class="day-head"><h2>Messages — Staff</h2></div>
       <div class="day-focus">A direct line to your coaches and admin — any staff member can see and reply here.</div>
-      <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false)}</div>
+      <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false, memberReactions, me.id)}</div>
       ${receiptLineHtml('msg-member-receipt')}
       ${typingLineHtml('msg-member-typing')}
       <div class="msg-compose">
@@ -125,7 +142,13 @@
     // Staff stay anonymous here ("Staff"), same as the message labels.
     if (memberTyping) memberTyping.join(thread ? 'msg:' + thread.id : null, me.id,
       who => showTyping('msg-member-typing', who ? 'Staff is typing' : ''),
-      payload => { if (receipt && payload.role === 'staff'){ receipt.otherReadAt = payload.at; showReceipt('msg-member-receipt', receipt, 'Seen by staff'); } });
+      payload => { if (receipt && payload.role === 'staff'){ receipt.otherReadAt = payload.at; showReceipt('msg-member-receipt', receipt, 'Seen by staff'); } },
+      async messageId => {
+        const fresh = await loadReactions([messageId]);
+        if (!fresh || !memberReactions) return;
+        memberReactions[messageId] = fresh[messageId] || [];
+        window.bnbReactions.redraw(memberBody, messageId, memberReactions[messageId], me.id);
+      });
     showReceipt('msg-member-receipt', receipt, 'Seen by staff');
     if (memberTyping && markedAt !== undefined) memberTyping.read('member', markedAt);
     if (draft && draft.text){
@@ -210,6 +233,8 @@
         if (error) { console.error('Supabase load messages failed:', error); return; }
         if (seq !== staffRenderSeq) return;
         messages = data || [];
+        staffReactions = await loadReactions(messages.map(m => m.id));
+        if (seq !== staffRenderSeq) return;
         const last = messages[messages.length - 1];
         receipt = { myLastAt: last && last.sender_is_staff ? last.created_at : null, otherReadAt: selectedThread.member_read_at };
         if (staffBody.offsetParent && document.visibilityState === 'visible' && hasUnseen(messages, false, selectedThread.staff_read_at)){
@@ -221,7 +246,7 @@
       // proactively start a conversation (e.g. via the Roster "Message"
       // button) rather than only replying to members who already wrote in.
       detailHtml = `
-        <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true)}</div>
+        <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true, staffReactions, me.id)}</div>
         ${receiptLineHtml('msg-staff-receipt')}
         ${typingLineHtml('msg-staff-typing')}
         <div class="msg-compose">
@@ -250,7 +275,13 @@
     const openThread = (threads || []).find(t => t.member_id === selectedMemberId);
     if (staffTyping) staffTyping.join(openThread ? 'msg:' + openThread.id : null, me.id,
       who => showTyping('msg-staff-typing', !who ? '' : who.role === 'staff' ? 'Another staff member is typing' : nameFor(selectedMemberId) + ' is typing'),
-      payload => { if (receipt && payload.role === 'member'){ receipt.otherReadAt = payload.at; showReceipt('msg-staff-receipt', receipt, 'Seen'); } });
+      payload => { if (receipt && payload.role === 'member'){ receipt.otherReadAt = payload.at; showReceipt('msg-staff-receipt', receipt, 'Seen'); } },
+      async messageId => {
+        const fresh = await loadReactions([messageId]);
+        if (!fresh || !staffReactions) return;
+        staffReactions[messageId] = fresh[messageId] || [];
+        window.bnbReactions.redraw(staffBody, messageId, staffReactions[messageId], me.id);
+      });
     showReceipt('msg-staff-receipt', receipt, 'Seen');
     if (staffTyping && markedAt !== undefined) staffTyping.read('staff', markedAt);
 
@@ -317,6 +348,23 @@
       if (error) return;
       if (threadSignature(data || []) !== staffSignature) renderStaffView();
     }, 15 * 1000);
+  }
+
+  // Reaction clicks (one listener per view; the containers stay put).
+  if (window.bnbReactions){
+    const toggle = (id, emoji) => bnbClient.rpc('toggle_message_reaction', { p_message_id: id, p_emoji: emoji });
+    if (memberBody) window.bnbReactions.attach(memberBody, {
+      meId: selfId, toggle,
+      list: id => (memberReactions && memberReactions[id]) || [],
+      set: (id, list) => { if (memberReactions) memberReactions[id] = list; },
+      changed: id => { if (memberTyping) memberTyping.reacted(id); }
+    });
+    if (staffBody) window.bnbReactions.attach(staffBody, {
+      meId: selfId, toggle,
+      list: id => (staffReactions && staffReactions[id]) || [],
+      set: (id, list) => { if (staffReactions) staffReactions[id] = list; },
+      changed: id => { if (staffTyping) staffTyping.reacted(id); }
+    });
   }
 
   window.bnbMessagesOnTabShown = renderMemberView;

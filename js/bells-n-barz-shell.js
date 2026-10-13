@@ -1837,7 +1837,8 @@ createIntervalTimer(
     if (!n) return;
     if (typeof refreshUnreadCount === 'function') refreshUnreadCount();
     if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
-    if (n.type !== 'new_direct_message' && n.type !== 'new_message') return;
+    const MESSAGE_TYPES = ['new_direct_message', 'new_message', 'new_group_message', 'group_added'];
+    if (!MESSAGE_TYPES.includes(n.type)) return;
     const v = viewFor(n.link_tab);
     const looking = onScreen(n.link_tab);
     if (v && v.el && v.active(v.el) && typeof v.refresh === 'function') v.refresh();
@@ -1913,7 +1914,7 @@ createIntervalTimer(
 window.bnbTyping = function(){
   const SEND_EVERY = 2000;  // at most one "typing" signal per 2s while typing
   const SHOW_FOR = 5000;    // hide if nothing heard for 5s (never gets stuck)
-  let ch = null, key = null, meId = null, onUpdate = null, onReadCb = null, clearTimer = null, lastSent = 0, current = null;
+  let ch = null, key = null, meId = null, onUpdate = null, onReadCb = null, onReactCb = null, clearTimer = null, lastSent = 0, current = null;
   function set(who){
     current = who;
     clearTimeout(clearTimer);
@@ -1926,9 +1927,10 @@ window.bnbTyping = function(){
   return {
     // Call after every render: same conversation keeps the channel and
     // just re-applies the current state to the freshly drawn page.
-    join(newKey, myId, cb, readCb){
+    join(newKey, myId, cb, readCb, reactCb){
       onUpdate = cb;
       onReadCb = readCb || null;
+      onReactCb = reactCb || null;
       if (newKey && newKey === key && ch){ cb(current); return; }
       this.leave();
       if (!newKey) return;
@@ -1937,6 +1939,11 @@ window.bnbTyping = function(){
       ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (!payload || payload.uid === meId) return; // my own other tabs
         set(payload.typing ? payload : null);
+      });
+      // Someone changed a reaction: the other side refetches that message's.
+      ch.on('broadcast', { event: 'react' }, ({ payload }) => {
+        if (!payload || payload.uid === meId) return;
+        if (onReactCb) onReactCb(payload.messageId);
       });
       ch.on('broadcast', { event: 'read' }, ({ payload }) => {
         if (!payload || payload.uid === meId) return;
@@ -1965,6 +1972,9 @@ window.bnbTyping = function(){
       const at = new Date(Math.max(Date.now(), lastMessageAt ? new Date(lastMessageAt).getTime() : 0)).toISOString();
       ch.send({ type: 'broadcast', event: 'read', payload: { uid: meId, role, at } });
     },
+    reacted(messageId){
+      if (ch) ch.send({ type: 'broadcast', event: 'react', payload: { uid: meId, messageId } });
+    },
     leave(){
       if (ch) bnbClient.removeChannel(ch);
       ch = null; key = null; lastSent = 0;
@@ -1972,6 +1982,94 @@ window.bnbTyping = function(){
     }
   };
 };
+
+/* ---------------- MESSAGE REACTIONS ----------------
+   Shared by Inbox and Messages. Each bubble gets a small ☺ button that
+   opens a row of six emoji; reactions show as chips under the bubble
+   ("👍 2"), yours highlighted, and tapping a chip toggles yours. The
+   emoji list must match reaction_emoji_allowed() in
+   sql/58-message-reactions.sql. Each view supplies how to load/toggle
+   (the two message systems use different tables) via attach():
+
+     window.bnbReactions.attach(rootEl, {
+       meId: () => me.id,
+       list: messageId => [{ user_id, emoji }, …],   // current reactions
+       set:  (messageId, list) => …,                 // store a new list
+       toggle: (messageId, emoji) => Promise,        // the RPC
+       changed: messageId => …                       // e.g. tell the other side
+     });
+*/
+window.bnbReactions = (function(){
+  const EMOJI = ['👍', '❤️', '😂', '💪', '🔥', '🙏'];
+  function rowHtml(list, meId){
+    list = list || [];
+    return EMOJI.map(e => {
+      const n = list.filter(r => r.emoji === e).length;
+      if (!n) return '';
+      const mine = list.some(r => r.emoji === e && r.user_id === meId);
+      return '<button type="button" class="msg-react-chip' + (mine ? ' mine' : '') + '" data-emoji="' + e + '"'
+        + ' aria-pressed="' + mine + '" title="' + (mine ? 'You reacted — tap to remove' : 'Tap to add yours') + '">'
+        + e + '<span class="n">' + n + '</span></button>';
+    }).join('');
+  }
+  // Markup each view adds inside a bubble (data-msg-id goes on the bubble).
+  function bubbleExtrasHtml(list, meId){
+    return '<button type="button" class="msg-react-btn" aria-label="Add a reaction" title="React">☺</button>'
+      + '<div class="msg-reactions">' + rowHtml(list, meId) + '</div>';
+  }
+  function pickerHtml(){
+    return '<div class="msg-react-picker" role="group" aria-label="Pick a reaction">'
+      + EMOJI.map(e => '<button type="button" class="msg-react-option" data-emoji="' + e + '" aria-label="React ' + e + '">' + e + '</button>').join('')
+      + '</div>';
+  }
+  function closePickers(root, except){
+    root.querySelectorAll('.msg-react-picker').forEach(p => { if (p !== except) p.remove(); });
+  }
+  function redraw(root, messageId, list, meId){
+    const bubble = root.querySelector('.msg-bubble[data-msg-id="' + messageId + '"]');
+    const row = bubble && bubble.querySelector('.msg-reactions');
+    if (row) row.innerHTML = rowHtml(list, meId);
+  }
+  function attach(root, opts){
+    if (!root || root.__bnbReactions) return;
+    root.__bnbReactions = true;
+    root.addEventListener('click', async e => {
+      const openBtn = e.target.closest('.msg-react-btn');
+      if (openBtn && root.contains(openBtn)){
+        const bubble = openBtn.closest('.msg-bubble');
+        const existing = bubble.querySelector('.msg-react-picker');
+        closePickers(root);
+        if (!existing) bubble.querySelector('.msg-reactions').insertAdjacentHTML('beforebegin', pickerHtml());
+        return;
+      }
+      const pick = e.target.closest('.msg-react-option, .msg-react-chip');
+      if (!pick || !root.contains(pick)) return;
+      const bubble = pick.closest('.msg-bubble');
+      const id = bubble && bubble.getAttribute('data-msg-id');
+      if (!id) return;
+      const emoji = pick.getAttribute('data-emoji');
+      const me = opts.meId();
+      closePickers(root);
+      // Optimistic: show the change at once, undo it if the server says no.
+      const before = (opts.list(id) || []).slice();
+      const had = before.some(r => r.emoji === emoji && r.user_id === me);
+      const after = had ? before.filter(r => !(r.emoji === emoji && r.user_id === me)) : before.concat([{ user_id: me, emoji }]);
+      opts.set(id, after); redraw(root, id, after, me);
+      try {
+        const { error } = await opts.toggle(id, emoji);
+        if (error) throw error;
+        if (opts.changed) opts.changed(id);
+      } catch(err){
+        opts.set(id, before); redraw(root, id, before, me);
+        const t = document.getElementById('t-toast');
+        if (t){ t.textContent = (err && err.message) || 'Could not save that reaction.'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+      }
+    });
+    // Clicking anywhere else closes an open picker.
+    document.addEventListener('click', e => { if (!e.target.closest('.msg-bubble')) closePickers(root); });
+  }
+  return { EMOJI, rowHtml, bubbleExtrasHtml, attach, redraw };
+})();
 
 /* ---------------- INBOX UNREAD BADGE ----------------
    A count on the INBOX nav button of conversations with a message you
@@ -2000,16 +2098,21 @@ window.bnbTyping = function(){
     if (time(seenMap()[thread.thread_id]) >= time(thread.updated_at)) return false;
     return typeof thread.unread === 'boolean' ? thread.unread : true;
   };
-  window.bnbDmMarkRead = function(threadId, lastMessageAt){
+  // kind 'group' marks a group chat (sql/59); its local key is 'g:<id>',
+  // matching groupRow() below.
+  window.bnbDmMarkRead = function(threadId, lastMessageAt, kind){
     const m = seenMap();
     // Read up to now — or the last message's own time, if the server's
     // clock is ahead of this device's.
-    m[threadId] = new Date(Math.max(Date.now(), time(lastMessageAt))).toISOString();
+    m[kind === 'group' ? 'g:' + threadId : threadId] = new Date(Math.max(Date.now(), time(lastMessageAt))).toISOString();
     try { localStorage.setItem(SEEN_KEY, JSON.stringify(m)); } catch(e){}
-    // Errors are expected until sql/55 adds this function; the
-    // per-device record above still works without it.
-    bnbClient.rpc('mark_dm_thread_read', { p_thread_id: threadId }).then(() => {});
+    // Errors are expected until sql/55 / sql/59 add these functions; the
+    // per-device record above still works without them.
+    if (kind === 'group') bnbClient.rpc('mark_chat_group_read', { p_group_id: threadId }).then(() => {});
+    else bnbClient.rpc('mark_dm_thread_read', { p_thread_id: threadId }).then(() => {});
   };
+  // A my_chat_groups() row in the shape bnbDmIsUnread() expects.
+  window.bnbGroupAsThread = g => ({ thread_id: 'g:' + g.group_id, last_sender_id: g.last_sender_id, updated_at: g.updated_at, unread: g.unread });
   window.bnbInboxSetBadge = function(n){
     badge.hidden = !n;
     badge.textContent = n > 99 ? '99+' : String(n || '');
@@ -2018,9 +2121,11 @@ window.bnbTyping = function(){
   async function refreshBadge(){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me){ window.bnbInboxSetBadge(0); return; }
-    const { data, error } = await bnbClient.rpc('my_dm_threads');
-    if (error) return;
-    window.bnbInboxSetBadge((data || []).filter(t => window.bnbDmIsUnread(t, me.id)).length);
+    const [dms, groups] = await Promise.all([bnbClient.rpc('my_dm_threads'), bnbClient.rpc('my_chat_groups')]);
+    if (dms.error) return;
+    // Groups count too once sql/59 is in (an error before then just means none).
+    const groupRows = groups.error ? [] : (groups.data || []).map(window.bnbGroupAsThread);
+    window.bnbInboxSetBadge((dms.data || []).concat(groupRows).filter(t => window.bnbDmIsUnread(t, me.id)).length);
   }
   window.bnbInboxRefreshBadge = refreshBadge;
   setInterval(() => { if (document.visibilityState === 'visible') refreshBadge(); }, 60 * 1000);

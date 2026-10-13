@@ -335,7 +335,20 @@
     Realtime, for instant message alerts (sound, pop-up, desktop
     notification). Realtime applies the table's RLS. Safe to re-run.
 
-58. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+58. **58-message-reactions.sql** — emoji reactions on messages:
+    `dm_message_reactions` (Inbox) and `message_reactions` (Messages),
+    readable by whoever can read the message, changed only through
+    `toggle_dm_reaction()` / `toggle_message_reaction()` with a fixed set
+    of six emoji. Safe to re-run.
+
+59. **59-group-chats.sql** — Inbox group chats: `chat_groups`,
+    `chat_group_members`, `chat_group_messages`, `chat_group_reactions`,
+    readable only by members, changed only through `create_chat_group()`,
+    `send_group_message()`, `add_chat_group_members()`,
+    `rename_chat_group()`, `leave_chat_group()`, `mark_chat_group_read()`
+    and `toggle_group_reaction()`. Run after 58. Safe to re-run.
+
+60. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

@@ -2811,3 +2811,40 @@ body > *{flex-shrink:0;}
 .notif-bell-settings button:hover{border-color:var(--accent-dim);}
 .notif-desktop-hint{color:var(--muted); font-size:11.5px; line-height:1.4;}
 @media (prefers-reduced-motion: reduce){ .msg-alert{transition:none;} }
+/* Message reactions (window.bnbReactions in the shell). */
+.sched-scope .msg-bubble{position:relative;}
+.msg-react-btn{position:absolute; top:4px; right:6px; background:transparent; border:0; color:var(--muted-2); font-size:14px; line-height:1; padding:2px 4px; border-radius:4px; cursor:pointer; opacity:0; transition:opacity .15s ease;}
+.msg-bubble:hover .msg-react-btn, .msg-react-btn:focus-visible{opacity:1;}
+@media (hover:none){ .msg-react-btn{opacity:.6;} }
+.msg-react-btn:hover{color:var(--text); background:var(--surface);}
+.msg-react-picker{display:flex; gap:2px; flex-wrap:wrap; margin-top:8px; padding:4px; background:var(--surface); border:1px solid var(--line); border-radius:20px; width:max-content; max-width:100%;}
+.msg-react-option{background:transparent; border:0; font-size:18px; line-height:1; padding:4px 6px; border-radius:50%; cursor:pointer; transition:transform .1s ease;}
+.msg-react-option:hover, .msg-react-option:focus-visible{transform:scale(1.25); background:var(--surface-2);}
+.msg-reactions{display:flex; gap:4px; flex-wrap:wrap;}
+.msg-reactions:not(:empty){margin-top:6px;}
+.msg-react-chip{display:inline-flex; align-items:center; gap:3px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:1px 7px; font-size:13px; line-height:1.4; cursor:pointer; color:var(--text);}
+.msg-react-chip .n{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted);}
+.msg-react-chip.mine{border-color:var(--accent); background:rgba(var(--accent-rgb),.14);}
+.msg-react-chip.mine .n{color:var(--accent);}
+.sched-scope .msg-bubble .msg-meta{padding-right:22px;}
+/* Inbox group chats (js/bells-n-barz-inbox.js). */
+.inbox-top{display:flex; gap:16px; align-items:flex-end; margin-bottom:16px;}
+.inbox-top-search{flex:1; min-width:0;}
+.inbox-top > .btn2{white-space:nowrap;}
+@media (max-width:640px){ .inbox-top{flex-direction:column; align-items:stretch;} }
+.msg-thread-sub{display:block; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted-2); text-transform:none; letter-spacing:0;}
+.msg-system{align-self:center; max-width:90%; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted-2); padding:2px 8px;}
+.grp-header{display:flex; gap:12px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; padding-bottom:10px; margin-bottom:10px; border-bottom:1px solid var(--line-soft);}
+.grp-header-main{min-width:0; flex:1;}
+.grp-title{font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:16px; letter-spacing:.03em; margin:0;}
+.grp-members{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;}
+.grp-actions{display:flex; gap:6px; flex-wrap:wrap;}
+.grp-rename{display:flex; gap:6px; flex-wrap:wrap;}
+.grp-rename input{flex:1; min-width:140px;}
+.grp-form{display:flex; flex-direction:column; gap:8px;}
+.grp-form h3{font-family:'Oswald',sans-serif; text-transform:uppercase; font-size:16px; margin:0 0 4px;}
+.grp-label{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);}
+.grp-picked{display:flex; flex-wrap:wrap; gap:6px; min-height:24px;}
+.grp-chip{display:inline-flex; align-items:center; gap:4px; background:rgba(var(--accent-rgb),.12); border:1px solid var(--accent-dim); border-radius:12px; padding:2px 4px 2px 10px; font-size:12.5px;}
+.grp-chip button{background:transparent; border:0; color:var(--muted); font-size:15px; line-height:1; cursor:pointer; padding:0 4px;}
+.grp-form-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:6px;}
