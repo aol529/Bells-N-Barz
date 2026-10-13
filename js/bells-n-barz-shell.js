@@ -1745,13 +1745,15 @@ createIntervalTimer(
    the text. Each view creates its own indicator:
 
      const typing = window.bnbTyping();
-     typing.join(conversationKey, me.id, who => show/hide)  // after each render
-     typing.notify(role) / typing.stop(role)               // from the textarea
+     typing.join(conversationKey, me.id, who => show/hide, onRead)  // after each render
+     typing.notify(role) / typing.stop(role)                        // from the textarea
+     typing.read(role, lastMessageAt)   // "I've read up to now" -> the other side's
+                                        // onRead({uid, role, at}) flips "Sent" to "Seen"
 */
 window.bnbTyping = function(){
   const SEND_EVERY = 2000;  // at most one "typing" signal per 2s while typing
   const SHOW_FOR = 5000;    // hide if nothing heard for 5s (never gets stuck)
-  let ch = null, key = null, meId = null, onUpdate = null, clearTimer = null, lastSent = 0, current = null;
+  let ch = null, key = null, meId = null, onUpdate = null, onReadCb = null, clearTimer = null, lastSent = 0, current = null;
   function set(who){
     current = who;
     clearTimeout(clearTimer);
@@ -1764,8 +1766,9 @@ window.bnbTyping = function(){
   return {
     // Call after every render: same conversation keeps the channel and
     // just re-applies the current state to the freshly drawn page.
-    join(newKey, myId, cb){
+    join(newKey, myId, cb, readCb){
       onUpdate = cb;
+      onReadCb = readCb || null;
       if (newKey && newKey === key && ch){ cb(current); return; }
       this.leave();
       if (!newKey) return;
@@ -1774,6 +1777,11 @@ window.bnbTyping = function(){
       ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
         if (!payload || payload.uid === meId) return; // my own other tabs
         set(payload.typing ? payload : null);
+      });
+      ch.on('broadcast', { event: 'read' }, ({ payload }) => {
+        if (!payload || payload.uid === meId) return;
+        set(null); // they've opened it; any "typing" from before is stale
+        if (onReadCb) onReadCb(payload);
       });
       ch.subscribe();
       cb(null);
@@ -1788,6 +1796,14 @@ window.bnbTyping = function(){
       if (!lastSent) return; // never said we were typing
       lastSent = 0;
       send(role, false);
+    },
+    // Tell the other side I've read the conversation. The time sent is
+    // now, or the last message's own time if the server's clock is ahead
+    // of this device's, so it always counts as "after" that message.
+    read(role, lastMessageAt){
+      if (!ch) return;
+      const at = new Date(Math.max(Date.now(), lastMessageAt ? new Date(lastMessageAt).getTime() : 0)).toISOString();
+      ch.send({ type: 'broadcast', event: 'read', payload: { uid: meId, role, at } });
     },
     leave(){
       if (ch) bnbClient.removeChannel(ch);

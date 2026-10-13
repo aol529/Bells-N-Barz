@@ -20,6 +20,19 @@
     el.hidden = !text;
     el.innerHTML = text ? esc(text) + '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>' : '';
   }
+  // Read receipt under my last message: "Sent", or "Seen <when>" once the
+  // other side has opened the conversation since (sql/56). Hidden when the
+  // last message isn't mine, or before sql/56 (no read time to go on).
+  function receiptLineHtml(id){ return `<div class="msg-receipt" id="${id}" hidden></div>`; }
+  function showReceipt(id, state, seenLabel){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!state || !state.myLastAt || state.otherReadAt === undefined){ el.hidden = true; return; }
+    const seen = state.otherReadAt && new Date(state.otherReadAt) >= new Date(state.myLastAt);
+    el.hidden = false;
+    el.classList.toggle('seen', !!seen);
+    el.textContent = seen ? seenLabel + ' ' + fmtWhen(state.otherReadAt) : 'Sent';
+  }
   function wireTypingInput(input, typing, role){
     if (!typing) return;
     input.addEventListener('input', () => { input.value.trim() ? typing.notify(role) : typing.stop(role); });
@@ -49,6 +62,7 @@
   let selectedThreadId = null; // null until a real thread exists with the selected person
   let selectedOtherUserId = null;
   let selectedOtherUserName = null;
+  let receipt = null; // { myLastAt, otherReadAt } for the open conversation
 
   // Re-renders replace the whole Inbox, so remember what was being typed
   // (and the search box) and put it back — auto-refresh must never eat a
@@ -100,6 +114,8 @@
       : '<div class="empty-msg">No conversations yet — search for someone below to start one.</div>';
 
     let detailHtml = '<div class="empty-msg">Select a conversation, or search for someone to message.</div>';
+    receipt = null;
+    let markedReadAt = undefined; // set when this render marks the open thread read
     let messages = [];
     if (selectedOtherUserId){
       if (selectedThreadId){
@@ -108,14 +124,19 @@
         if (msgErr) { console.error('Supabase load dm_messages failed:', msgErr); return; }
         if (seq !== renderSeq) return;
         messages = data || [];
+        const open = threadsCache.find(x => x.thread_id === selectedThreadId);
+        const last = messages[messages.length - 1];
+        receipt = { myLastAt: last && last.sender_id === me.id ? last.created_at : null,
+                    otherReadAt: open ? open.other_read_at : undefined };
         if (inboxOnScreen() && window.bnbDmMarkRead){
-          const open = threadsCache.find(x => x.thread_id === selectedThreadId);
           window.bnbDmMarkRead(selectedThreadId, open && open.updated_at);
           if (open) open.unread = false;
+          markedReadAt = open ? open.updated_at : null;
         }
       }
       detailHtml = `
         <div class="msg-thread" id="inbox-thread">${messageListHtml(messages, me.id, selectedOtherUserName)}</div>
+        ${receiptLineHtml('inbox-receipt')}
         ${typingLineHtml('inbox-typing')}
         <div class="msg-compose">
           <textarea class="msg-input" id="inbox-input" placeholder="Message ${escAttr(selectedOtherUserName)}..."></textarea>
@@ -166,7 +187,11 @@
     if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
     // A brand-new conversation has no thread id until its first message.
     if (typing) typing.join(selectedThreadId ? 'dm:' + selectedThreadId : null, me.id,
-      who => showTyping('inbox-typing', who ? selectedOtherUserName + ' is typing' : ''));
+      who => showTyping('inbox-typing', who ? selectedOtherUserName + ' is typing' : ''),
+      // They just opened it: flip my "Sent" to "Seen" without waiting.
+      payload => { if (receipt){ receipt.otherReadAt = payload.at; showReceipt('inbox-receipt', receipt, 'Seen'); } });
+    showReceipt('inbox-receipt', receipt, 'Seen');
+    if (typing && markedReadAt !== undefined) typing.read('user', markedReadAt);
 
     const sendBtn = document.getElementById('inbox-send');
     if (sendBtn){

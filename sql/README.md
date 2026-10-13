@@ -326,7 +326,12 @@
     `mark_dm_thread_read()`, for the unread count on the INBOX button.
     Without it the count is tracked per device. Safe to re-run.
 
-56. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+56. **56-read-receipts.sql** — read receipts: `member_read_at` /
+    `staff_read_at` on `message_threads` with `mark_message_thread_read()`,
+    and the other person's read time (`other_read_at`) in
+    `my_dm_threads()`. Run after 55. Safe to re-run.
+
+57. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

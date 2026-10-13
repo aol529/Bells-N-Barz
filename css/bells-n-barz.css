@@ -2790,3 +2790,6 @@ body > *{flex-shrink:0;}
 .msg-typing .dots span:nth-child(3){animation-delay:.3s;}
 @keyframes msg-typing-dot{0%,60%,100%{opacity:.25; transform:translateY(0);} 30%{opacity:1; transform:translateY(-3px);}}
 @media (prefers-reduced-motion: reduce){ .msg-typing .dots span{animation:none; opacity:.7;} }
+/* Read receipt under your last message ("Sent" / "Seen 10:05"). */
+.msg-receipt{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted-2); text-align:right; padding:4px 2px 0;}
+.msg-receipt.seen{color:var(--accent);}

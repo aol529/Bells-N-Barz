@@ -15,6 +15,29 @@
     el.hidden = !text;
     el.innerHTML = text ? esc(text) + '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>' : '';
   }
+  // Read receipt under my last message: "Sent", or "Seen <when>" once the
+  // other side has opened the thread since (sql/56). Hidden when the last
+  // message isn't mine, or before sql/56 (no read time to go on).
+  function receiptLineHtml(id){ return `<div class="msg-receipt" id="${id}" hidden></div>`; }
+  function showReceipt(id, state, seenLabel){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (!state || !state.myLastAt || state.otherReadAt === undefined){ el.hidden = true; return; }
+    const seen = state.otherReadAt && new Date(state.otherReadAt) >= new Date(state.myLastAt);
+    el.hidden = false;
+    el.classList.toggle('seen', !!seen);
+    el.textContent = seen ? seenLabel + ' ' + fmtWhen(state.otherReadAt) : 'Sent';
+  }
+  // Has the other side written since I last opened this thread?
+  function hasUnseen(messages, fromStaff, myReadAt){
+    const theirs = messages.filter(m => m.sender_is_staff === fromStaff);
+    const last = theirs[theirs.length - 1];
+    return !!last && (!myReadAt || new Date(last.created_at) > new Date(myReadAt));
+  }
+  function markThreadRead(threadId){
+    // Errors are expected until sql/56 adds this function.
+    bnbClient.rpc('mark_message_thread_read', { p_thread_id: threadId }).then(() => {});
+  }
   function wireTypingInput(input, typing, role){
     if (!typing) return;
     input.addEventListener('input', () => { input.value.trim() ? typing.notify(role) : typing.stop(role); });
@@ -67,18 +90,27 @@
     memberSignature = thread ? thread.id + '@' + thread.updated_at : '';
 
     let messages = [];
+    let receipt = null, markedAt = undefined;
     if (thread){
       const { data, error } = await bnbClient
         .from('messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true });
       if (error) { console.error('Supabase load messages failed:', error); return; }
       if (seq !== memberRenderSeq) return;
       messages = data || [];
+      const last = messages[messages.length - 1];
+      receipt = { myLastAt: last && last.sender_is_staff === false ? last.created_at : null, otherReadAt: thread.staff_read_at };
+      // Opening it with a staff reply I haven't seen: mark it read.
+      if (memberBody.offsetParent && document.visibilityState === 'visible' && hasUnseen(messages, true, thread.member_read_at)){
+        markThreadRead(thread.id);
+        markedAt = last.created_at;
+      }
     }
 
     memberBody.innerHTML = `
       <div class="day-head"><h2>Messages — Staff</h2></div>
       <div class="day-focus">A direct line to your coaches and admin — any staff member can see and reply here.</div>
       <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false)}</div>
+      ${receiptLineHtml('msg-member-receipt')}
       ${typingLineHtml('msg-member-typing')}
       <div class="msg-compose">
         <textarea class="msg-input" id="msg-member-input" placeholder="Write a message to staff..."></textarea>
@@ -92,7 +124,10 @@
     threadEl.scrollTop = threadEl.scrollHeight;
     // Staff stay anonymous here ("Staff"), same as the message labels.
     if (memberTyping) memberTyping.join(thread ? 'msg:' + thread.id : null, me.id,
-      who => showTyping('msg-member-typing', who ? 'Staff is typing' : ''));
+      who => showTyping('msg-member-typing', who ? 'Staff is typing' : ''),
+      payload => { if (receipt && payload.role === 'staff'){ receipt.otherReadAt = payload.at; showReceipt('msg-member-receipt', receipt, 'Seen by staff'); } });
+    showReceipt('msg-member-receipt', receipt, 'Seen by staff');
+    if (memberTyping && markedAt !== undefined) memberTyping.read('member', markedAt);
     if (draft && draft.text){
       input.value = draft.text;
       if (draft.focused){ input.focus(); input.setSelectionRange(draft.start, draft.end); }
@@ -166,6 +201,7 @@
 
     let detailHtml = '<div class="empty-msg">Select a member to view their thread.</div>';
     let messages = [];
+    let receipt = null, markedAt = undefined;
     if (selectedMemberId){
       const selectedThread = (threads || []).find(t => t.member_id === selectedMemberId);
       if (selectedThread){
@@ -174,12 +210,19 @@
         if (error) { console.error('Supabase load messages failed:', error); return; }
         if (seq !== staffRenderSeq) return;
         messages = data || [];
+        const last = messages[messages.length - 1];
+        receipt = { myLastAt: last && last.sender_is_staff ? last.created_at : null, otherReadAt: selectedThread.member_read_at };
+        if (staffBody.offsetParent && document.visibilityState === 'visible' && hasUnseen(messages, false, selectedThread.staff_read_at)){
+          markThreadRead(selectedThread.id);
+          markedAt = last.created_at;
+        }
       }
       // Compose box shows even with no existing thread yet — lets staff
       // proactively start a conversation (e.g. via the Roster "Message"
       // button) rather than only replying to members who already wrote in.
       detailHtml = `
         <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true)}</div>
+        ${receiptLineHtml('msg-staff-receipt')}
         ${typingLineHtml('msg-staff-typing')}
         <div class="msg-compose">
           <textarea class="msg-input" id="msg-staff-input" placeholder="Message ${escAttr(nameFor(selectedMemberId))}..."></textarea>
@@ -206,7 +249,10 @@
     if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
     const openThread = (threads || []).find(t => t.member_id === selectedMemberId);
     if (staffTyping) staffTyping.join(openThread ? 'msg:' + openThread.id : null, me.id,
-      who => showTyping('msg-staff-typing', !who ? '' : who.role === 'staff' ? 'Another staff member is typing' : nameFor(selectedMemberId) + ' is typing'));
+      who => showTyping('msg-staff-typing', !who ? '' : who.role === 'staff' ? 'Another staff member is typing' : nameFor(selectedMemberId) + ' is typing'),
+      payload => { if (receipt && payload.role === 'member'){ receipt.otherReadAt = payload.at; showReceipt('msg-staff-receipt', receipt, 'Seen'); } });
+    showReceipt('msg-staff-receipt', receipt, 'Seen');
+    if (staffTyping && markedAt !== undefined) staffTyping.read('staff', markedAt);
 
     const newInput = document.getElementById('msg-staff-input');
     if (draft && newInput && draft.memberId === selectedMemberId && draft.text){
