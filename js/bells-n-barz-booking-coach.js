@@ -395,7 +395,10 @@
     catch(e){ return (getSchedTrainers()[0]||{}).id; }
   })();
   let memberSubTab = 'browse';
-  let memberTrainerId = null; // Book a Trainer's selected trainer
+  let memberTrainerId = 'any'; // Book a Trainer's selected coach, or 'any'
+  let slotDayFilter = 'all';    // Book a Trainer: 'all' or ISO weekday '1'..'7'
+  let slotPartFilter = 'all';   // 'all' | 'morning' | 'afternoon' | 'evening'
+  let coachProfiles = {};       // coachId -> { bio, specialties } (sql/65)
   let trainerSubTab = 'roster';
   let adminSubTab = 'classes';
   let classFilter = 'all';
@@ -538,6 +541,10 @@
     });
     wireCalNav(body, ()=>{ renderCoachBody(); fillRatingComments(); });
     wireCalDrag(body);
+    const profSave = body.querySelector('#coach-prof-save');
+    if (profSave) profSave.addEventListener('click', saveCoachProfile);
+    const profBio = body.querySelector('#coach-prof-bio');
+    if (profBio) profBio.addEventListener('input', ()=>{ const c = body.querySelector('#coach-prof-count'); if (c) c.textContent = profBio.value.length; });
   }
   function openSlotPanel(date, time){
     activeSlotFormTrainer = selfTrainerId;
@@ -1152,6 +1159,7 @@
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + sl.duration + 'm</div>';
       html += '<div class="cal-title">' + (booked ? esc(memberName(it.pt.userId)) : '1-on-1') + '</div>';
       html += coachLine(sl.trainerId);
+      if (booked && it.pt.notes) html += '<div class="cal-note" title="' + esc(it.pt.notes) + '">“' + esc(it.pt.notes) + '”</div>';
       html += '<div class="cal-actions"><span class="status-pill ' + sl.status + '">' + (booked ? '1-on-1' : sl.status) + '</span>';
       if (!past){
         if (sl.status === 'open') html += '<button class="cal-link" data-action="block-slot" data-id="' + sl.id + '">Block</button>';
@@ -1322,26 +1330,207 @@
     });
   }
 
+  /* ---------------- BOOK A TRAINER ----------------
+     Pick a coach (or Any coach) from the cards, see their profile, then
+     their open 1-on-1 slots — or everyone's, by date — filtered by day
+     and time of day. Booking asks what you want to work on (sql/65).
+     "Request a time" messages the coach when nothing suits. */
+  const DAY_PARTS = { morning: [0, 12], afternoon: [12, 17], evening: [17, 24] };
+  function partOf(time){ const h = Number(String(time).slice(0, 2)); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; }
+  function isoDow(date){ return ((new Date(date + 'T00:00:00').getDay() + 6) % 7) + 1; }
+  function coachAvatarHtml(id, size){
+    const u = window.BNB_USERS && window.BNB_USERS.getById ? window.BNB_USERS.getById(id) : null;
+    const url = u && u.avatar && /^https:\/\//.test(u.avatar) ? u.avatar : '';
+    const name = trainerName(id);
+    const ini = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w=> w[0].toUpperCase()).join('');
+    return '<span class="coach-avatar" style="--av:' + size + 'px">' + (url ? '<img src="' + esc(url) + '" alt="" loading="lazy">' : esc(ini || '?')) + '</span>';
+  }
+  async function refreshCoachProfiles(){
+    const { data, error } = await bnbClient.from('coach_profiles').select('user_id, bio, specialties');
+    if (error) return; // before sql/65, or signed out — profiles just don't show
+    coachProfiles = {};
+    (data || []).forEach(r=>{ coachProfiles[r.user_id] = { bio: r.bio || '', specialties: r.specialties || [] }; });
+    renderBody();
+  }
+  function coachProfileCardHtml(id){
+    const prof = coachProfiles[id] || { bio: '', specialties: [] };
+    let html = '<div class="coach-profile">' + coachAvatarHtml(id, 72) + '<div class="coach-profile-body">';
+    html += '<h3>' + esc(trainerName(id)) + '</h3>';
+    html += '<div class="rating-inline">' + ratingSummaryLineHtml(id) + '</div>';
+    if (prof.specialties.length) html += '<div class="coach-tags">' + prof.specialties.map(t=> '<span>' + esc(t) + '</span>').join('') + '</div>';
+    html += prof.bio ? '<p class="coach-bio">' + esc(prof.bio) + '</p>' : '<p class="coach-bio field-hint">No bio yet.</p>';
+    html += ratingBreakdownHtml(id);
+    return html + '</div></div>';
+  }
   function memberBookTrainerHtml(){
-    // The chosen trainer lives in memberTrainerId rather than being read
-    // back off the old <select> — every change re-renders this whole
-    // view, and a rebuilt <select> with no `selected` option would show
-    // the first trainer's name above a different trainer's slots.
     const trainers = getSchedTrainers();
-    if (!trainers.some(t=>t.id===memberTrainerId)) memberTrainerId = (trainers[0]||{}).id;
-    const trainerId = memberTrainerId;
-    let html = '<div class="form-inline"><div class="field"><label>Trainer</label><select id="sched-mbt-trainer">';
-    trainers.forEach(t=> html += '<option value="'+t.id+'"'+(t.id===trainerId?' selected':'')+'>'+esc(t.name)+'</option>');
-    html += '</select></div></div>';
-    html += '<div class="rating-inline">' + ratingSummaryLineHtml(trainerId) + '</div>';
-    const openSlots = slots.filter(sl=>sl.trainerId===trainerId && sl.status==='open' && sl.date >= TODAY).sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
-    if (!openSlots.length){ html += '<div class="empty-msg">No open 1-on-1 slots for this trainer right now.</div>'; return html; }
-    html += '<table class="admin-table"><tr><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>';
-    openSlots.forEach(sl=>{
-      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><button class="btn2 primary" data-action="member-book-slot" data-id="'+sl.id+'">Book</button></td></tr>';
+    if (memberTrainerId !== 'any' && !trainers.some(t=>t.id===memberTrainerId)) memberTrainerId = 'any';
+    const any = memberTrainerId === 'any';
+
+    // Coach picker cards
+    let html = '<div class="coach-pick" role="radiogroup" aria-label="Coach">';
+    html += '<button class="coach-pick-card' + (any ? ' active' : '') + '" data-pick-coach="any" role="radio" aria-checked="' + any + '"><span class="coach-avatar any" style="--av:40px">★</span><span><b>Any coach</b><small>Every open slot by date</small></span></button>';
+    trainers.forEach(t=>{
+      const s = ratingSummaries[t.id];
+      const on = t.id === memberTrainerId;
+      html += '<button class="coach-pick-card' + (on ? ' active' : '') + '" data-pick-coach="' + t.id + '" role="radio" aria-checked="' + on + '">' + coachAvatarHtml(t.id, 40)
+        + '<span><b>' + esc(t.name) + '</b><small>' + (s && s.overall != null ? '★ ' + Number(s.overall).toFixed(1) : ((coachProfiles[t.id] || {}).specialties || []).slice(0, 2).map(esc).join(' · ') || '&nbsp;') + '</small></span></button>';
     });
-    html += '</table>';
+    html += '</div>';
+    if (!any) html += coachProfileCardHtml(memberTrainerId);
+
+    // Filters
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    html += '<div class="slot-filters"><div class="chip-filter" id="slot-day-chips"><button data-slot-day="all" class="' + (slotDayFilter==='all'?'active':'') + '">Any day</button>';
+    dayNames.forEach((n, i)=> html += '<button data-slot-day="' + (i + 1) + '" class="' + (slotDayFilter===String(i + 1)?'active':'') + '">' + n + '</button>');
+    html += '</div><div class="chip-filter" id="slot-part-chips">';
+    [['all','Any time'],['morning','Morning'],['afternoon','Afternoon'],['evening','Evening']].forEach(([v, l])=> html += '<button data-slot-part="' + v + '" class="' + (slotPartFilter===v?'active':'') + '">' + l + '</button>');
+    html += '</div></div>';
+
+    // Open slots
+    const open = slots.filter(sl=> sl.status==='open' && !isPast(sl.date, sl.startTime) && (any || sl.trainerId===memberTrainerId)
+        && (slotDayFilter==='all' || String(isoDow(sl.date))===slotDayFilter)
+        && (slotPartFilter==='all' || partOf(sl.startTime)===slotPartFilter))
+      .sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
+    const who = any ? 'any coach' : trainerName(memberTrainerId);
+    if (!open.length){
+      html += '<div class="empty-msg">No open 1-on-1 slots' + (slotDayFilter!=='all' || slotPartFilter!=='all' ? ' match those filters' : ' for ' + esc(who) + ' right now') + '.</div>';
+    } else {
+      groupByDate(open, 'date').forEach(g=>{
+        html += '<div class="slot-day"><h4>' + fmtDate(g.date) + '</h4>';
+        g.items.forEach(sl=>{
+          html += '<div class="slot-row"><span class="slot-time">' + fmtTime(sl.startTime) + '</span><span class="slot-dur">' + sl.duration + ' min</span>';
+          if (any) html += '<button class="slot-coach" data-pick-coach="' + sl.trainerId + '">' + coachAvatarHtml(sl.trainerId, 22) + esc(trainerName(sl.trainerId)) + '</button>';
+          html += '<button class="btn2 primary" data-action="member-book-slot" data-id="' + sl.id + '">Book</button></div>';
+        });
+        html += '</div>';
+      });
+    }
+    html += '<div class="slot-request"><span>Can\'t find a time that suits?</span><button class="btn2" data-request-time="' + (any ? 'any' : memberTrainerId) + '">Request a time</button></div>';
     return html;
+  }
+
+  // ---- Book (with a note) ----
+  let bookingSlotId = null, editingNoteFor = null;
+  function memberBookSlot(slotId){
+    const sl = slots.find(x=>x.id===slotId); if (!sl || sl.status !== 'open') { toast('That slot is no longer available.'); return; }
+    const start = timeToMinutes(sl.startTime), end = start + Number(sl.duration);
+    const overlap = ptBookings.some(p=>{
+      if (p.userId !== selfMemberId || p.status !== 'confirmed') return false;
+      const otherSlot = slots.find(x=>x.id===p.slotId);
+      if (!otherSlot || otherSlot.date !== sl.date) return false;
+      const oStart = timeToMinutes(otherSlot.startTime), oEnd = oStart + Number(otherSlot.duration);
+      return start < oEnd && oStart < end;
+    });
+    if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
+    const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
+    if (credits <= 0){ toast('No session credits left. Buy a package or redeem points to book.'); return; }
+    bookingSlotId = slotId; editingNoteFor = null;
+    document.getElementById('sched-ptbook-title').textContent = 'Book a 1-on-1';
+    document.getElementById('sched-ptbook-when').textContent = trainerName(sl.trainerId) + ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) + ' · ' + sl.duration + ' min';
+    document.getElementById('sched-ptbook-credits').textContent = 'Uses 1 of your ' + credits + ' credit' + (credits === 1 ? '' : 's') + '. Cancel more than 24 hours before and you get it back.';
+    document.getElementById('sched-ptbook-notes').value = '';
+    document.getElementById('sched-ptbook-save').textContent = 'Book';
+    document.getElementById('sched-ptbook-panel-backdrop').classList.add('show');
+    document.getElementById('sched-ptbook-notes').focus();
+  }
+  function openNoteEditor(ptId){
+    const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
+    const sl = slots.find(x=>x.id===p.slotId);
+    bookingSlotId = null; editingNoteFor = ptId;
+    document.getElementById('sched-ptbook-title').textContent = 'What do you want to work on?';
+    document.getElementById('sched-ptbook-when').textContent = trainerName(p.trainerId) + (sl ? ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) : '');
+    document.getElementById('sched-ptbook-credits').textContent = 'Your coach sees this before the session.';
+    document.getElementById('sched-ptbook-notes').value = p.notes || '';
+    document.getElementById('sched-ptbook-save').textContent = 'Save';
+    document.getElementById('sched-ptbook-panel-backdrop').classList.add('show');
+    document.getElementById('sched-ptbook-notes').focus();
+  }
+  function closeBookPanel(){ document.getElementById('sched-ptbook-panel-backdrop').classList.remove('show'); bookingSlotId = null; editingNoteFor = null; }
+  async function confirmBookPanel(){
+    const notes = document.getElementById('sched-ptbook-notes').value.trim();
+    const btn = document.getElementById('sched-ptbook-save');
+    if (editingNoteFor){
+      btn.disabled = true;
+      const { error } = await bnbClient.rpc('set_pt_booking_notes', { p_booking_id: editingNoteFor, p_notes: notes });
+      btn.disabled = false;
+      if (error){ toast(error.message || 'Could not save that.'); return; }
+      closeBookPanel();
+      toast('Saved — your coach will see it.');
+      await refreshPtBookingsFromSupabase();
+      renderBody();
+      return;
+    }
+    const slotId = bookingSlotId; if (!slotId) return;
+    const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
+    if (me && Number(me.balance) > 0){
+      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
+    }
+    btn.disabled = true;
+    const { data: left, error } = await bnbClient.rpc('book_pt_slot', { p_slot_id: slotId, p_member_id: selfMemberId, p_notes: notes || null });
+    btn.disabled = false;
+    if (error){ toast(error.message || 'Could not book that slot.'); closeBookPanel(); refreshSlotsFromSupabase(); return; }
+    closeBookPanel();
+    if (window.BNB_USERS) window.BNB_USERS.setCreditsFromServer(selfMemberId, left);
+    toast('1-on-1 session booked! ' + left + ' credit' + (left===1?'':'s') + ' remaining.');
+    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
+    renderIdentityRow();
+    renderBody();
+  }
+
+  // ---- Request a time ----
+  function openRequestPanel(coach){
+    const sel = document.getElementById('sched-ptreq-coach');
+    sel.innerHTML = '<option value="any">Any coach</option>' + getSchedTrainers().map(t=> '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
+    sel.value = coach && coach !== 'any' ? coach : 'any';
+    document.querySelectorAll('#sched-ptreq-days input, #sched-ptreq-parts input').forEach(c=> c.checked = false);
+    if (slotDayFilter !== 'all'){ const c = document.querySelector('#sched-ptreq-days input[value="' + slotDayFilter + '"]'); if (c) c.checked = true; }
+    if (slotPartFilter !== 'all'){ const c = document.querySelector('#sched-ptreq-parts input[value="' + slotPartFilter + '"]'); if (c) c.checked = true; }
+    document.getElementById('sched-ptreq-note').value = '';
+    document.getElementById('sched-ptreq-panel-backdrop').classList.add('show');
+  }
+  function closeRequestPanel(){ document.getElementById('sched-ptreq-panel-backdrop').classList.remove('show'); }
+  async function sendRequest(){
+    const coach = document.getElementById('sched-ptreq-coach').value;
+    const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const days = [...document.querySelectorAll('#sched-ptreq-days input:checked')].map(c=> dayNames[Number(c.value) - 1]);
+    const parts = [...document.querySelectorAll('#sched-ptreq-parts input:checked')].map(c=> c.value.charAt(0).toUpperCase() + c.value.slice(1) + 's');
+    const note = document.getElementById('sched-ptreq-note').value.trim();
+    if (!days.length && !parts.length && !note){ toast('Pick some days or times, or add a note.'); return; }
+    const body = '📅 1-on-1 request' + (coach === 'any' ? ' (any coach)' : '') + '\n'
+      + 'Days: ' + (days.length ? days.join(', ') : 'Any') + '\n'
+      + 'Times: ' + (parts.length ? parts.join(', ') : 'Any') + (note ? '\n' + note : '');
+    const btn = document.getElementById('sched-ptreq-send');
+    btn.disabled = true;
+    // One coach: a direct message (Inbox). Any coach: the member's
+    // thread with the coaching team (Messages).
+    const { error } = coach === 'any'
+      ? await bnbClient.rpc('send_message', { p_member_id: selfMemberId, p_body: body })
+      : await bnbClient.rpc('send_direct_message', { p_recipient_id: coach, p_body: body });
+    btn.disabled = false;
+    if (error){ toast(error.message || 'Could not send that.'); return; }
+    closeRequestPanel();
+    toast(coach === 'any' ? 'Request sent to the coaches — they\'ll reply in Messages.' : 'Request sent to ' + trainerName(coach) + ' — they\'ll reply in your Inbox.');
+  }
+
+  /* ---------------- COACH: MY PROFILE (sql/65) ---------------- */
+  function trainerProfileHtml(){
+    const prof = coachProfiles[selfTrainerId] || { bio: '', specialties: [] };
+    let html = '<div class="admin-notice">This is what members see when they pick you in Book a Trainer. Your photo is your account photo.</div>';
+    html += '<div class="coach-profile-edit"><div class="field"><label for="coach-prof-specialties">Specialties (comma-separated, up to 12)</label><input type="text" id="coach-prof-specialties" maxlength="300" placeholder="e.g. Strength, Mobility, Pre/postnatal" value="' + esc(prof.specialties.join(', ')) + '"></div>';
+    html += '<div class="field"><label for="coach-prof-bio">Bio</label><textarea id="coach-prof-bio" rows="5" maxlength="800" placeholder="A few lines about you and how you coach">' + esc(prof.bio) + '</textarea><div class="field-hint"><span id="coach-prof-count">' + prof.bio.length + '</span>/800</div></div>';
+    html += '<div class="crud-actions" style="padding:0;"><button class="btn2 primary" id="coach-prof-save">Save Profile</button></div></div>';
+    html += '<div class="section-sub-head"><h3>Preview</h3></div>' + coachProfileCardHtml(selfTrainerId);
+    return html;
+  }
+  async function saveCoachProfile(){
+    const specialties = document.getElementById('coach-prof-specialties').value.split(',').map(t=> t.trim()).filter(Boolean).slice(0, 12).map(t=> t.slice(0, 40));
+    const bio = document.getElementById('coach-prof-bio').value.trim().slice(0, 800);
+    const { error } = await bnbClient.from('coach_profiles').upsert([{ user_id: selfTrainerId, bio, specialties, updated_at: new Date().toISOString() }]);
+    if (error){ toast(error.message || 'Could not save your profile.'); return; }
+    coachProfiles[selfTrainerId] = { bio, specialties };
+    toast('Profile saved.');
+    renderCoachBody();
   }
 
   function memberMineHtml(){
@@ -1364,9 +1553,9 @@
     html += '<div class="section-sub-head"><h3>1-on-1 Sessions</h3></div>';
     if (!myPt.length) html += '<div class="empty-msg">No upcoming 1-on-1 sessions.</div>';
     else {
-      html += '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th></th></tr>';
+      html += '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th>Working on</th><th></th></tr>';
       myPt.sort((a,b)=> (a.sl.date+a.sl.startTime) < (b.sl.date+b.sl.startTime) ? -1 : 1).forEach(x=>{
-        html += '<tr><td>'+esc(trainerName(x.p.trainerId))+'</td><td>'+fmtDate(x.sl.date)+'</td><td>'+fmtTime(x.sl.startTime)+'</td><td><div class="row-actions"><button data-action="member-cancel-pt" data-id="'+x.p.id+'">Cancel</button></div></td></tr>';
+        html += '<tr><td>'+esc(trainerName(x.p.trainerId))+'</td><td>'+fmtDate(x.sl.date)+'</td><td>'+fmtTime(x.sl.startTime)+'</td><td>'+(x.p.notes ? esc(x.p.notes) : '<span class="field-hint">—</span>')+'</td><td><div class="row-actions"><button data-action="edit-pt-note" data-id="'+x.p.id+'">'+(x.p.notes ? 'Edit note' : 'Add note')+'</button><button data-action="member-cancel-pt" data-id="'+x.p.id+'">Cancel</button></div></td></tr>';
       });
       html += '</table>';
     }
@@ -1598,11 +1787,13 @@
     html += subBtn('classes', trainerSubTab, 'My Classes');
     html += subBtn('slots', trainerSubTab, 'My 1-on-1 Slots');
     html += subBtn('ratings', trainerSubTab, 'My Ratings');
+    html += subBtn('profile', trainerSubTab, 'My Profile');
     html += '</div>';
     if (trainerSubTab === 'roster') html += trainerRosterHtml();
     else if (trainerSubTab === 'classes') html += trainerClassesHtml();
     else if (trainerSubTab === 'calendar') html += trainerCalendarHtml();
     else if (trainerSubTab === 'ratings') html += trainerRatingsHtml();
+    else if (trainerSubTab === 'profile') html += trainerProfileHtml();
     else html += trainerSlotsHtml();
     return html;
   }
@@ -1683,7 +1874,7 @@
     html += '<table class="admin-table"><tr><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     mySlots.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId)):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -2414,7 +2605,7 @@
     let html = '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     all.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?memberName(pt.userId):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -2458,34 +2649,6 @@
   // one server-side transaction — members can't write those directly. The
   // checks below are just for a quicker, friendlier message; the server
   // repeats every one of them.
-  async function memberBookSlot(slotId){
-    const sl = slots.find(x=>x.id===slotId); if (!sl || sl.status !== 'open') { toast('That slot is no longer available.'); return; }
-    const start = timeToMinutes(sl.startTime), end = start + Number(sl.duration);
-    const overlap = ptBookings.some(p=>{
-      if (p.userId !== selfMemberId || p.status !== 'confirmed') return false;
-      const otherSlot = slots.find(x=>x.id===p.slotId);
-      if (!otherSlot || otherSlot.date !== sl.date) return false;
-      const oStart = timeToMinutes(otherSlot.startTime), oEnd = oStart + Number(otherSlot.duration);
-      return start < oEnd && oStart < end;
-    });
-    if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
-
-    const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
-    if (credits <= 0){ toast('No session credits left. Buy a package or redeem points to book.'); return; }
-
-    const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
-    if (me && Number(me.balance) > 0){
-      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
-    }
-
-    const { data: left, error } = await bnbClient.rpc('book_pt_slot', { p_slot_id: slotId, p_member_id: selfMemberId });
-    if (error){ toast(error.message || 'Could not book that slot.'); refreshSlotsFromSupabase(); return; }
-    if (window.BNB_USERS) window.BNB_USERS.setCreditsFromServer(selfMemberId, left);
-    toast('1-on-1 session booked! ' + left + ' credit' + (left===1?'':'s') + ' remaining.');
-    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
-    renderIdentityRow();
-    renderBody();
-  }
   async function cancelPtBooking(ptId){
     const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
     const { data: refunded, error } = await bnbClient.rpc('cancel_pt_booking', { p_booking_id: ptId });
@@ -2737,8 +2900,18 @@
       });
     });
 
-    const mbtSel = body.querySelector('#sched-mbt-trainer');
-    if (mbtSel) mbtSel.addEventListener('change', ()=>{ memberTrainerId = mbtSel.value; renderBody(); });
+    body.querySelectorAll('[data-pick-coach]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ memberTrainerId = btn.getAttribute('data-pick-coach'); renderBody(); });
+    });
+    body.querySelectorAll('[data-slot-day]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ slotDayFilter = btn.getAttribute('data-slot-day'); renderBody(); });
+    });
+    body.querySelectorAll('[data-slot-part]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ slotPartFilter = btn.getAttribute('data-slot-part'); renderBody(); });
+    });
+    body.querySelectorAll('[data-request-time]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openRequestPanel(btn.getAttribute('data-request-time')));
+    });
 
     body.querySelectorAll('[data-action]').forEach(btn=>{
       const action = btn.getAttribute('data-action');
@@ -2748,6 +2921,7 @@
         else if (action === 'member-cancel-booking') memberCancelBooking(id);
         else if (action === 'member-book-slot') memberBookSlot(id);
         else if (action === 'member-cancel-pt') memberCancelPt(id);
+        else if (action === 'edit-pt-note') openNoteEditor(id);
         else if (action === 'open-roster') openRoster(id);
         else if (action === 'cancel-session') cancelSession(id);
         else if (action === 'edit-class') openClassPanel(id);
@@ -2797,6 +2971,12 @@
   document.getElementById('sched-class-recurring').addEventListener('input', renderRecurringPreview);
   document.getElementById('sched-class-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-class-panel-backdrop') closeClassPanel(); });
 
+  document.getElementById('sched-ptbook-cancel').addEventListener('click', closeBookPanel);
+  document.getElementById('sched-ptbook-save').addEventListener('click', confirmBookPanel);
+  document.getElementById('sched-ptbook-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-ptbook-panel-backdrop') closeBookPanel(); });
+  document.getElementById('sched-ptreq-cancel').addEventListener('click', closeRequestPanel);
+  document.getElementById('sched-ptreq-send').addEventListener('click', sendRequest);
+  document.getElementById('sched-ptreq-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-ptreq-panel-backdrop') closeRequestPanel(); });
   document.getElementById('sched-move-cancel').addEventListener('click', closeMoveDialog);
   document.getElementById('sched-move-save').addEventListener('click', confirmMove);
   document.getElementById('sched-move-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-move-panel-backdrop') closeMoveDialog(); });
@@ -2830,7 +3010,7 @@
 
   // Ratings are refetched on every tab open (not just page load) since
   // the module loads before sign-in, when there's no one to fetch for.
-  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); ensureRecurringSessions(); refreshSessionCounts(); };
+  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); ensureRecurringSessions(); refreshSessionCounts(); refreshCoachProfiles(); };
   // A booking notification arrived (shell.js) — pull the latest.
   window.schedRefreshBookings = function(){ refreshSlotsFromSupabase(); refreshPtBookingsFromSupabase(); afterBookingChange(); };
   // Booking/Roster data refreshes on its own whenever a schedule action fires,
@@ -2851,6 +3031,6 @@
       renderCoachDashboard();
     }, 200);
   });
-  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); ensureRecurringSessions(); };
+  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); ensureRecurringSessions(); refreshCoachProfiles(); };
 
 })();

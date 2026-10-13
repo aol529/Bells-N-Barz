@@ -3376,6 +3376,36 @@
      otherwise hide it along with the rest of an inactive tab. Used by Admin's
      class-session roster (inside Schedule) and by Coach's own roster/slots. -->
 <div class="sched-scope">
+  <!-- Book a 1-on-1 / edit its note (Book a Trainer) -->
+  <div class="panel-backdrop" id="sched-ptbook-panel-backdrop">
+    <div class="panel">
+      <h2 id="sched-ptbook-title">Book a 1-on-1</h2>
+      <div class="field-hint" id="sched-ptbook-when"></div>
+      <div class="field" style="margin-top:14px;"><label for="sched-ptbook-notes">What do you want to work on? (optional)</label><textarea id="sched-ptbook-notes" rows="3" maxlength="500" placeholder="e.g. Deadlift form, a niggle in my left knee, getting ready for a 10K"></textarea></div>
+      <div class="field-hint" id="sched-ptbook-credits"></div>
+      <div class="panel-actions">
+        <button class="btn2" id="sched-ptbook-cancel">Cancel</button>
+        <button class="btn2 primary" id="sched-ptbook-save">Book</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request a 1-on-1 time (Book a Trainer) -->
+  <div class="panel-backdrop" id="sched-ptreq-panel-backdrop">
+    <div class="panel">
+      <h2>Request a Time</h2>
+      <div class="field-hint">Tell a coach when suits you and they'll get back to you.</div>
+      <div class="field" style="margin-top:14px;"><label for="sched-ptreq-coach">Coach</label><select id="sched-ptreq-coach"></select></div>
+      <div class="field"><label>Days that suit</label><div class="check-row" id="sched-ptreq-days"><label><input type="checkbox" value="1"> Mon</label><label><input type="checkbox" value="2"> Tue</label><label><input type="checkbox" value="3"> Wed</label><label><input type="checkbox" value="4"> Thu</label><label><input type="checkbox" value="5"> Fri</label><label><input type="checkbox" value="6"> Sat</label><label><input type="checkbox" value="7"> Sun</label></div></div>
+      <div class="field"><label>Times that suit</label><div class="check-row" id="sched-ptreq-parts"><label><input type="checkbox" value="morning"> Mornings</label><label><input type="checkbox" value="afternoon"> Afternoons</label><label><input type="checkbox" value="evening"> Evenings</label></div></div>
+      <div class="field"><label for="sched-ptreq-note">Anything else? (optional)</label><textarea id="sched-ptreq-note" rows="3" maxlength="500" placeholder="e.g. Before work, ideally 6–7am"></textarea></div>
+      <div class="panel-actions">
+        <button class="btn2" id="sched-ptreq-cancel">Cancel</button>
+        <button class="btn2 primary" id="sched-ptreq-send">Send Request</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Move a class / 1-on-1 (calendar drag and drop) -->
   <div class="panel-backdrop" id="sched-move-panel-backdrop">
     <div class="panel">

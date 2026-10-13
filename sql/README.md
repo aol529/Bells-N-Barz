@@ -383,7 +383,13 @@
     freed class spot goes to the waitlist, the coach is told. Run after
     63. Safe to re-run.
 
-65. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+65. **65-book-a-trainer.sql** — `coach_profiles` (bio + specialties,
+    readable by anyone signed in, edited by the coach or admin/staff);
+    `book_pt_slot` takes an optional note ("what do you want to work
+    on?"), `set_pt_booking_notes` changes it later, and the coach's
+    booking notification includes it. Run after 64. Safe to re-run.
+
+66. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
