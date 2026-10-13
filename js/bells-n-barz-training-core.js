@@ -1238,6 +1238,164 @@
 
   function slotTraineeName(slot){ return sessionStore[csKey(slot,'trainee')] || ''; }
 
+  /* ---- Freeform: start from the program, swap via alternatives ----
+     Freeform opens with the day's program exercises already listed (the
+     "general idea"), each with blank sets matching its prescription. Next to
+     every name is a small ⇄ dropdown: the program exercise first, then its
+     known alternatives — the program's own Alternates field, any "(alt: …)"
+     in the name, and the movement family below. Families are checked in
+     order, so the more specific ones (decline press, leg curl, split squat)
+     sit above the general ones (bench press, curl, squat). */
+  const EXERCISE_FAMILIES = [
+    [/decline[\w\s-]*\b(bench|press)\b/, ['Decline Barbell Bench Press', 'Decline Dumbbell Press', 'Decline Smith Machine Press', 'Decline Machine Press', 'Chest Dips', 'High-to-Low Cable Fly']],
+    [/incline[\w\s-]*\bpress\b/, ['Incline Barbell Bench Press', 'Incline Dumbbell Press', 'Incline Smith Machine Press', 'Incline Machine Press', 'Low-to-High Cable Fly', 'Landmine Press']],
+    [/close.?grip/, ['Close-Grip Bench Press', 'Close-Grip Smith Machine Press', 'JM Press', 'Diamond Push-up', 'Parallel Bar Dips']],
+    [/bench press|chest press|floor press/, ['Barbell Bench Press', 'Dumbbell Bench Press', 'Smith Machine Bench Press', 'Machine Chest Press', 'Floor Press', 'Push-up']],
+    [/rear delt|reverse fl|face pull|pull.?apart/, ['Rear Delt Dumbbell Fly', 'Reverse Pec Deck', 'Cable Rear Delt Fly', 'Face Pull', 'Band Pull-Apart']],
+    [/lateral (raise|fl)/, ['Dumbbell Lateral Raise', 'Cable Lateral Raise', 'Machine Lateral Raise', 'Lean-Away Lateral Raise']],
+    [/\bfl(y|ies|yes)\b|cross ?over|pec deck/, ['Cable Fly', 'Dumbbell Fly', 'Pec Deck', 'Cable Crossover', 'Svend Press']],
+    [/push.?ups?\b/, ['Push-up', 'Knee Push-up', 'Incline Push-up', 'Decline Push-up', 'Weighted Push-up']],
+    [/\bdips?\b/, ['Parallel Bar Dips', 'Assisted Dip Machine', 'Bench Dips', 'Weighted Dips']],
+    [/upright row/, ['Barbell Upright Row', 'Cable Upright Row', 'Dumbbell Upright Row', 'Dumbbell Lateral Raise']],
+    [/(single|one).?arm[\w\s-]*row/, ['Single-Arm Dumbbell Row', 'Single-Arm Cable Row', 'Kroc Row', 'Meadows Row']],
+    [/\brows?\b/, ['Barbell Row', 'Dumbbell Row', 'Chest-Supported Dumbbell Row', 'Seated Cable Row', 'T-Bar Row', 'Machine Row', 'Pendlay Row', 'Inverted Row']],
+    [/pullover|straight.?arm/, ['Dumbbell Pullover', 'Straight-Arm Cable Pulldown', 'Machine Pullover', 'Rope Pullover']],
+    [/pull.?ups?\b|chin.?ups?\b|chinups|pulldown/, ['Pull-up', 'Chin-up', 'Weighted Pull-up', 'Assisted Pull-up', 'Wide-Grip Lat Pulldown', 'Close-Grip Lat Pulldown', 'Single-Arm Lat Pulldown']],
+    [/military press|overhead press|shoulder press|arnold|behind the neck|scott press|vertical push/, ['Standing Military Press', 'Seated Dumbbell Shoulder Press', 'Arnold Press', 'Machine Shoulder Press', 'Landmine Press', 'Push Press']],
+    [/front raise/, ['Dumbbell Front Raise', 'Cable Front Raise', 'Plate Front Raise', 'Barbell Front Raise']],
+    [/shrug/, ['Barbell Shrug', 'Dumbbell Shrug', 'Trap Bar Shrug', 'Cable Shrug', 'Smith Machine Shrug']],
+    [/leg curl|hamstring curl|nordic/, ['Lying Leg Curl', 'Seated Leg Curl', 'Standing Leg Curl', 'Nordic Curl', 'Stability Ball Leg Curl', 'Sliding Leg Curl']],
+    [/wrist curl|wrist roller/, ['Barbell Wrist Curl', 'Dumbbell Wrist Curl', 'Reverse Wrist Curl', 'Wrist Roller']],
+    [/hammer|reverse curl/, ['Hammer Curl', 'Rope Hammer Curl', 'Cross-Body Hammer Curl', 'Reverse EZ-Bar Curl']],
+    [/preacher|spider|concentration/, ['Preacher Curl', 'Machine Preacher Curl', 'Spider Curl', 'Concentration Curl']],
+    [/\bcurls?\b/, ['Barbell Curl', 'EZ-Bar Curl', 'Dumbbell Curl', 'Incline Dumbbell Curl', 'Cable Curl', 'Preacher Curl', 'Hammer Curl']],
+    [/skull|french press|extension.*tricep|tricep.*extension|overhead[\w\s-]*extension/, ['Overhead Dumbbell Extension', 'Overhead Cable Extension', 'EZ-Bar Skull Crusher', 'Dumbbell Skull Crusher', 'French Press']],
+    [/pushdown|kickback/, ['Rope Pushdown', 'Straight-Bar Pushdown', 'Reverse-Grip Pushdown', 'Cable Kickback', 'Dumbbell Kickback']],
+    [/split squat|lunge|step.?ups?\b|stepup/, ['Bulgarian Split Squat', 'Static Split Squat', 'Walking Lunge', 'Reverse Lunge', 'Step-up', 'Landmine Split Squat']],
+    [/leg press/, ['Leg Press', 'Pendulum Squat', 'Hack Squat', 'Belt Squat', 'Smith Machine Squat']],
+    [/squat/, ['Back Squat', 'Front Squat', 'Goblet Squat', 'Hack Squat', 'Smith Machine Squat', 'Zercher Squat', 'Leg Press']],
+    [/leg extension/, ['Leg Extension', 'Single-Leg Extension', 'Sissy Squat', 'Reverse Nordic', 'Spanish Squat']],
+    [/romanian|stiff.?leg|straight.?leg deadlift|good morning|\brdl\b/, ['Romanian Deadlift', 'Dumbbell Romanian Deadlift', 'Stiff-Leg Deadlift', 'Single-Leg Romanian Deadlift', 'Good Morning', 'Cable Pull-Through']],
+    [/deadlift/, ['Conventional Deadlift', 'Sumo Deadlift', 'Trap Bar Deadlift', 'Rack Pull', 'Deficit Deadlift']],
+    [/hip thrust|glute bridge|hip raise/, ['Barbell Hip Thrust', 'Smith Machine Hip Thrust', 'Machine Hip Thrust', 'Single-Leg Hip Thrust', 'Glute Bridge', 'Cable Pull-Through']],
+    [/abduct/, ['Machine Hip Abduction', 'Cable Hip Abduction', 'Banded Lateral Walk', 'Side-Lying Leg Raise']],
+    [/adduct|copenhagen/, ['Machine Hip Adduction', 'Seated Dumbbell Hip Adduction', 'Cable Hip Adduction', 'Copenhagen Plank']],
+    [/calf|calves/, ['Standing Calf Raise', 'Seated Calf Raise', 'Leg Press Calf Raise', 'Smith Machine Calf Raise', 'Single-Leg Calf Raise', 'Donkey Calf Raise']],
+    [/back extension|hyperextension/, ['45° Back Extension', 'Reverse Hyperextension', 'Good Morning', 'Bird Dog']],
+    [/crunch/, ['Cable Crunch', 'Machine Crunch', 'Decline Crunch', 'Ab Wheel Rollout']],
+    [/leg raise|knee.?ups?\b|knee raise/, ['Hanging Leg Raise', 'Hanging Knee Raise', "Captain's Chair Knee Raise", 'Lying Leg Raise', 'Reverse Crunch']],
+    [/side bend/, ['Cable Side Bend', 'Dumbbell Side Bend', 'Suitcase Carry', 'Pallof Press']],
+    [/plank/, ['Front Plank', 'Side Plank', 'RKC Plank', 'Ab Wheel Rollout', 'Dead Bug']],
+    [/hip flex/, ['Standing Cable Hip Flexion', 'Hanging Knee Raise', 'Banded Psoas March', 'Lying Leg Raise']]
+  ];
+  const ALT_IN_NAME = /\s*\((?:alt|or)[:.]?\s+([^)]+)\)/i;
+
+  // "Military Press (alt: Arnold Press)" → name "Military Press", alts ["Arnold Press"].
+  function splitAltFromName(name){
+    const m = String(name || '').match(ALT_IN_NAME);
+    if (!m) return { name: String(name || '').trim(), alts: [] };
+    return { name: String(name).replace(ALT_IN_NAME, '').trim(), alts: m[1].split(/\s*[\/,]\s*/).filter(Boolean) };
+  }
+
+  // The program's free-text Alternates field, when it's a list of named
+  // exercises (not "Coach picks any …" guidance).
+  function namedAlternates(text){
+    const t = String(text || '').trim();
+    if (!t || /\b(any|coach|choose|picks?)\b/i.test(t)) return [];
+    return t.split(/\s*,\s*/).filter(s => s && s.length <= 60);
+  }
+
+  function exerciseAlternatives(base, programAlts){
+    const { name, alts } = splitAltFromName(base);
+    const plain = name.toLowerCase().replace(/\([^)]*\)/g, ' ');
+    const family = (/\b(hold|hang|breath|breathing|stretch|mobility)\b/.test(plain) ? null
+      : EXERCISE_FAMILIES.find(([re]) => re.test(plain)));
+    const out = [], seen = new Set();
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/e?s$/, '');
+    [name, ...alts, ...namedAlternates(programAlts), ...(family ? family[1] : [])].forEach(n => {
+      const k = norm(n);
+      if (n && k && !seen.has(k)){ seen.add(k); out.push(n); }
+    });
+    return out;
+  }
+
+  // A day's program as a freeform list: one entry per exercise, sets left
+  // blank to match the prescription. base/baseAlts keep the dropdown's list
+  // fixed to the program exercise even after it's been swapped.
+  function freeformFromProgram(day){
+    const list = [];
+    (programData[day] || []).forEach(block => (block.exercises || []).forEach(ex => {
+      if (!ex || !String(ex.name || '').trim()) return;
+      const nSets = Math.min(parseInt(ex.sets, 10) || 3, 10);
+      list.push({
+        name: splitAltFromName(ex.name).name,
+        base: ex.name, baseAlts: ex.alternates || '', presc: prescString(ex),
+        sets: Array.from({ length: nSets }, () => ({ wt:'', reps:'', done:false }))
+      });
+    }));
+    return list;
+  }
+
+  // Anything beyond an untouched program-seeded or blank list?
+  function freeformListHasRealData(list){
+    return list.some(ex => {
+      const name = (ex.name || '').trim();
+      const untouched = ex.base ? name === splitAltFromName(ex.base).name : !name;
+      return !untouched || (ex.sets || []).some(s => s.wt || s.reps || s.done);
+    });
+  }
+
+  /* The ⇄ dropdown: a compact icon with a native <select> laid over it, so
+     phones get their own picker. Returns null when there's nothing to pick. */
+  function buildAltPicker(ex, onPick){
+    const opts = exerciseAlternatives(ex.base || ex.name, ex.baseAlts);
+    if (opts.length < 2) return null;
+    const wrap = document.createElement('label');
+    wrap.className = 'ff-alt';
+    wrap.title = 'Swap for an alternative';
+    const sel = document.createElement('select');
+    sel.setAttribute('aria-label', 'Alternatives for ' + (ex.name || 'this exercise'));
+    const cur = (ex.name || '').trim();
+    if (cur && !opts.some(o => o.toLowerCase() === cur.toLowerCase())){
+      sel.add(new Option(cur + ' (current)', cur, true, true));
+    }
+    opts.forEach((o, i) => {
+      const opt = new Option(i === 0 && ex.base ? o + ' — program' : o, o);
+      if (o.toLowerCase() === cur.toLowerCase()) opt.selected = true;
+      sel.add(opt);
+    });
+    sel.onchange = () => onPick(sel.value);
+    const icon = document.createElement('span');
+    icon.className = 'ff-alt-icon';
+    icon.textContent = '⇄';
+    wrap.appendChild(icon);
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  /* Name row for one freeform exercise: name input, ⇄ alternatives, and
+     the prescription underneath when it came from the program. A typed-in
+     exercise with no program base gets its dropdown once the name is set. */
+  function buildFreeformNameRow(ex, exHead, save){
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'cs-freeform-name';
+    nameInput.placeholder = 'Exercise name…';
+    nameInput.value = ex.name || '';
+    nameInput.oninput = ()=>{ ex.name = nameInput.value; save(); };
+    exHead.appendChild(nameInput);
+    let picker = null;
+    const placePicker = ()=>{
+      const next = buildAltPicker(ex, val => { ex.name = val; nameInput.value = val; save(); placePicker(); });
+      if (picker) picker.remove();
+      picker = next;
+      if (picker) nameInput.after(picker);
+    };
+    placePicker();
+    if (!ex.base) nameInput.onchange = placePicker;
+    return nameInput;
+  }
+
   /* ---- Freeform logging (per slot, per day) ----
      A coach running a real 1-on-1 often doesn't follow the written program
      block-for-block — they call out exercises as the session unfolds. Mode is
@@ -1254,7 +1412,8 @@
       const arr = JSON.parse(sessionStore[freeformKey(slot, day)] || 'null');
       if (Array.isArray(arr) && arr.length) return arr;
     } catch(e){ /* fall through to default below */ }
-    return [ blankFreeformExercise() ];
+    const seeded = freeformFromProgram(day);
+    return seeded.length ? seeded : [ blankFreeformExercise() ];
   }
   function saveFreeformExercises(slot, day, arr){
     sessionStore[freeformKey(slot, day)] = JSON.stringify(arr);
@@ -1262,11 +1421,10 @@
   }
 
   /* Whether a slot+day's freeform log has anything a coach would mind
-     overwriting — i.e. more than the untouched single blank placeholder row
-     getFreeformExercises() hands back by default. */
+     overwriting — i.e. more than the untouched program-seeded (or blank)
+     list getFreeformExercises() hands back by default. */
   function freeformHasRealData(slot, day){
-    const list = getFreeformExercises(slot, day);
-    return list.some(ex => (ex.name && ex.name.trim()) || (ex.sets||[]).some(s => s.wt || s.reps || s.done));
+    return freeformListHasRealData(getFreeformExercises(slot, day));
   }
 
   /* Copies just the exercise names & order from one slot's freeform list to
@@ -1281,7 +1439,7 @@
       if (!confirm("This will overwrite " + targetLabel + "'s existing freeform log for today. Continue?")) return;
     }
     const copied = source.map(ex => ({
-      name: ex.name,
+      name: ex.name, base: ex.base, baseAlts: ex.baseAlts, presc: ex.presc,
       sets: (ex.sets && ex.sets.length ? ex.sets : [{}]).map(()=> ({ wt:'', reps:'', done:false }))
     }));
     saveFreeformExercises(toSlot, day, copied);
@@ -1435,13 +1593,7 @@
       const exHead = document.createElement('div');
       exHead.className = 'ls-ex-head cs-freeform-ex-head';
 
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'cs-freeform-name';
-      nameInput.placeholder = 'Exercise name…';
-      nameInput.value = ex.name || '';
-      nameInput.oninput = ()=>{ ex.name = nameInput.value; saveFreeformExercises(csSlot, csDay, list); };
-      exHead.appendChild(nameInput);
+      buildFreeformNameRow(ex, exHead, ()=> saveFreeformExercises(csSlot, csDay, list));
 
       const removeExBtn = document.createElement('button');
       removeExBtn.type = 'button';
@@ -1459,6 +1611,12 @@
       };
       exHead.appendChild(removeExBtn);
       exDiv.appendChild(exHead);
+      if (ex.presc){
+        const prescDiv = document.createElement('div');
+        prescDiv.className = 'ls-ex-presc cs-freeform-presc';
+        prescDiv.textContent = 'Program: ' + ex.presc;
+        exDiv.appendChild(prescDiv);
+      }
 
       const setsDiv = document.createElement('div');
       setsDiv.className = 'ls-sets';
@@ -1960,7 +2118,8 @@
       const arr = JSON.parse(mlsStore[mlsFreeformKey(day)] || 'null');
       if (Array.isArray(arr) && arr.length) return arr;
     } catch(e){ /* fall through to default below */ }
-    return [ blankMlsFreeformExercise() ];
+    const seeded = freeformFromProgram(day);
+    return seeded.length ? seeded : [ blankMlsFreeformExercise() ];
   }
   function saveMlsFreeformExercises(day, arr){
     mlsStore[mlsFreeformKey(day)] = JSON.stringify(arr);
@@ -2110,13 +2269,7 @@
       const exHead = document.createElement('div');
       exHead.className = 'ls-ex-head cs-freeform-ex-head';
 
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'cs-freeform-name';
-      nameInput.placeholder = 'Exercise name…';
-      nameInput.value = ex.name || '';
-      nameInput.oninput = ()=>{ ex.name = nameInput.value; saveMlsFreeformExercises(day, list); };
-      exHead.appendChild(nameInput);
+      buildFreeformNameRow(ex, exHead, ()=> saveMlsFreeformExercises(day, list));
 
       const removeExBtn = document.createElement('button');
       removeExBtn.type = 'button';
@@ -2134,6 +2287,12 @@
       };
       exHead.appendChild(removeExBtn);
       exDiv.appendChild(exHead);
+      if (ex.presc){
+        const prescDiv = document.createElement('div');
+        prescDiv.className = 'ls-ex-presc cs-freeform-presc';
+        prescDiv.textContent = 'Program: ' + ex.presc;
+        exDiv.appendChild(prescDiv);
+      }
 
       const setsDiv = document.createElement('div');
       setsDiv.className = 'ls-sets';
