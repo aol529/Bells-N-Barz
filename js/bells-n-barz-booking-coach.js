@@ -401,7 +401,7 @@
   let classFilter = 'all';
   // Each calendar's Monday (YYYY-MM-DD); null = this week.
   const calWeeks = { member: null, coach: null, admin: null };
-  // Week or month view per calendar (remembered on this device), and the
+  // Day, week or month view per calendar (remembered on this device), and the
   // month shown (first of the month; null = this month).
   const calViews = (function(){
     const v = { member: 'week', coach: 'week', admin: 'week' };
@@ -409,6 +409,7 @@
     return v;
   })();
   const calMonths = { member: null, coach: null, admin: null };
+  const calDays = { member: null, coach: null, admin: null }; // day view's date; null = today
   let adminCalTrainer = 'all'; // admin calendar's coach filter
   let editingClassId = null;
   let activeSlotFormTrainer = null;
@@ -531,18 +532,18 @@
     const addSlotBtn = body.querySelector('#sched-add-slot-btn');
     if (addSlotBtn) addSlotBtn.addEventListener('click', ()=> openSlotPanel(''));
     body.querySelectorAll('[data-cal-addslot]').forEach(btn=>{
-      btn.addEventListener('click', ()=> openSlotPanel(btn.getAttribute('data-cal-addslot')));
+      btn.addEventListener('click', ()=>{ const [d, t] = btn.getAttribute('data-cal-addslot').split('T'); openSlotPanel(d, t); });
     });
     wireCalNav(body, ()=>{ renderCoachBody(); fillRatingComments(); });
     wireCalDrag(body);
   }
-  function openSlotPanel(date){
+  function openSlotPanel(date, time){
     activeSlotFormTrainer = selfTrainerId;
     document.getElementById('sched-slot-date').value = date || '';
-    document.getElementById('sched-slot-time').value = '';
+    document.getElementById('sched-slot-time').value = time || '';
     document.getElementById('sched-slot-duration').value = 60;
     document.getElementById('sched-slot-panel-backdrop').classList.add('show');
-    if (date) document.getElementById('sched-slot-time').focus();
+    if (date) document.getElementById(time ? 'sched-slot-duration' : 'sched-slot-time').focus();
   }
 
   /* ============================================================
@@ -779,6 +780,10 @@
   // What a calendar is showing: { month, start, from, to } — `start` is the
   // Monday (week) or the 1st (month); from/to is the date range drawn.
   function calRange(scope){
+    if (calViews[scope] === 'day'){
+      const day = calDays[scope] || TODAY;
+      return { day: true, start: day, from: day, to: day };
+    }
     if (calViews[scope] === 'month'){
       const first = calMonths[scope] || monthStartOf(TODAY);
       const last = addDays(addMonths(first, 1), -1);
@@ -791,20 +796,43 @@
   // Header: ‹ range › This week/month, Week | Month, legend. Shared by the
   // member, coach and admin calendars; `scope` keeps their state apart.
   function calHeadHtml(range, scope, legend){
-    const isNow = range.month ? range.start === monthStartOf(TODAY) : range.start === mondayOf(TODAY);
+    const isNow = range.day ? range.start === TODAY : range.month ? range.start === monthStartOf(TODAY) : range.start === mondayOf(TODAY);
     const fmtShort = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
-    const label = range.month ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { month:'long', year:'numeric' })
+    const label = range.day ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' })
+      : range.month ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { month:'long', year:'numeric' })
       : fmtShort(range.start) + ' – ' + fmtShort(addDays(range.start, 6));
-    const unit = range.month ? 'month' : 'week';
+    const unit = range.day ? 'day' : range.month ? 'month' : 'week';
     let html = '<div class="cal-head">';
     html += '<button class="btn2" data-cal="prev" data-cal-scope="' + scope + '" aria-label="Previous ' + unit + '"' + (isNow ? ' disabled' : '') + '>‹</button>';
     html += '<div class="cal-range">' + label + '</div>';
     html += '<button class="btn2" data-cal="next" data-cal-scope="' + scope + '" aria-label="Next ' + unit + '">›</button>';
-    if (!isNow) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">This ' + unit + '</button>';
+    if (!isNow) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">' + (range.day ? 'Today' : 'This ' + unit) + '</button>';
     html += '<div class="cal-view" role="group" aria-label="Calendar view">';
-    ['week', 'month'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + (v === 'week' ? 'Week' : 'Month') + '</button>');
+    ['day', 'week', 'month'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>');
     html += '</div>';
     html += '<div class="cal-legend">' + legend + '</div>';
+    return html + '</div>';
+  }
+
+  // Day view: one row per hour (6 AM–9 PM, stretched to fit), full cards
+  // in the hour they start. Rows take drops (moving to that hour) and, for
+  // coaches/admins, a + to add something at that hour.
+  function calDayHtml(range, items, render, rowExtra){
+    const day = range.start;
+    const hourOf = t => Number(String(t).slice(0, 2));
+    let lo = 6, hi = 21;
+    items.forEach(it=>{ lo = Math.min(lo, hourOf(it.time)); hi = Math.max(hi, hourOf(it.time)); });
+    const now = new Date(), nowHour = day === TODAY ? now.getHours() : -1;
+    let html = '<div class="cal-dayview' + (day < TODAY ? ' past' : '') + '">';
+    for (let h = lo; h <= hi; h++){
+      const hh = String(h).padStart(2, '0');
+      const cards = items.filter(it=> hourOf(it.time) === h).map(render).filter(Boolean);
+      const gone = day < TODAY || (day === TODAY && h < nowHour);
+      html += '<div class="cal-hour' + (cards.length ? '' : ' empty') + (h === nowHour ? ' now' : '') + (gone ? ' gone' : '') + '"' + (gone ? '' : ' data-cal-day="' + day + '" data-cal-hour="' + hh + '"') + '>';
+      html += '<div class="cal-hour-label">' + fmtTime(hh + ':00').replace(':00', '') + '</div>';
+      html += '<div class="cal-hour-items">' + cards.join('') + (!gone && rowExtra ? rowExtra(day, hh + ':00') : '') + '</div>';
+      html += '</div>';
+    }
     return html + '</div>';
   }
 
@@ -842,19 +870,33 @@
       const dayItems = items.filter(it=> it.date === day).map(render).filter(Boolean);
       const extra = dayExtra ? dayExtra(day) : '';
       html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length || extra ? '' : ' empty') + '" data-cal-day="' + day + '">';
-      html += '<div class="cal-day-head"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
+      html += '<div class="cal-day-head" data-cal-openday="' + day + '" role="button" tabindex="0" title="Open this day"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
       html += dayItems.length ? dayItems.join('') : '<div class="cal-none">—</div>';
       html += extra + '</div>';
     }
     return html + '</div>';
   }
   // ‹ › / This week, for whichever calendar the buttons belong to.
+  // Switch a calendar to `view` showing the day/week/month containing
+  // `date` (the current one is stored as null).
+  function calGoTo(scope, view, date){
+    if (view === 'day') calDays[scope] = date <= TODAY ? null : date;
+    else if (view === 'week'){ const w = mondayOf(date); calWeeks[scope] = w <= mondayOf(TODAY) ? null : w; }
+    else { const m = monthStartOf(date); calMonths[scope] = m <= monthStartOf(TODAY) ? null : m; }
+    calViews[scope] = view;
+    try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
+  }
   function wireCalNav(root, rerender){
     root.querySelectorAll('[data-cal]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const scope = btn.getAttribute('data-cal-scope');
         const v = btn.getAttribute('data-cal');
-        if (calViews[scope] === 'month'){
+        if (calViews[scope] === 'day'){
+          const start = calDays[scope] || TODAY;
+          let next = v === 'today' ? null : addDays(start, v === 'next' ? 1 : -1);
+          if (next && next <= TODAY) next = null;
+          calDays[scope] = next;
+        } else if (calViews[scope] === 'month'){
           const start = calMonths[scope] || monthStartOf(TODAY);
           let next = v === 'today' ? null : addMonths(start, v === 'next' ? 1 : -1);
           if (next && next <= monthStartOf(TODAY)) next = null;
@@ -873,30 +915,29 @@
         const scope = btn.getAttribute('data-cal-scope');
         const view = btn.getAttribute('data-cal-view');
         if (calViews[scope] === view) return;
-        // Keep roughly the same place: month of the week shown, or the
-        // month's first week (this week if that's the current month).
-        if (view === 'month'){
-          const m = monthStartOf(calWeeks[scope] || TODAY);
-          calMonths[scope] = m <= monthStartOf(TODAY) ? null : m;
-        } else {
-          const w = mondayOf(calMonths[scope] || TODAY);
-          calWeeks[scope] = w <= mondayOf(TODAY) ? null : w;
-        }
-        calViews[scope] = view;
+        // Keep roughly the same place: the date being looked at now,
+        // never earlier than today.
+        const cur = calViews[scope];
+        let anchor = cur === 'day' ? calDays[scope] : cur === 'month' ? calMonths[scope] : calWeeks[scope];
+        if (!anchor || anchor < TODAY) anchor = TODAY;
+        calGoTo(scope, view, anchor);
         if (scope === 'member') memberMoveFrom = null;
-        try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
         rerender();
       });
+    });
+    // Week view: a day's heading opens that day.
+    root.querySelectorAll('[data-cal-openday]').forEach(head=>{
+      const scope = root.querySelector('[data-cal-view]') ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
+      const open = ()=>{ if (!scope) return; calGoTo(scope, 'day', head.getAttribute('data-cal-openday')); rerender(); };
+      head.addEventListener('click', open);
+      head.addEventListener('keydown', e=>{ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
     });
     // Month view: a day opens its week.
     root.querySelectorAll('[data-cal-open]').forEach(cell=>{
       const scope = (root.querySelector('[data-cal-view]') || {}).getAttribute ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
       const open = ()=>{
         if (!scope) return;
-        const w = mondayOf(cell.getAttribute('data-cal-open'));
-        calWeeks[scope] = w <= mondayOf(TODAY) ? null : w;
-        calViews[scope] = 'week';
-        try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
+        calGoTo(scope, 'week', cell.getAttribute('data-cal-open'));
         rerender();
       };
       cell.addEventListener('click', open);
@@ -922,8 +963,8 @@
     } else if (!range.month && items.some(it=> (it.kind === 'mypt' || (it.kind === 'class' && memberBookingForSession(it.s.id, selfMemberId))) && !isPast(it.date, it.time))){
       html += '<div class="field-hint cal-tip">Tip: drag one of your bookings onto another time to move it.</div>';
     }
-    html += range.month ? calMonthHtml(range, items, memberChipHtml) : calGridHtml(range.start, items, calItemHtml);
-    if (!items.length) html += '<div class="empty-msg">Nothing on this ' + (range.month ? 'month' : 'week') + '.</div>';
+    html += range.month ? calMonthHtml(range, items, memberChipHtml) : range.day ? calDayHtml(range, items, calItemHtml) : calGridHtml(range.start, items, calItemHtml);
+    if (!items.length) html += '<div class="empty-msg">Nothing on this ' + (range.month ? 'month' : range.day ? 'day' : 'week') + '.</div>';
     return html;
   }
 
@@ -1014,6 +1055,7 @@
     const items = coachCalendarItems(range.from, range.to, selfTrainerId);
     let html = calHeadHtml(range, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, false));
+    if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, false), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addslot="' + day + 'T' + t + '" aria-label="Add a slot at ' + fmtTime(t) + '">+ Slot</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
     return html;
   }
@@ -1031,6 +1073,7 @@
     trainers.forEach(t=> html += '<option value="' + t.id + '"' + (t.id===adminCalTrainer ? ' selected' : '') + '>' + esc(t.name) + '</option>');
     html += '</select></div></div>';
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, adminCalTrainer === 'all'));
+    if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addsession="' + day + 'T' + t + '" aria-label="Add a session at ' + fmtTime(t) + '">+ Session</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
     return html;
   }
@@ -1040,7 +1083,8 @@
      day (or tap Move), check the time, confirm. reschedule_class_session()
      / reschedule_pt_slot() (sql/63) move it and tell everyone booked. */
   let moveTarget = null; // { kind:'class'|'slot', id }
-  function openMoveDialog(ref, day){
+  // hour (day view): drop row's hour, keeping the item's minutes.
+  function openMoveDialog(ref, day, hour){
     const [kind, id] = ref.split(':');
     const item = kind === 'class' ? getSession(id) : slots.find(x=>x.id===id);
     if (!item) return;
@@ -1063,7 +1107,7 @@
     const dateEl = document.getElementById('sched-move-date');
     dateEl.min = TODAY;
     dateEl.value = day || item.date;
-    document.getElementById('sched-move-time').value = String(item.startTime).slice(0,5);
+    document.getElementById('sched-move-time').value = hour ? hour + String(item.startTime).slice(2,5) : String(item.startTime).slice(0,5);
     document.getElementById('sched-move-panel-backdrop').classList.add('show');
     document.getElementById('sched-move-time').focus();
   }
@@ -1113,7 +1157,7 @@
         if (!dragging) return;
         e.preventDefault();
         dayEl.classList.remove('drop-ok');
-        openMoveDialog(dragging, day);
+        openMoveDialog(dragging, day, dayEl.getAttribute('data-cal-hour'));
       });
     });
   }
@@ -2522,11 +2566,13 @@
     if (calTrainer) calTrainer.addEventListener('change', ()=>{ adminCalTrainer = calTrainer.value; renderBody(); });
     body.querySelectorAll('[data-cal-addsession]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        const day = btn.getAttribute('data-cal-addsession');
+        const [day, t] = btn.getAttribute('data-cal-addsession').split('T');
         adminSubTab = 'sessions';
         renderBody();
         const date = document.getElementById('sched-new-sess-date');
         if (date){ date.value = day; date.scrollIntoView({ block:'center' }); }
+        const time = document.getElementById('sched-new-sess-time');
+        if (time && t) time.value = t;
         const cls = document.getElementById('sched-new-sess-class'); if (cls) cls.focus();
       });
     });
