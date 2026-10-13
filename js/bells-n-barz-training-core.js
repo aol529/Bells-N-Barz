@@ -1396,6 +1396,24 @@
     return nameInput;
   }
 
+  /* Program mode: same ⇄ dropdown, but the program itself never changes —
+     the pick is stored per day/exercise in that log (swapKey) and shows as
+     the exercise's name there, in exports and in history. Picking the
+     program exercise again clears it. */
+  function programExName(ex, swapped){ return swapped || ex.name; }
+  function fillProgramExHead(exHead, ex, swapped, onPick){
+    const cur = swapped || splitAltFromName(ex.name).name;
+    exHead.innerHTML = `<div class="ls-ex-name">${esc(programExName(ex, swapped))}${swapped ? `<span class="ls-ex-swapped">swapped from ${esc(splitAltFromName(ex.name).name)}</span>` : ''}</div>`;
+    const picker = buildAltPicker({ name: cur, base: ex.name, baseAlts: ex.alternates }, val => {
+      onPick(val.toLowerCase() === splitAltFromName(ex.name).name.toLowerCase() ? '' : val);
+    });
+    if (picker) exHead.appendChild(picker);
+    const presc = document.createElement('div');
+    presc.className = 'ls-ex-presc';
+    presc.textContent = prescString(ex);
+    exHead.appendChild(presc);
+  }
+
   /* ---- Freeform logging (per slot, per day) ----
      A coach running a real 1-on-1 often doesn't follow the written program
      block-for-block — they call out exercises as the session unfolds. Mode is
@@ -1533,7 +1551,11 @@
         exDiv.className = 'ls-exercise';
         const exHead = document.createElement('div');
         exHead.className = 'ls-ex-head';
-        exHead.innerHTML = `<div class="ls-ex-name">${esc(ex.name)}</div><div class="ls-ex-presc">${esc(prescString(ex))}</div>`;
+        const swapKey = csKey(csSlot,csDay,bIdx,eIdx,'swap');
+        fillProgramExHead(exHead, ex, sessionStore[swapKey], val => {
+          if (val) sessionStore[swapKey] = val; else delete sessionStore[swapKey];
+          saveSession(); renderSessionDay();
+        });
         exDiv.appendChild(exHead);
         const ml = metaLine(ex);
         if (ml){
@@ -1797,7 +1819,7 @@
               reps: sessionStore[csKey(slot,day,bIdx,eIdx,s,'reps')] || ''
             });
           }
-          return { name: ex.name, presc: prescString(ex), meta: metaLine(ex).replace(/&nbsp;/g,' ').replace(/•/g,'|'), sets };
+          return { name: programExName(ex, sessionStore[csKey(slot,day,bIdx,eIdx,'swap')]), presc: prescString(ex), meta: metaLine(ex).replace(/&nbsp;/g,' ').replace(/•/g,'|'), sets };
         })
       }));
     }
@@ -2213,7 +2235,11 @@
         exDiv.className = 'ls-exercise';
         const exHead = document.createElement('div');
         exHead.className = 'ls-ex-head';
-        exHead.innerHTML = `<div class="ls-ex-name">${esc(ex.name)}</div><div class="ls-ex-presc">${esc(prescString(ex))}</div>`;
+        const swapKey = mlsKey(day,bIdx,eIdx,'swap');
+        fillProgramExHead(exHead, ex, mlsStore[swapKey], val => {
+          if (val) mlsStore[swapKey] = val; else delete mlsStore[swapKey];
+          saveMlsStore(); renderMlsDay();
+        });
         exDiv.appendChild(exHead);
         const ml = metaLine(ex);
         if (ml){
@@ -2431,7 +2457,7 @@
               reps: mlsStore[mlsKey(day,bIdx,eIdx,s,'reps')] || ''
             });
           }
-          return { name: ex.name, presc: prescString(ex), meta: metaLine(ex).replace(/&nbsp;/g,' ').replace(/•/g,'|'), sets };
+          return { name: programExName(ex, mlsStore[mlsKey(day,bIdx,eIdx,'swap')]), presc: prescString(ex), meta: metaLine(ex).replace(/&nbsp;/g,' ').replace(/•/g,'|'), sets };
         })
       }));
     }

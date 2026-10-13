@@ -1276,7 +1276,10 @@ button.t-ghost:hover{color:var(--text);border-color:var(--accent-dim);}
 .ls-exercise{padding:12px 14px;border-top:1px solid var(--line);background:var(--surface);}
 .ls-exercise:first-of-type{border-top:none;}
 .ls-ex-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
-.ls-ex-name{font-weight:700;font-size:14.5px;}
+.ls-ex-name{font-weight:700;font-size:14.5px;flex:1 1 auto;min-width:0;}
+.ls-ex-swapped{display:block;font-weight:400;font-size:11.5px;color:var(--muted);font-style:italic;}
+.ls-ex-head .ff-alt{order:2;}
+.ls-ex-head .ls-ex-presc{order:3;align-self:center;}
 .ls-ex-presc{font-size:12px;color:var(--accent);font-style:italic;white-space:nowrap;}
 .ls-ex-meta{font-size:11px;color:var(--muted);margin-bottom:9px;}
 .ls-sets{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;}
