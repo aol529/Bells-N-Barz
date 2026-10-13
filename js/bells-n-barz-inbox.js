@@ -35,13 +35,26 @@
   let selectedOtherUserId = null;
   let selectedOtherUserName = null;
 
+  // Re-renders replace the whole Inbox, so remember what was being typed
+  // (and the search box) and put it back — auto-refresh must never eat a
+  // half-written message.
+  let renderSeq = 0;
   async function renderInbox(){
+    const seq = ++renderSeq;
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me){ body.innerHTML = '<div class="empty-msg">Sign in to use your inbox.</div>'; return; }
 
+    const prevInput = document.getElementById('inbox-input');
+    const draft = prevInput ? { userId: selectedOtherUserId, text: prevInput.value, focused: document.activeElement === prevInput,
+      start: prevInput.selectionStart, end: prevInput.selectionEnd } : null;
+    const prevSearch = document.getElementById('inbox-search-input');
+    const search = prevSearch ? { q: prevSearch.value, focused: document.activeElement === prevSearch } : null;
+
     const { data: threads, error } = await bnbClient.rpc('my_dm_threads');
     if (error) { console.error('Supabase load my_dm_threads failed:', error); return; }
+    if (seq !== renderSeq) return; // a newer render started meanwhile
     threadsCache = threads || [];
+    lastSignature = signatureOf(threadsCache);
 
     // Deep-link support (mirrors window.BNB_MESSAGES_PENDING_MEMBER) — lets
     // a "Message" button elsewhere in the app (e.g. a member's profile,
@@ -60,11 +73,13 @@
       selectedOtherUserName = threadsCache[0].other_user_name;
     }
 
-    const listHtml = threadsCache.length
+    // Built when the page is assembled (below), i.e. after the open thread
+    // has been marked read, so its "New" label is already gone.
+    const listHtml = () => threadsCache.length
       ? threadsCache.map(t => `
         <div class="msg-thread-row ${t.other_user_id === selectedOtherUserId ? 'active' : ''}" data-user-id="${escAttr(t.other_user_id)}" data-name="${escAttr(t.other_user_name)}">
           <span class="msg-thread-name">${esc(t.other_user_name)}</span>
-          ${t.last_sender_id && t.last_sender_id !== me.id ? '<span class="msg-needs-reply">New</span>' : ''}
+          ${window.bnbDmIsUnread && window.bnbDmIsUnread(t, me.id) ? '<span class="msg-needs-reply">New</span>' : ''}
         </div>
       `).join('')
       : '<div class="empty-msg">No conversations yet — search for someone below to start one.</div>';
@@ -76,7 +91,13 @@
         const { data, error: msgErr } = await bnbClient
           .from('dm_messages').select('*').eq('thread_id', selectedThreadId).order('created_at', { ascending: true });
         if (msgErr) { console.error('Supabase load dm_messages failed:', msgErr); return; }
+        if (seq !== renderSeq) return;
         messages = data || [];
+        if (inboxOnScreen() && window.bnbDmMarkRead){
+          const open = threadsCache.find(x => x.thread_id === selectedThreadId);
+          window.bnbDmMarkRead(selectedThreadId, open && open.updated_at);
+          if (open) open.unread = false;
+        }
       }
       detailHtml = `
         <div class="msg-thread" id="inbox-thread">${messageListHtml(messages, me.id, selectedOtherUserName)}</div>
@@ -94,13 +115,26 @@
         <div id="inbox-search-results"></div>
       </div>
       <div class="msg-staff-layout">
-        <div class="msg-thread-list">${listHtml}</div>
+        <div class="msg-thread-list">${listHtml()}</div>
         <div class="msg-thread-detail">${detailHtml}</div>
       </div>
     `;
 
     wireSearch();
-
+    if (window.bnbInboxSetBadge && window.bnbDmIsUnread){
+      window.bnbInboxSetBadge(threadsCache.filter(t => window.bnbDmIsUnread(t, me.id)).length);
+    }
+    const newInput = document.getElementById('inbox-input');
+    if (draft && newInput && draft.userId === selectedOtherUserId && draft.text){
+      newInput.value = draft.text;
+      if (draft.focused){ newInput.focus(); newInput.setSelectionRange(draft.start, draft.end); }
+    }
+    const newSearch = document.getElementById('inbox-search-input');
+    if (search && newSearch && search.q){
+      newSearch.value = search.q;
+      if (search.focused) newSearch.focus();
+      runSearch(search.q, document.getElementById('inbox-search-results'));
+    }
     body.querySelectorAll('.msg-thread-row').forEach(row => {
       row.addEventListener('click', () => {
         const userId = row.getAttribute('data-user-id');
@@ -181,6 +215,26 @@
       });
     });
   }
+
+  /* ---------------- AUTO-REFRESH ----------------
+     While the Inbox is on screen, check for new messages every 15 seconds
+     and redraw only if a conversation actually changed (new message or a
+     new thread). Drafts and the search box survive the redraw (see the
+     top of renderInbox). */
+  let lastSignature = '';
+  function signatureOf(threads){ return threads.map(t => t.thread_id + '@' + t.updated_at).join('|'); }
+  function inboxOnScreen(){
+    const panel = document.getElementById('tab-inbox');
+    return document.visibilityState === 'visible' && !!panel && panel.classList.contains('active');
+  }
+  setInterval(async () => {
+    if (!inboxOnScreen()) return;
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    const { data, error } = await bnbClient.rpc('my_dm_threads');
+    if (error) return;
+    if (signatureOf(data || []) !== lastSignature) renderInbox();
+  }, 15 * 1000);
 
   window.bnbInboxOnTabShown = renderInbox;
   renderInbox();

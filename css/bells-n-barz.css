@@ -2773,3 +2773,12 @@ body > *{flex-shrink:0;}
 /* On the landing screen no card is "current" — drop the last pick's highlight. */
 #shop-view-shop:not(.shop-browse) #shop-type-tabs .cat-card.active{border-color:var(--line); background:var(--surface);}
 #shop-view-shop:not(.shop-browse) #shop-type-tabs .cat-card.active .cat-card-count{color:var(--muted-2);}
+/* Unread count on the INBOX nav button (js/bells-n-barz-shell.js). */
+#nav-inbox-btn{display:inline-flex; flex-direction:row; align-items:center; gap:6px; white-space:nowrap;}
+#nav-inbox-btn .nav-badge{
+  display:inline-block; min-width:16px; height:16px; padding:0 5px;
+  background:var(--accent-2); color:#fff; border-radius:10px;
+  font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; line-height:16px; text-align:center; letter-spacing:0;
+}
+#nav-inbox-btn .nav-badge[hidden]{display:none;}
+#nav-inbox-btn.active .nav-badge{background:var(--on-accent); color:var(--accent);}

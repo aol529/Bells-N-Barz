@@ -321,7 +321,12 @@
     member can't give themselves admin roles, credits or balance changes.
     Run on both projects. Safe to re-run.
 
-55. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+55. **55-inbox-unread.sql** — per-person "read up to" times on
+    `dm_threads`, `unread` in `my_dm_threads()`, and
+    `mark_dm_thread_read()`, for the unread count on the INBOX button.
+    Without it the count is tracked per device. Safe to re-run.
+
+56. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

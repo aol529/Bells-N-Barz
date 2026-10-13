@@ -824,6 +824,7 @@ function refreshNavAuthGate(){
   });
   refreshAccountMenu(signedIn);
   refreshNotificationBell(signedIn);
+  if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
   // Tools' "save this" boxes switch between Sign Up and Open in Me.
   if (window.BNB_TOOLS) window.BNB_TOOLS.refresh();
   // Signed in while looking at the Member preview: go straight into Member.
@@ -1734,6 +1735,61 @@ createIntervalTimer(
       setTimeout(() => customCardEl.classList.remove('format-load-flash','fade'), 1500);
     });
   });
+})();
+
+/* ---------------- INBOX UNREAD BADGE ----------------
+   A count on the INBOX nav button of conversations with a message you
+   haven't opened yet, refreshed every minute (and when the tab comes back
+   into view) on any page. "Unread" comes from my_dm_threads().unread,
+   which is server-side so reading on one device clears it everywhere
+   (sql/55-inbox-unread.sql). Before that SQL has run, it falls back to
+   "they spoke last and you haven't opened it on this device". The Inbox
+   itself (js/bells-n-barz-inbox.js) uses the same helpers. */
+(function(){
+  const btn = document.getElementById('nav-inbox-btn');
+  if (!btn) return;
+  const badge = document.createElement('span');
+  badge.className = 'nav-badge';
+  badge.hidden = true;
+  btn.appendChild(badge);
+
+  const SEEN_KEY = 'bnb-dm-seen'; // thread id -> when it was last opened on this device
+  function seenMap(){ try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch(e){ return {}; } }
+  const time = s => (s ? new Date(s).getTime() : 0);
+
+  window.bnbDmIsUnread = function(thread, meId){
+    if (!thread.last_sender_id || thread.last_sender_id === meId) return false;
+    // Opened on this device since the last message (covers the moment
+    // before the server-side mark lands, and databases without sql/55).
+    if (time(seenMap()[thread.thread_id]) >= time(thread.updated_at)) return false;
+    return typeof thread.unread === 'boolean' ? thread.unread : true;
+  };
+  window.bnbDmMarkRead = function(threadId, lastMessageAt){
+    const m = seenMap();
+    // Read up to now — or the last message's own time, if the server's
+    // clock is ahead of this device's.
+    m[threadId] = new Date(Math.max(Date.now(), time(lastMessageAt))).toISOString();
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(m)); } catch(e){}
+    // Errors are expected until sql/55 adds this function; the
+    // per-device record above still works without it.
+    bnbClient.rpc('mark_dm_thread_read', { p_thread_id: threadId }).then(() => {});
+  };
+  window.bnbInboxSetBadge = function(n){
+    badge.hidden = !n;
+    badge.textContent = n > 99 ? '99+' : String(n || '');
+    btn.setAttribute('aria-label', n ? 'Inbox, ' + n + ' unread' : 'Inbox');
+  };
+  async function refreshBadge(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me){ window.bnbInboxSetBadge(0); return; }
+    const { data, error } = await bnbClient.rpc('my_dm_threads');
+    if (error) return;
+    window.bnbInboxSetBadge((data || []).filter(t => window.bnbDmIsUnread(t, me.id)).length);
+  }
+  window.bnbInboxRefreshBadge = refreshBadge;
+  setInterval(() => { if (document.visibilityState === 'visible') refreshBadge(); }, 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshBadge(); });
+  if (window.bnbSessionReady) window.bnbSessionReady.then(refreshBadge, () => {});
 })();
 
 /* ---------------- AUTO-REFRESH ---------------- */
