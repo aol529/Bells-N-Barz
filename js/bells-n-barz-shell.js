@@ -825,6 +825,7 @@ function refreshNavAuthGate(){
   refreshAccountMenu(signedIn);
   refreshNotificationBell(signedIn);
   if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
+  if (window.bnbLiveAlertsResubscribe) window.bnbLiveAlertsResubscribe();
   // Tools' "save this" boxes switch between Sign Up and Open in Me.
   if (window.BNB_TOOLS) window.BNB_TOOLS.refresh();
   // Signed in while looking at the Member preview: go straight into Member.
@@ -1735,6 +1736,165 @@ createIntervalTimer(
       setTimeout(() => customCardEl.classList.remove('format-load-flash','fade'), 1500);
     });
   });
+})();
+
+/* ---------------- LIVE MESSAGE ALERTS ----------------
+   Every message already inserts a row into notifications (send_message,
+   send_direct_message). With that table in Supabase Realtime
+   (sql/57-realtime-notifications.sql) the app hears each new row the
+   moment it's written — filtered to the signed-in user, and Realtime
+   applies the table's RLS too. For a message it then:
+     - refreshes the open Inbox / Messages view right away,
+     - updates the bell and INBOX counts,
+     - and, unless you're already looking at that screen, plays a short
+       chime, shows a clickable pop-up and (tab in the background, if
+       allowed) a system notification.
+   Sound on/off and "Enable desktop alerts" live in the bell menu. */
+(function(){
+  const SOUND_KEY = 'bnb-msg-sound'; // per-device preference
+  let soundOn = true;
+  try { soundOn = localStorage.getItem(SOUND_KEY) !== 'off'; } catch(e){}
+
+  // Browsers only allow audio after the person has interacted with the
+  // page, so the audio context is created/resumed on the first tap/key.
+  let audioCtx = null;
+  function unlockAudio(){
+    try {
+      if (!audioCtx){ const AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    } catch(e){}
+  }
+  ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { passive: true }));
+  // Two soft rising notes (~0.35s), generated — no sound file to load.
+  function chime(){
+    if (!soundOn || !audioCtx || audioCtx.state !== 'running') return;
+    const t0 = audioCtx.currentTime;
+    [[880, 0], [1318.5, 0.12]].forEach(([freq, delay]) => {
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + delay);
+      gain.gain.exponentialRampToValueAtTime(0.18, t0 + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + 0.22);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0 + delay); osc.stop(t0 + delay + 0.25);
+    });
+  }
+
+  // Which screen shows each kind of message (notification link_tab).
+  function viewFor(link){
+    if (link === 'inbox') return { el: document.getElementById('tab-inbox'), active: el => el.classList.contains('active'), refresh: window.bnbInboxOnTabShown };
+    if (link === 'messages') return { el: document.getElementById('messages-body'), active: el => !!el.offsetParent, refresh: window.bnbMessagesOnTabShown };
+    if (link === 'coach') return { el: document.getElementById('coach-messages-body'), active: el => !!el.offsetParent, refresh: window.bnbMessagesStaffOnTabShown };
+    return null;
+  }
+  function onScreen(link){
+    const v = viewFor(link);
+    return document.visibilityState === 'visible' && !!(v && v.el && v.active(v.el));
+  }
+  function openConversation(link){
+    if (typeof window.switchSite === 'function') window.switchSite('gym');
+    if (link === 'coach'){
+      switchTab('coach');
+      const b = document.querySelector('#coach-section-switch [data-coach-section="messages"]');
+      if (b) b.click();
+    } else {
+      switchTab(link);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  let popup = null, popupTimer = null;
+  function showPopup(n){
+    if (!popup){
+      popup = document.createElement('button');
+      popup.type = 'button';
+      popup.className = 'msg-alert';
+      popup.setAttribute('role', 'status');
+      document.body.appendChild(popup);
+    }
+    popup.innerHTML = '<span class="msg-alert-icon" aria-hidden="true">💬</span><span class="msg-alert-text"></span><span class="msg-alert-go" aria-hidden="true">Open →</span>';
+    popup.querySelector('.msg-alert-text').textContent = n.message;
+    popup.onclick = () => { popup.classList.remove('show'); openConversation(n.link_tab); };
+    popup.classList.add('show');
+    clearTimeout(popupTimer);
+    popupTimer = setTimeout(() => popup.classList.remove('show'), 7000);
+  }
+  async function systemNotify(n){
+    if (document.visibilityState === 'visible') return; // the pop-up covers it
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const title = "Bell(e)s n' Barz";
+    const opts = { body: n.message, icon: 'icon.svg', tag: 'bnb-message' };
+    try {
+      // iOS only shows notifications through a service worker (sw.js).
+      const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+      if (reg && reg.showNotification){ await reg.showNotification(title, opts); return; }
+    } catch(e){}
+    try { new Notification(title, opts); } catch(e){}
+  }
+
+  // Exposed so it can be exercised without a real insert.
+  window.bnbHandleNotification = function(n){
+    if (!n) return;
+    if (typeof refreshUnreadCount === 'function') refreshUnreadCount();
+    if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
+    if (n.type !== 'new_direct_message' && n.type !== 'new_message') return;
+    const v = viewFor(n.link_tab);
+    const looking = onScreen(n.link_tab);
+    if (v && v.el && v.active(v.el) && typeof v.refresh === 'function') v.refresh();
+    if (looking) return; // already in front of you — no need to make noise
+    chime();
+    showPopup(n);
+    systemNotify(n);
+  };
+
+  let channel = null, channelUser = null;
+  function resubscribe(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const uid = me ? me.id : null;
+    if (uid === channelUser) return;
+    if (channel){ bnbClient.removeChannel(channel); channel = null; }
+    channelUser = uid;
+    if (!uid) return;
+    channel = bnbClient.channel('notifications:' + uid)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + uid },
+          payload => window.bnbHandleNotification(payload.new))
+      .subscribe();
+  }
+  window.bnbLiveAlertsResubscribe = resubscribe;
+  if (window.bnbSessionReady) window.bnbSessionReady.then(resubscribe, () => {});
+
+  // ---- Settings in the bell menu ----
+  const soundToggle = document.getElementById('notif-sound-toggle');
+  if (soundToggle){
+    soundToggle.checked = soundOn;
+    soundToggle.addEventListener('change', () => {
+      soundOn = soundToggle.checked;
+      try { localStorage.setItem(SOUND_KEY, soundOn ? 'on' : 'off'); } catch(e){}
+      if (soundOn){ unlockAudio(); setTimeout(chime, 50); } // play a sample
+    });
+  }
+  const desktopBtn = document.getElementById('notif-desktop-btn');
+  const desktopHint = document.getElementById('notif-desktop-hint');
+  function hint(text){ if (desktopHint){ desktopHint.hidden = !text; desktopHint.textContent = text || ''; } }
+  function refreshDesktopBtn(){
+    if (!desktopBtn) return;
+    if (!('Notification' in window)){ desktopBtn.hidden = true; hint('This browser doesn\'t support desktop alerts.'); return; }
+    const p = Notification.permission;
+    desktopBtn.hidden = p !== 'default';
+    hint(p === 'granted' ? 'Desktop alerts are on for this device.' :
+         p === 'denied' ? 'Desktop alerts are blocked — allow notifications for this site in your browser settings.' : '');
+  }
+  if (desktopBtn){
+    refreshDesktopBtn();
+    desktopBtn.addEventListener('click', async () => {
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (ios && !standalone){ hint('On iPhone/iPad: add this site to your Home Screen (Share → Add to Home Screen), open it from there, then enable alerts.'); return; }
+      try { if (navigator.serviceWorker) navigator.serviceWorker.register('sw.js').catch(() => {}); } catch(e){}
+      try { await Notification.requestPermission(); } catch(e){}
+      refreshDesktopBtn();
+    });
+  }
 })();
 
 /* ---------------- TYPING INDICATOR ----------------

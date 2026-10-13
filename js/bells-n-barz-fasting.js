@@ -152,7 +152,7 @@
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     ensureServiceWorker().then(reg => {
       if (reg && reg.showNotification){
-        reg.showNotification(title, { body: body, icon: '/icon.svg' }).catch(() => {
+        reg.showNotification(title, { body: body, icon: 'icon.svg' }).catch(() => {
           try { new Notification(title, { body: body }); } catch(e){}
         });
       } else {

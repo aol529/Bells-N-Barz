@@ -331,7 +331,11 @@
     and the other person's read time (`other_read_at`) in
     `my_dm_threads()`. Run after 55. Safe to re-run.
 
-57. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+57. **57-realtime-notifications.sql** — adds `notifications` to Supabase
+    Realtime, for instant message alerts (sound, pop-up, desktop
+    notification). Realtime applies the table's RLS. Safe to re-run.
+
+58. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
