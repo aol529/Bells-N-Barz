@@ -2076,6 +2076,43 @@ header.site{
 .sched-scope .field-row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
 .sched-scope .field-hint{font-size:11px; color:var(--muted-2); margin-top:4px;}
 .sched-scope .sched-recurring-preview.bad{color:#e0736a;}
+.sched-scope .cal-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+.sched-scope .cal-head .btn2{padding:6px 12px;}
+.sched-scope .cal-head .btn2[disabled]{opacity:.35; cursor:default;}
+.sched-scope .cal-range{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:15px; color:var(--text); min-width:130px; text-align:center;}
+.sched-scope .cal-legend{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted-2); font-family:'IBM Plex Mono',monospace;}
+.sched-scope .cal-key{display:inline-block; width:10px; height:10px; border-radius:2px; margin-left:8px; border:1px solid var(--line); border-left:3px solid var(--accent);}
+.sched-scope .cal-key.cal-slot{border:1px dashed var(--muted-2);}
+.sched-scope .cal-key.mine{background:rgba(var(--accent-3-rgb),.25); border:1px solid var(--accent-3);}
+.sched-scope #sched-class-chips{margin-bottom:14px;}
+.sched-scope .cal-grid{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px;}
+.sched-scope .cal-day{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:6px; min-height:140px; display:flex; flex-direction:column; gap:6px; min-width:0;}
+.sched-scope .cal-day.today{border-color:var(--accent-dim); box-shadow:inset 0 2px 0 var(--accent);}
+.sched-scope .cal-day.past{opacity:.55;}
+.sched-scope .cal-day-head{display:flex; justify-content:space-between; align-items:baseline; font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; color:var(--muted); padding:0 2px 4px; border-bottom:1px solid var(--line);}
+.sched-scope .cal-day-head b{font-family:'Oswald',sans-serif; font-size:17px; color:var(--text); font-weight:500;}
+.sched-scope .cal-day.today .cal-day-head b{color:var(--accent);}
+.sched-scope .cal-none{color:var(--muted-2); font-size:12px; text-align:center; padding-top:10px;}
+.sched-scope .cal-item{border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:3px; padding:6px 7px; background:var(--surface-2); font-size:12px; min-width:0; overflow-wrap:anywhere;}
+.sched-scope .cal-item.cal-slot{border:1px dashed var(--muted-2); background:transparent;}
+.sched-scope .cal-item.mine{border-color:var(--accent-3); background:rgba(var(--accent-3-rgb),.12);}
+.sched-scope .cal-item.past{opacity:.6;}
+.sched-scope .cal-time{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--accent); text-transform:uppercase;}
+.sched-scope .cal-item.mine .cal-time{color:var(--accent-3);}
+.sched-scope .cal-title{font-weight:600; color:var(--text); line-height:1.25; margin:2px 0;}
+.sched-scope .cal-meta{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted-2);}
+.sched-scope .cal-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px;}
+.sched-scope .cal-actions .btn2{padding:4px 10px; font-size:11px;}
+.sched-scope .cal-actions .status-pill{font-size:9.5px; padding:2px 7px;}
+.sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
+@media (max-width:900px){
+  .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}
+  .sched-scope .cal-day{min-height:0; flex-direction:row; flex-wrap:wrap; align-items:flex-start;}
+  .sched-scope .cal-day.empty{display:none;}
+  .sched-scope .cal-day-head{flex:0 0 100%; justify-content:flex-start; gap:8px;}
+  .sched-scope .cal-item{flex:1 1 150px;}
+  .sched-scope .cal-legend{margin-left:0; flex:0 0 100%;}
+}
 .sched-scope .panel-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
 .sched-scope .roster-list{list-style:none; margin:0 0 10px; padding:0; border:1px solid var(--line-soft); border-radius:2px; max-height:220px; overflow-y:auto;}
 .sched-scope .roster-list li{padding:8px 12px; border-bottom:1px solid var(--line-soft); font-size:12.5px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}

@@ -399,6 +399,7 @@
   let trainerSubTab = 'roster';
   let adminSubTab = 'classes';
   let classFilter = 'all';
+  let calWeekStart = null; // Calendar's Monday (YYYY-MM-DD); null = this week
   let editingClassId = null;
   let activeSlotFormTrainer = null;
   let activeRosterSessionId = null;
@@ -542,11 +543,13 @@
   function memberViewHtml(){
     let html = '<div class="sched-sub">';
     html += subBtn('browse', memberSubTab, 'Browse & Book');
+    html += subBtn('calendar', memberSubTab, 'Calendar');
     html += subBtn('trainer', memberSubTab, 'Book a Trainer');
     html += subBtn('mine', memberSubTab, 'My Schedule');
     html += subBtn('rate', memberSubTab, 'Rate Coaches');
     html += '</div>';
     if (memberSubTab === 'browse') html += memberBrowseHtml();
+    else if (memberSubTab === 'calendar') html += memberCalendarHtml();
     else if (memberSubTab === 'trainer') html += memberBookTrainerHtml();
     else if (memberSubTab === 'rate') html += memberRateHtml();
     else html += memberMineHtml();
@@ -594,6 +597,107 @@
       });
       html += '</div></div>';
     });
+    return html;
+  }
+
+  /* ---------------- CALENDAR (week view) ----------------
+     Classes, open 1-on-1 slots and your own 1-on-1s for one week, Monday
+     to Sunday. Seven columns on a wide screen; on a phone the days stack.
+     Book / Cancel use the same actions as the other member views. */
+  function isoDate(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function addDays(iso, n){ const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return isoDate(d); }
+  function mondayOf(iso){ const d = new Date(iso + 'T00:00:00'); return addDays(iso, -((d.getDay() + 6) % 7)); }
+  function nowHHMM(){ const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+  function isPast(date, time){ return date < TODAY || (date === TODAY && String(time).slice(0,5) <= nowHHMM()); }
+
+  function calendarItems(from, to){
+    const items = [];
+    sessions.filter(s=> s.status==='scheduled' && s.date >= from && s.date <= to).forEach(s=>{
+      const cls = getClass(s.classId); if (!cls) return;
+      if (classFilter !== 'all' && s.classId !== classFilter) return;
+      items.push({ kind:'class', date:s.date, time:s.startTime, s, cls });
+    });
+    ptBookings.filter(p=> p.userId===selfMemberId && p.status==='confirmed').forEach(p=>{
+      const sl = slots.find(x=>x.id===p.slotId);
+      if (sl && sl.date >= from && sl.date <= to) items.push({ kind:'mypt', date:sl.date, time:sl.startTime, sl, p });
+    });
+    slots.filter(sl=> sl.status==='open' && sl.date >= from && sl.date <= to).forEach(sl=>{
+      items.push({ kind:'slot', date:sl.date, time:sl.startTime, sl });
+    });
+    return items.sort((a,b)=> (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  }
+
+  function calItemHtml(it){
+    const past = isPast(it.date, it.time);
+    let cls = 'cal-item cal-' + it.kind + (past ? ' past' : '');
+    let html = '';
+    if (it.kind === 'class'){
+      const cap = sessionCapacity(it.s), confirmed = sessionConfirmedCount(it.s.id), full = confirmed >= cap;
+      const mine = memberBookingForSession(it.s.id, selfMemberId);
+      if (mine) cls += ' mine';
+      html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.cls.duration + 'm</div>';
+      html += '<div class="cal-title">' + esc(it.cls.name) + '</div>';
+      html += '<div class="cal-meta">' + esc(trainerName(it.s.instructorId)) + ' · ' + confirmed + '/' + cap + '</div>';
+      if (mine){
+        const place = mine.status==='waitlisted' ? myWaitlistPlace(it.s.id) : null;
+        html += '<div class="cal-actions"><span class="status-pill ' + mine.status + '">' + (mine.status==='confirmed' ? 'Booked' : 'Waitlist' + (place ? ' #' + place : '')) + '</span>';
+        if (!past) html += '<button class="cal-link" data-action="member-cancel-booking" data-id="' + mine.id + '">Cancel</button>';
+        html += '</div>';
+      } else if (!past){
+        html += '<div class="cal-actions"><button class="btn2 primary" data-action="member-book-session" data-id="' + it.s.id + '">' + (full ? 'Waitlist' : 'Book') + '</button></div>';
+      }
+    } else if (it.kind === 'mypt'){
+      cls += ' mine';
+      html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.sl.duration + 'm</div>';
+      html += '<div class="cal-title">1-on-1</div>';
+      html += '<div class="cal-meta">' + esc(trainerName(it.p.trainerId)) + '</div>';
+      html += '<div class="cal-actions"><span class="status-pill confirmed">Booked</span>';
+      if (!past) html += '<button class="cal-link" data-action="member-cancel-pt" data-id="' + it.p.id + '">Cancel</button>';
+      html += '</div>';
+    } else {
+      if (past) return '';
+      html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.sl.duration + 'm</div>';
+      html += '<div class="cal-title">1-on-1 open</div>';
+      html += '<div class="cal-meta">' + esc(trainerName(it.sl.trainerId)) + '</div>';
+      html += '<div class="cal-actions"><button class="btn2" data-action="member-book-slot" data-id="' + it.sl.id + '">Book</button></div>';
+    }
+    return '<div class="' + cls + '">' + html + '</div>';
+  }
+
+  function memberCalendarHtml(){
+    const start = calWeekStart || mondayOf(TODAY);
+    const end = addDays(start, 6);
+    const items = calendarItems(start, end);
+    const thisWeek = start === mondayOf(TODAY);
+    const fmtShort = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
+
+    let html = '<div class="cal-head">';
+    html += '<button class="btn2" data-cal="prev" aria-label="Previous week"' + (thisWeek ? ' disabled' : '') + '>‹</button>';
+    html += '<div class="cal-range">' + fmtShort(start) + ' – ' + fmtShort(end) + '</div>';
+    html += '<button class="btn2" data-cal="next" aria-label="Next week">›</button>';
+    if (!thisWeek) html += '<button class="btn2" data-cal="today">This week</button>';
+    html += '<div class="cal-legend"><span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours</div>';
+    html += '</div>';
+
+    const activeClasses = classes.filter(c=>c.status==='active');
+    if (activeClasses.length > 1){
+      html += '<div class="chip-filter" id="sched-class-chips"><button data-filter="all" class="'+(classFilter==='all'?'active':'')+'">All classes</button>';
+      activeClasses.forEach(c=> html += '<button data-filter="'+c.id+'" class="'+(classFilter===c.id?'active':'')+'">'+esc(c.name)+'</button>');
+      html += '</div>';
+    }
+
+    html += '<div class="cal-grid">';
+    for (let i = 0; i < 7; i++){
+      const day = addDays(start, i);
+      const d = new Date(day + 'T00:00:00');
+      const dayItems = items.filter(it=> it.date === day).map(calItemHtml).filter(Boolean);
+      html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length ? '' : ' empty') + '">';
+      html += '<div class="cal-day-head"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
+      html += dayItems.length ? dayItems.join('') : '<div class="cal-none">—</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+    if (!items.length) html += '<div class="empty-msg">Nothing on this week.</div>';
     return html;
   }
 
@@ -1988,6 +2092,16 @@
     const chipWrap = body.querySelector('#sched-class-chips');
     if (chipWrap) chipWrap.querySelectorAll('button').forEach(btn=>{
       btn.addEventListener('click', ()=>{ classFilter = btn.getAttribute('data-filter'); renderBody(); });
+    });
+
+    body.querySelectorAll('[data-cal]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const start = calWeekStart || mondayOf(TODAY);
+        const v = btn.getAttribute('data-cal');
+        calWeekStart = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
+        if (calWeekStart && calWeekStart <= mondayOf(TODAY)) calWeekStart = null;
+        renderBody();
+      });
     });
 
     const mbtSel = body.querySelector('#sched-mbt-trainer');
