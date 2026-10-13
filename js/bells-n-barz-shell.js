@@ -414,6 +414,7 @@ let previousLocation = null;
     program: document.getElementById('coach-section-program'),
     roster: document.getElementById('coach-section-roster'),
     session: document.getElementById('coach-section-session'),
+    workouts: document.getElementById('coach-section-workouts'),
     messages: document.getElementById('coach-section-messages'),
     mealplans: document.getElementById('coach-section-mealplans')
   };
@@ -431,6 +432,7 @@ let previousLocation = null;
       // 'coach' tab, leaving every reload stuck back on Dashboard.
       history.replaceState(null, '', '#coach:' + key);
       if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
+      if (key === 'workouts' && typeof window.bnbCoachWorkoutsOnShown === 'function') window.bnbCoachWorkoutsOnShown();
       if (key === 'mealplans' && typeof bnbLoadModule === 'function'){
         bnbLoadModule('mealplan').then(() => {
           if (typeof window.bnbMealPlanCoachOnShown === 'function') window.bnbMealPlanCoachOnShown();

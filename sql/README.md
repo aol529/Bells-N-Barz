@@ -355,7 +355,12 @@
     three send functions take an optional attachment. Run after 59. Safe
     to re-run.
 
-61. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+61. **61-coach-workouts.sql** — the coach's "Workouts to Try" card:
+    `coach_workouts` (title, pasted text, parsed variants), private to the
+    coach who saved it; only staff can add one. Run after 60. Safe to
+    re-run.
+
+62. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

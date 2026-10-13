@@ -1013,6 +1013,25 @@
         row.querySelector('.crud-remove').onclick = ()=>{
           block.exercises.splice(eIdx,1); saveAdminProgram(); renderAdminBlocks();
         };
+        // ⇄ next to the name: swap this exercise for one of its alternatives
+        // (rebuilt when the name or Alternates change, so the list follows).
+        const nameInp = row.querySelector('input[data-f="name"]');
+        const nameLine = document.createElement('div');
+        nameLine.className = 'crud-name-line';
+        nameInp.replaceWith(nameLine);
+        nameLine.appendChild(nameInp);
+        let picker = null;
+        const placePicker = ()=>{
+          const next = buildAltPicker({ name: ex.name, baseAlts: ex.alternates }, val => {
+            ex.name = val; nameInp.value = val; saveAdminProgram(); placePicker();
+          });
+          if (picker) picker.remove();
+          picker = next;
+          if (picker) nameLine.appendChild(picker);
+        };
+        placePicker();
+        nameInp.onchange = placePicker;
+        row.querySelector('input[data-f="alternates"]').onchange = placePicker;
         bDiv.appendChild(row);
       });
 
@@ -1363,7 +1382,7 @@
       sel.add(new Option(cur + ' (current)', cur, true, true));
     }
     opts.forEach((o, i) => {
-      const opt = new Option(i === 0 && ex.base ? o + ' — program' : o, o);
+      const opt = new Option(i === 0 && ex.base ? o + (ex.from === 'workout' ? ' — original' : ' — program') : o, o);
       if (o.toLowerCase() === cur.toLowerCase()) opt.selected = true;
       sel.add(opt);
     });
@@ -1460,7 +1479,7 @@
       if (!confirm("This will overwrite " + targetLabel + "'s existing freeform log for today. Continue?")) return;
     }
     const copied = source.map(ex => ({
-      name: ex.name, seed: ex.seed, base: ex.base, baseAlts: ex.baseAlts, presc: ex.presc,
+      name: ex.name, seed: ex.seed, base: ex.base, baseAlts: ex.baseAlts, from: ex.from, presc: ex.presc,
       sets: (ex.sets && ex.sets.length ? ex.sets : [{}]).map(()=> ({ wt:'', reps:'', done:false }))
     }));
     saveFreeformExercises(toSlot, day, copied);
@@ -1639,7 +1658,7 @@
       if (ex.presc){
         const prescDiv = document.createElement('div');
         prescDiv.className = 'ls-ex-presc cs-freeform-presc';
-        prescDiv.textContent = 'Program: ' + ex.presc;
+        prescDiv.textContent = (ex.from === 'workout' ? 'Plan: ' : 'Program: ') + ex.presc;
         exDiv.appendChild(prescDiv);
       }
 
@@ -2319,7 +2338,7 @@
       if (ex.presc){
         const prescDiv = document.createElement('div');
         prescDiv.className = 'ls-ex-presc cs-freeform-presc';
-        prescDiv.textContent = 'Program: ' + ex.presc;
+        prescDiv.textContent = (ex.from === 'workout' ? 'Plan: ' : 'Program: ') + ex.presc;
         exDiv.appendChild(prescDiv);
       }
 
@@ -2815,6 +2834,180 @@
       const row = loadMlsHistory().find(h => h.memberId === memberId && h.dateIso === dateIso);
       return row ? { mode: row.mode, exercises: row.exercises || [] } : null;
     }
+  };
+
+  /* --------------------- COACH: WORKOUTS TO TRY ---------------------------
+     A coach's own shelf of workouts they've come across and want to try
+     (sql/61, coach_workouts — private to the coach who saved them). Paste
+     the workout as text; it's split into variants at lines ending in ":"
+     ("Strength:", "If your goal is Hypertrophy:") and each "Name: 3 x 8"
+     line becomes an exercise. Try loads a variant into the Live Session's
+     current slot and day as Freeform, sets ready and ⇄ alternatives on. */
+  function showToast(msg){
+    const el = document.getElementById('t-toast'); if (!el) return;
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(el._tcTimer);
+    el._tcTimer = setTimeout(()=> el.classList.remove('show'), 2400);
+  }
+
+  function parseWorkoutText(text){
+    const variants = [];
+    let cur = null;
+    const tidyHeading = h => {
+      const t = h.replace(/:\s*$/, '').replace(/^i?f\s+your\s+goal\s+is\s+/i, '').trim();
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    };
+    String(text || '').split(/\r?\n/).forEach(raw => {
+      const line = raw.replace(/^\s*(?:[-*•▪◦]|\d+[.)])\s*/, '').trim();
+      if (!line) return;
+      if (/:\s*$/.test(line)){ cur = { name: tidyHeading(line), exercises: [] }; variants.push(cur); return; }
+      let name = line, presc = '';
+      const colon = line.match(/^(.+?)\s*(?::|\s[–—-]\s)\s*(.+)$/);
+      const inline = line.match(/^(.*?[a-z)])\s+(\d+\s*[x×]\s*\S.*)$/i);
+      if (colon){ name = colon[1]; presc = colon[2]; }
+      else if (inline){ name = inline[1]; presc = inline[2]; }
+      const m = presc.match(/(\d+)\s*[x×]\s*\d/) || presc.match(/(\d+)\s*sets?\b/i);
+      const sets = Math.min(Math.max(m ? parseInt(m[1], 10) : 3, 1), 10);
+      if (!cur){ cur = { name: 'Workout', exercises: [] }; variants.push(cur); }
+      cur.exercises.push({ name: name.trim().slice(0, 120), presc: presc.trim().slice(0, 200), sets });
+    });
+    return variants.filter(v => v.exercises.length);
+  }
+
+  // Loads one variant into the Live Session's current slot + day.
+  function tryWorkoutInSession(variant, title){
+    const who = slotTraineeName(csSlot).trim() || ('Slot ' + (csSlot+1));
+    const dayLabel = DAY_META[csDay].title.split('—')[0].trim();
+    if (freeformHasRealData(csSlot, csDay) &&
+        !confirm('Replace ' + who + "'s freeform log for " + dayLabel + ' with "' + title + ' — ' + variant.name + '"?')) return;
+    saveFreeformExercises(csSlot, csDay, variant.exercises.map(ex => ({
+      name: ex.name, seed: ex.name, base: ex.name, baseAlts: '', from: 'workout', presc: ex.presc,
+      sets: Array.from({ length: ex.sets || 3 }, () => ({ wt:'', reps:'', done:false }))
+    })));
+    setCsMode(csSlot, csDay, 'freeform');
+    renderSessionDay();
+    const btn = document.querySelector('#coach-section-switch [data-coach-section="session"]');
+    if (btn) btn.click();
+    showToast('Loaded into ' + who + ' — ' + dayLabel);
+  }
+
+  let coachWorkouts = null;       // null = not loaded yet
+  let coachWorkoutsError = '';
+  let coachWorkoutEditing = null; // id being edited, or null for a new one
+  async function refreshCoachWorkouts(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me){ coachWorkouts = []; coachWorkoutsError = 'Sign in to save workouts.'; return; }
+    const { data, error } = await bnbClient.from('coach_workouts').select('*')
+      .eq('owner_id', me.id).order('updated_at', { ascending: false });
+    if (error){
+      console.error('Supabase load coach_workouts failed:', error);
+      coachWorkouts = [];
+      coachWorkoutsError = /coach_workouts/.test(error.message || '') && /exist|schema cache/.test(error.message || '')
+        ? 'Workouts to Try needs sql/61-coach-workouts.sql run in Supabase first.'
+        : 'Couldn’t load your saved workouts — check your connection and try again.';
+      return;
+    }
+    coachWorkouts = data || [];
+    coachWorkoutsError = '';
+  }
+
+  function renderCoachWorkouts(){
+    const body = document.getElementById('coach-workouts-body');
+    if (!body) return;
+    const editing = coachWorkoutEditing && (coachWorkouts || []).find(w => w.id === coachWorkoutEditing);
+    const list = coachWorkouts || [];
+    body.innerHTML = `
+      ${coachWorkoutsError ? `<div class="admin-notice">${esc(coachWorkoutsError)}</div>` : ''}
+      <div class="cw-form">
+        <div class="cw-form-head">${editing ? 'Edit workout' : 'Save a workout to try'}</div>
+        <div class="field"><label>Title</label><input type="text" id="cw-title" maxlength="120" placeholder="e.g. Zercher leg day" value="${esc(editing ? editing.title : '')}"></div>
+        <div class="field"><label>Workout</label><textarea id="cw-text" rows="9" placeholder="Paste it in — one exercise per line, like&#10;Strength:&#10;Back Squats: 3 x 8&#10;Walking Lunges: 3 x 24m">${esc(editing ? editing.source : '')}</textarea></div>
+        <div class="cw-preview" id="cw-preview"></div>
+        <div class="crud-actions" style="padding-left:0;">
+          <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
+          ${editing ? '<button class="btn2" id="cw-cancel" type="button">Cancel</button>' : ''}
+        </div>
+      </div>
+      <div class="cw-list">
+        ${coachWorkouts === null ? '<div class="field-hint">Loading…</div>'
+          : !list.length ? '<div class="field-hint">No saved workouts yet — paste one above.</div>'
+          : list.map(w => `
+          <div class="cw-card" data-id="${esc(w.id)}">
+            <div class="cw-card-head">
+              <div><div class="cw-title">${esc(w.title)}</div><div class="cw-date">Saved ${esc(String(w.updated_at || w.created_at || '').slice(0, 10))}</div></div>
+              <div class="cw-card-btns">
+                <button class="btn2" data-cw="edit" type="button">Edit</button>
+                <button class="crud-remove" data-cw="delete" type="button" title="Delete workout">✕</button>
+              </div>
+            </div>
+            ${(w.variants || []).map((v, vIdx) => `
+              <div class="cw-variant">
+                <div class="cw-variant-head"><span>${esc(v.name)}</span>
+                  <button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button></div>
+                <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
+              </div>`).join('')}
+          </div>`).join('')}
+      </div>`;
+
+    const titleEl = body.querySelector('#cw-title');
+    const textEl = body.querySelector('#cw-text');
+    const preview = body.querySelector('#cw-preview');
+    const drawPreview = ()=>{
+      const vs = parseWorkoutText(textEl.value);
+      preview.innerHTML = !textEl.value.trim() ? ''
+        : !vs.length ? '<div class="field-hint">No exercises found yet — one per line, like "Back Squats: 3 x 8".</div>'
+        : '<div class="field-hint">Reads as: ' + vs.map(v => '<b>' + esc(v.name) + '</b> (' + v.exercises.length + ' exercise' + (v.exercises.length === 1 ? '' : 's') + ')').join(', ') + '</div>';
+    };
+    textEl.oninput = drawPreview;
+    drawPreview();
+
+    body.querySelector('#cw-save').onclick = async (e)=>{
+      const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+      if (!me){ showToast('Sign in to save workouts.'); return; }
+      const title = titleEl.value.trim();
+      const variants = parseWorkoutText(textEl.value);
+      if (!title){ showToast('Give it a title first.'); titleEl.focus(); return; }
+      if (!variants.length){ showToast('No exercises found — one per line, like "Back Squats: 3 x 8".'); textEl.focus(); return; }
+      const row = { title, source: textEl.value.trim(), variants, updated_at: new Date().toISOString() };
+      e.target.disabled = true;
+      const { error } = editing
+        ? await bnbClient.from('coach_workouts').update(row).eq('id', editing.id)
+        : await bnbClient.from('coach_workouts').insert([{ ...row, owner_id: me.id }]);
+      e.target.disabled = false;
+      if (error){ console.error('Supabase save coach_workouts failed:', error); showToast('Couldn’t save — ' + (error.message || 'try again')); return; }
+      coachWorkoutEditing = null;
+      showToast(editing ? 'Workout updated' : 'Workout saved');
+      await refreshCoachWorkouts();
+      renderCoachWorkouts();
+    };
+    const cancel = body.querySelector('#cw-cancel');
+    if (cancel) cancel.onclick = ()=>{ coachWorkoutEditing = null; renderCoachWorkouts(); };
+
+    body.querySelectorAll('.cw-card').forEach(card => {
+      const w = list.find(x => x.id === card.dataset.id);
+      if (!w) return;
+      card.querySelectorAll('[data-cw]').forEach(btn => {
+        btn.onclick = async ()=>{
+          const act = btn.dataset.cw;
+          if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
+          if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+          if (act === 'delete'){
+            if (!confirm('Delete "' + w.title + '"?')) return;
+            const { error } = await bnbClient.from('coach_workouts').delete().eq('id', w.id);
+            if (error){ console.error('Supabase delete coach_workouts failed:', error); showToast('Couldn’t delete — try again'); return; }
+            if (coachWorkoutEditing === w.id) coachWorkoutEditing = null;
+            await refreshCoachWorkouts();
+            renderCoachWorkouts();
+          }
+        };
+      });
+    });
+  }
+
+  window.bnbCoachWorkoutsOnShown = async function(){
+    renderCoachWorkouts();
+    await refreshCoachWorkouts();
+    renderCoachWorkouts();
   };
 
   /* -------------------------------- INIT ---------------------------------- */
