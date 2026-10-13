@@ -2115,6 +2115,11 @@ header.site{
 .sched-scope .cal-item.dragging{opacity:.4;}
 .sched-scope .cal-grid.drag-on .cal-day:not(.past){outline:1px dashed var(--line);}
 .sched-scope .cal-grid.drag-on .cal-day.drop-ok{outline:2px dashed var(--accent); background:rgba(var(--accent-rgb),.06);}
+.sched-scope .cal-item.drop-target{outline:1px dashed var(--accent-dim);}
+.sched-scope .cal-item.drop-ok{outline:2px dashed var(--accent); background:rgba(var(--accent-rgb),.08);}
+.sched-scope .cal-item.move-source{outline:2px solid var(--accent-3);}
+.sched-scope .cal-move-banner{margin-bottom:12px; padding:10px 12px; border:1px solid var(--accent-dim); border-radius:4px; background:rgba(var(--accent-rgb),.08); font-size:13px; color:var(--text);}
+.sched-scope .cal-tip{margin:-4px 0 10px;}
 .sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
 @media (max-width:900px){
   .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}

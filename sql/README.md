@@ -376,7 +376,14 @@
     booked and re-arm their reminder. A moved recurring session becomes a
     one-off. Run after 62. Safe to re-run.
 
-64. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+64. **64-switch-booking.sql** — members drag their own booking to a new
+    time on the member calendar: `switch_class_booking` (another time of
+    the same class, must have room) / `switch_pt_booking` (any open
+    slot). The booking moves in one step, a 1-on-1 keeps its credit, the
+    freed class spot goes to the waitlist, the coach is told. Run after
+    63. Safe to re-run.
+
+65. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

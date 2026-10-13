@@ -636,10 +636,15 @@
     return items.sort((a,b)=> (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
   }
 
+  // Member calendar card. Your own upcoming booked class / 1-on-1 can be
+  // dragged onto another time of the same class or an open slot (or use
+  // Move, then "Move here") — switch_class_booking() / switch_pt_booking()
+  // in sql/63/64 move it in one step.
   function calItemHtml(it){
     const past = isPast(it.date, it.time);
     let cls = 'cal-item cal-' + it.kind + (past ? ' past' : '');
-    let html = '';
+    let html = '', attrs = '';
+    const moving = memberMoveFrom;
     if (it.kind === 'class'){
       const cap = sessionCapacity(it.s), confirmed = sessionConfirmedCount(it.s.id), full = confirmed >= cap;
       const mine = memberBookingForSession(it.s.id, selfMemberId);
@@ -647,30 +652,116 @@
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.cls.duration + 'm</div>';
       html += '<div class="cal-title">' + esc(it.cls.name) + '</div>';
       html += '<div class="cal-meta">' + esc(trainerName(it.s.instructorId)) + ' · ' + confirmed + '/' + cap + '</div>';
+      const ref = mine ? 'class:' + mine.id + ':' + it.s.classId : '';
+      if (mine && !past && mine.status === 'confirmed'){ attrs += ' draggable="true" data-mdrag="' + ref + '"'; cls += ' draggable'; }
+      if (!mine && !past && !full) attrs += ' data-mdrop="class:' + it.s.id + ':' + it.s.classId + '"';
+      if (moving && moving.ref === ref) cls += ' move-source';
       if (mine){
         const place = mine.status==='waitlisted' ? myWaitlistPlace(it.s.id) : null;
         html += '<div class="cal-actions"><span class="status-pill ' + mine.status + '">' + (mine.status==='confirmed' ? 'Booked' : 'Waitlist' + (place ? ' #' + place : '')) + '</span>';
-        if (!past) html += '<button class="cal-link" data-action="member-cancel-booking" data-id="' + mine.id + '">Cancel</button>';
+        if (!past && !moving){
+          html += '<button class="cal-link" data-action="member-cancel-booking" data-id="' + mine.id + '">Cancel</button>';
+          if (mine.status === 'confirmed') html += '<button class="cal-link" data-mmove="' + ref + '">Move</button>';
+        }
         html += '</div>';
+      } else if (!past && moving){
+        if (moving.kind === 'class' && moving.classId === it.s.classId){
+          html += '<div class="cal-actions">' + (full ? '<span class="cal-meta">Full</span>' : '<button class="btn2 primary" data-mmove-here="class:' + it.s.id + '">Move here</button>') + '</div>';
+        }
       } else if (!past){
         html += '<div class="cal-actions"><button class="btn2 primary" data-action="member-book-session" data-id="' + it.s.id + '">' + (full ? 'Waitlist' : 'Book') + '</button></div>';
       }
     } else if (it.kind === 'mypt'){
       cls += ' mine';
+      const ref = 'pt:' + it.p.id;
+      if (!past){ attrs += ' draggable="true" data-mdrag="' + ref + '"'; cls += ' draggable'; }
+      if (moving && moving.ref === ref) cls += ' move-source';
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.sl.duration + 'm</div>';
       html += '<div class="cal-title">1-on-1</div>';
       html += '<div class="cal-meta">' + esc(trainerName(it.p.trainerId)) + '</div>';
       html += '<div class="cal-actions"><span class="status-pill confirmed">Booked</span>';
-      if (!past) html += '<button class="cal-link" data-action="member-cancel-pt" data-id="' + it.p.id + '">Cancel</button>';
+      if (!past && !moving){
+        html += '<button class="cal-link" data-action="member-cancel-pt" data-id="' + it.p.id + '">Cancel</button>';
+        html += '<button class="cal-link" data-mmove="' + ref + '">Move</button>';
+      }
       html += '</div>';
     } else {
       if (past) return '';
+      attrs += ' data-mdrop="slot:' + it.sl.id + '"';
       html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.sl.duration + 'm</div>';
       html += '<div class="cal-title">1-on-1 open</div>';
       html += '<div class="cal-meta">' + esc(trainerName(it.sl.trainerId)) + '</div>';
-      html += '<div class="cal-actions"><button class="btn2" data-action="member-book-slot" data-id="' + it.sl.id + '">Book</button></div>';
+      if (moving){
+        if (moving.kind === 'pt') html += '<div class="cal-actions"><button class="btn2 primary" data-mmove-here="slot:' + it.sl.id + '">Move here</button></div>';
+      } else {
+        html += '<div class="cal-actions"><button class="btn2" data-action="member-book-slot" data-id="' + it.sl.id + '">Book</button></div>';
+      }
     }
-    return '<div class="' + cls + '">' + html + '</div>';
+    return '<div class="' + cls + '"' + attrs + '>' + html + '</div>';
+  }
+
+  // { ref, kind:'class'|'pt', bookingId, classId } while picking a new time.
+  let memberMoveFrom = null;
+  function parseMoveRef(ref){
+    const [kind, bookingId, classId] = ref.split(':');
+    return { ref, kind, bookingId, classId: classId || null };
+  }
+  function canDropOn(from, dropRef){
+    const [kind, , classId] = dropRef.split(':');
+    return from.kind === 'class' ? (kind === 'class' && classId === from.classId) : kind === 'slot';
+  }
+  async function switchBooking(from, dropRef){
+    const [kind, targetId] = dropRef.split(':');
+    let when = '';
+    if (kind === 'class'){ const s2 = getSession(targetId); if (s2) when = fmtDate(s2.date) + ', ' + fmtTime(s2.startTime); }
+    else { const sl = slots.find(x=>x.id===targetId); if (sl) when = fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) + ' with ' + trainerName(sl.trainerId); }
+    if (!confirm('Move your ' + (from.kind === 'class' ? 'class' : '1-on-1') + ' to ' + when + '?')) return;
+    const { error } = from.kind === 'class'
+      ? await bnbClient.rpc('switch_class_booking', { p_booking_id: from.bookingId, p_session_id: targetId })
+      : await bnbClient.rpc('switch_pt_booking', { p_booking_id: from.bookingId, p_slot_id: targetId });
+    memberMoveFrom = null;
+    if (error){ toast(error.message || 'Could not move your booking.'); renderBody(); return; }
+    toast('Moved to ' + when + '.');
+    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
+    afterBookingChange();
+  }
+  function wireMemberCalDrag(root){
+    root.querySelectorAll('[data-mmove]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ memberMoveFrom = parseMoveRef(btn.getAttribute('data-mmove')); renderBody(); });
+    });
+    root.querySelectorAll('[data-mmove-cancel]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ memberMoveFrom = null; renderBody(); });
+    });
+    root.querySelectorAll('[data-mmove-here]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ if (memberMoveFrom) switchBooking(memberMoveFrom, btn.getAttribute('data-mmove-here')); });
+    });
+    let dragging = null;
+    const targets = () => root.querySelectorAll('[data-mdrop]');
+    root.querySelectorAll('[data-mdrag]').forEach(el=>{
+      el.addEventListener('dragstart', e=>{
+        dragging = parseMoveRef(el.getAttribute('data-mdrag'));
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', dragging.ref); } catch(err){}
+        el.classList.add('dragging');
+        targets().forEach(t=>{ if (canDropOn(dragging, t.getAttribute('data-mdrop'))) t.classList.add('drop-target'); });
+      });
+      el.addEventListener('dragend', ()=>{
+        dragging = null;
+        el.classList.remove('dragging');
+        root.querySelectorAll('.drop-target, .drop-ok').forEach(t=> t.classList.remove('drop-target', 'drop-ok'));
+      });
+    });
+    targets().forEach(t=>{
+      const ref = t.getAttribute('data-mdrop');
+      t.addEventListener('dragover', e=>{ if (!dragging || !canDropOn(dragging, ref)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; t.classList.add('drop-ok'); });
+      t.addEventListener('dragleave', e=>{ if (!t.contains(e.relatedTarget)) t.classList.remove('drop-ok'); });
+      t.addEventListener('drop', e=>{
+        if (!dragging || !canDropOn(dragging, ref)) return;
+        e.preventDefault();
+        const from = dragging;
+        switchBooking(from, ref);
+      });
+    });
   }
 
   // Week header (‹ range › This week + legend) and the 7-day grid, shared
@@ -728,6 +819,12 @@
       html += '</div>';
     }
 
+    if (memberMoveFrom){
+      const what = memberMoveFrom.kind === 'class' ? 'class' : '1-on-1';
+      html += '<div class="cal-move-banner">Pick a new time for your ' + what + ' — tap <b>Move here</b> on ' + (memberMoveFrom.kind === 'class' ? 'another time of the same class' : 'an open 1-on-1 slot') + '. <button class="cal-link" data-mmove-cancel>Cancel</button></div>';
+    } else if (items.some(it=> (it.kind === 'mypt' || (it.kind === 'class' && memberBookingForSession(it.s.id, selfMemberId))) && !isPast(it.date, it.time))){
+      html += '<div class="field-hint cal-tip">Tip: drag one of your bookings onto another time to move it.</div>';
+    }
     html += calGridHtml(start, items, calItemHtml);
     if (!items.length) html += '<div class="empty-msg">Nothing on this week.</div>';
     return html;
@@ -2280,7 +2377,7 @@
     body.querySelectorAll('[data-subtab]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const v = btn.getAttribute('data-subtab');
-        if (view === 'member') memberSubTab = v;
+        if (view === 'member'){ memberSubTab = v; memberMoveFrom = null; }
         else adminSubTab = v;
         renderBody();
       });
@@ -2293,6 +2390,7 @@
 
     wireCalNav(body, renderBody);
     if (view === 'admin') wireCalDrag(body);
+    else wireMemberCalDrag(body);
     const calTrainer = body.querySelector('#sched-admin-cal-trainer');
     if (calTrainer) calTrainer.addEventListener('change', ()=>{ adminCalTrainer = calTrainer.value; renderBody(); });
     body.querySelectorAll('[data-cal-addsession]').forEach(btn=>{
