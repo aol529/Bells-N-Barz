@@ -1321,14 +1321,17 @@
 
   // A day's program as a freeform list: one entry per exercise, sets left
   // blank to match the prescription. base/baseAlts keep the dropdown's list
-  // fixed to the program exercise even after it's been swapped.
-  function freeformFromProgram(day){
+  // fixed to the program exercise even after it's been swapped. swapOf(b, e)
+  // returns any swap already picked in Program mode for that log, so a
+  // switch to Freeform keeps it; seed is the name it started with.
+  function freeformFromProgram(day, swapOf){
     const list = [];
-    (programData[day] || []).forEach(block => (block.exercises || []).forEach(ex => {
+    (programData[day] || []).forEach((block, bIdx) => (block.exercises || []).forEach((ex, eIdx) => {
       if (!ex || !String(ex.name || '').trim()) return;
       const nSets = Math.min(parseInt(ex.sets, 10) || 3, 10);
+      const start = (swapOf && swapOf(bIdx, eIdx)) || splitAltFromName(ex.name).name;
       list.push({
-        name: splitAltFromName(ex.name).name,
+        name: start, seed: start,
         base: ex.name, baseAlts: ex.alternates || '', presc: prescString(ex),
         sets: Array.from({ length: nSets }, () => ({ wt:'', reps:'', done:false }))
       });
@@ -1340,7 +1343,7 @@
   function freeformListHasRealData(list){
     return list.some(ex => {
       const name = (ex.name || '').trim();
-      const untouched = ex.base ? name === splitAltFromName(ex.base).name : !name;
+      const untouched = ex.base ? name === (ex.seed || splitAltFromName(ex.base).name) : !name;
       return !untouched || (ex.sets || []).some(s => s.wt || s.reps || s.done);
     });
   }
@@ -1430,7 +1433,7 @@
       const arr = JSON.parse(sessionStore[freeformKey(slot, day)] || 'null');
       if (Array.isArray(arr) && arr.length) return arr;
     } catch(e){ /* fall through to default below */ }
-    const seeded = freeformFromProgram(day);
+    const seeded = freeformFromProgram(day, (b, e) => sessionStore[csKey(slot, day, b, e, 'swap')]);
     return seeded.length ? seeded : [ blankFreeformExercise() ];
   }
   function saveFreeformExercises(slot, day, arr){
@@ -1457,7 +1460,7 @@
       if (!confirm("This will overwrite " + targetLabel + "'s existing freeform log for today. Continue?")) return;
     }
     const copied = source.map(ex => ({
-      name: ex.name, base: ex.base, baseAlts: ex.baseAlts, presc: ex.presc,
+      name: ex.name, seed: ex.seed, base: ex.base, baseAlts: ex.baseAlts, presc: ex.presc,
       sets: (ex.sets && ex.sets.length ? ex.sets : [{}]).map(()=> ({ wt:'', reps:'', done:false }))
     }));
     saveFreeformExercises(toSlot, day, copied);
@@ -2140,7 +2143,7 @@
       const arr = JSON.parse(mlsStore[mlsFreeformKey(day)] || 'null');
       if (Array.isArray(arr) && arr.length) return arr;
     } catch(e){ /* fall through to default below */ }
-    const seeded = freeformFromProgram(day);
+    const seeded = freeformFromProgram(day, (b, e) => mlsStore[mlsKey(day, b, e, 'swap')]);
     return seeded.length ? seeded : [ blankMlsFreeformExercise() ];
   }
   function saveMlsFreeformExercises(day, arr){
