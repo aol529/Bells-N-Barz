@@ -2918,19 +2918,9 @@
     const list = coachWorkouts || [];
     body.innerHTML = `
       ${coachWorkoutsError ? `<div class="admin-notice">${esc(coachWorkoutsError)}</div>` : ''}
-      <div class="cw-form">
-        <div class="cw-form-head">${editing ? 'Edit workout' : 'Save a workout to try'}</div>
-        <div class="field"><label>Title</label><input type="text" id="cw-title" maxlength="120" placeholder="e.g. Zercher leg day" value="${esc(editing ? editing.title : '')}"></div>
-        <div class="field"><label>Workout</label><textarea id="cw-text" rows="9" placeholder="Paste it in — one exercise per line, like&#10;Strength:&#10;Back Squats: 3 x 8&#10;Walking Lunges: 3 x 24m">${esc(editing ? editing.source : '')}</textarea></div>
-        <div class="cw-preview" id="cw-preview"></div>
-        <div class="crud-actions" style="padding-left:0;">
-          <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
-          ${editing ? '<button class="btn2" id="cw-cancel" type="button">Cancel</button>' : ''}
-        </div>
-      </div>
       <div class="cw-list">
         ${coachWorkouts === null ? '<div class="field-hint">Loading…</div>'
-          : !list.length ? '<div class="field-hint">No saved workouts yet — paste one above.</div>'
+          : !list.length ? '<div class="field-hint">No saved workouts yet — paste one below.</div>'
           : list.map(w => `
           <div class="cw-card" data-id="${esc(w.id)}">
             <div class="cw-card-head">
@@ -2947,6 +2937,16 @@
                 <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
               </div>`).join('')}
           </div>`).join('')}
+      </div>
+      <div class="cw-form">
+        <div class="cw-form-head">${editing ? 'Edit workout' : 'Save a workout to try'}</div>
+        <div class="field"><label>Title</label><input type="text" id="cw-title" maxlength="120" placeholder="e.g. Zercher leg day" value="${esc(editing ? editing.title : '')}"></div>
+        <div class="field"><label>Workout</label><textarea id="cw-text" rows="9" placeholder="Paste it in — one exercise per line, like&#10;Strength:&#10;Back Squats: 3 x 8&#10;Walking Lunges: 3 x 24m">${esc(editing ? editing.source : '')}</textarea></div>
+        <div class="cw-preview" id="cw-preview"></div>
+        <div class="crud-actions" style="padding-left:0;">
+          <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
+          ${editing ? '<button class="btn2" id="cw-cancel" type="button">Cancel</button>' : ''}
+        </div>
       </div>`;
 
     const titleEl = body.querySelector('#cw-title');
@@ -2990,7 +2990,7 @@
         btn.onclick = async ()=>{
           const act = btn.dataset.cw;
           if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
-          if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+          if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' }); body.querySelector('#cw-title').focus({ preventScroll:true }); return; }
           if (act === 'delete'){
             if (!confirm('Delete "' + w.title + '"?')) return;
             const { error } = await bnbClient.from('coach_workouts').delete().eq('id', w.id);
