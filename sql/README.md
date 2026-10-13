@@ -396,7 +396,13 @@
     kept) or skips them if they have no credit / an overlapping 1-on-1.
     Run after 65. Safe to re-run.
 
-67. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+67. **67-pt-waitlist-reminders.sql** — `send_booking_reminders()` also
+    reminds members waiting for a 1-on-1 (once, within 24 hours: their
+    place, and a warning if they have no credits), and closes waitlists
+    whose slot started without opening, telling those still waiting.
+    Run after 66. Safe to re-run.
+
+68. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
