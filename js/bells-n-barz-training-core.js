@@ -2874,6 +2874,13 @@
     return variants.filter(v => v.exercises.length);
   }
 
+  // Variants back to text in the same format parseWorkoutText() reads —
+  // used when one variant is deleted, so Edit doesn't bring it back.
+  function workoutVariantsToText(variants){
+    return variants.map(v => v.name + ':\n' +
+      (v.exercises || []).map(ex => ex.presc ? ex.name + ': ' + ex.presc : ex.name).join('\n')).join('\n\n');
+  }
+
   // Loads one variant into the Live Session's current slot + day.
   function tryWorkoutInSession(variant, title){
     const who = slotTraineeName(csSlot).trim() || ('Slot ' + (csSlot+1));
@@ -2933,7 +2940,7 @@
             ${(w.variants || []).map((v, vIdx) => `
               <div class="cw-variant">
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
-                  <button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button></div>
+                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
                 <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
               </div>`).join('')}
           </div>`).join('')}
@@ -2991,6 +2998,23 @@
           const act = btn.dataset.cw;
           if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
           if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' }); body.querySelector('#cw-title').focus({ preventScroll:true }); return; }
+          if (act === 'delvar'){
+            const v = w.variants[+btn.dataset.v];
+            if (!v) return;
+            if ((w.variants || []).length <= 1){
+              if (!confirm('"' + v.name + '" is the only variant left — delete the whole "' + w.title + '" workout?')) return;
+            } else if (!confirm('Delete "' + v.name + '" from "' + w.title + '"?')) return;
+            const rest = w.variants.filter((_, i) => i !== +btn.dataset.v);
+            const { error } = rest.length
+              ? await bnbClient.from('coach_workouts').update({ variants: rest, source: workoutVariantsToText(rest), updated_at: new Date().toISOString() }).eq('id', w.id)
+              : await bnbClient.from('coach_workouts').delete().eq('id', w.id);
+            if (error){ console.error('Supabase update coach_workouts failed:', error); showToast('Couldn\u2019t delete — try again'); return; }
+            if (coachWorkoutEditing === w.id) coachWorkoutEditing = null;
+            showToast('Deleted "' + v.name + '"');
+            await refreshCoachWorkouts();
+            renderCoachWorkouts();
+            return;
+          }
           if (act === 'delete'){
             if (!confirm('Delete "' + w.title + '"?')) return;
             const { error } = await bnbClient.from('coach_workouts').delete().eq('id', w.id);
