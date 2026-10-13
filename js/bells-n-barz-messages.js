@@ -30,20 +30,32 @@
   }
 
   /* ---------------- MEMBER VIEW ---------------- */
+  let memberRenderSeq = 0;
+  let memberSignature = '';
+
   async function renderMemberView(){
     if (!memberBody) return;
+    const seq = ++memberRenderSeq;
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me){ memberBody.innerHTML = '<div class="empty-msg">Sign in to message staff.</div>'; return; }
+
+    // Auto-refresh redraws the view, so keep a half-written message.
+    const prevInput = document.getElementById('msg-member-input');
+    const draft = prevInput ? { text: prevInput.value, focused: document.activeElement === prevInput,
+      start: prevInput.selectionStart, end: prevInput.selectionEnd } : null;
 
     const { data: thread, error: threadErr } = await bnbClient
       .from('message_threads').select('*').eq('member_id', me.id).maybeSingle();
     if (threadErr) { console.error('Supabase load message_threads failed:', threadErr); return; }
+    if (seq !== memberRenderSeq) return; // a newer render started meanwhile
+    memberSignature = thread ? thread.id + '@' + thread.updated_at : '';
 
     let messages = [];
     if (thread){
       const { data, error } = await bnbClient
         .from('messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true });
       if (error) { console.error('Supabase load messages failed:', error); return; }
+      if (seq !== memberRenderSeq) return;
       messages = data || [];
     }
 
@@ -61,6 +73,10 @@
     const sendBtn = document.getElementById('msg-member-send');
     const threadEl = document.getElementById('msg-member-thread');
     threadEl.scrollTop = threadEl.scrollHeight;
+    if (draft && draft.text){
+      input.value = draft.text;
+      if (draft.focused){ input.focus(); input.setSelectionRange(draft.start, draft.end); }
+    }
 
     sendBtn.addEventListener('click', async () => {
       const body = input.value.trim();
@@ -194,6 +210,22 @@
         if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
       });
     }
+  }
+
+  /* ---------------- MEMBER AUTO-REFRESH ----------------
+     While Member > Messages is on screen, check every 15 seconds whether
+     staff have replied (the thread's updated_at moves) and redraw only
+     then. */
+  if (memberBody){
+    setInterval(async () => {
+      // offsetParent is null while Messages (or the Member tab) is hidden.
+      if (document.visibilityState !== 'visible' || !memberBody.offsetParent) return;
+      const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+      if (!me) return;
+      const { data, error } = await bnbClient.from('message_threads').select('id, updated_at').eq('member_id', me.id).maybeSingle();
+      if (error) return;
+      if ((data ? data.id + '@' + data.updated_at : '') !== memberSignature) renderMemberView();
+    }, 15 * 1000);
   }
 
   /* ---------------- STAFF AUTO-REFRESH ----------------
