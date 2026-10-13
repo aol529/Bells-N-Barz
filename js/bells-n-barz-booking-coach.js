@@ -794,7 +794,7 @@
       return { month: true, start: first, from: mondayOf(first), to: addDays(mondayOf(last), 6) };
     }
     const start = calWeeks[scope] || mondayOf(TODAY);
-    return { month: false, start, from: start, to: addDays(start, 6) };
+    return { month: false, timeline: calViews[scope] === 'timeline', start, from: start, to: addDays(start, 6) };
   }
 
   // Header: ‹ range › This week/month, Week | Month, legend. Shared by the
@@ -816,10 +816,60 @@
     if (!isNow) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">' + (range.day ? 'Today' : 'This ' + unit) + '</button>';
     }
     html += '<div class="cal-view" role="group" aria-label="Calendar view">';
-    ['day', 'week', 'month', 'list'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>');
+    ['day', 'week', 'month', 'list', 'timeline'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>');
     html += '</div>';
     html += '<div class="cal-legend">' + legend + '</div>';
     return html + '</div>';
+  }
+
+  // Timeline view: the week as rows (Mon–Sun) on an hour axis; each item
+  // is a bar as long as it lasts, overlapping ones stacked in lanes.
+  // Bars carry the same drag attributes as the other views; a track
+  // takes drops at the time under the pointer (snapped to 15 minutes).
+  // Tapping a bar or a day's name opens that day.
+  function calTimelineHtml(range, items, chip){
+    const mins = t => Number(String(t).slice(0, 2)) * 60 + Number(String(t).slice(3, 5));
+    const durOf = it => Number(it.kind === 'class' ? it.cls.duration : it.sl.duration) || 60;
+    let lo = 6, hi = 22;
+    items.forEach(it=>{ lo = Math.min(lo, Math.floor(mins(it.time) / 60)); hi = Math.max(hi, Math.ceil((mins(it.time) + durOf(it)) / 60)); });
+    hi = Math.min(Math.max(hi, lo + 1), 24);
+    const span = (hi - lo) * 60;
+    const pct = m => ((m - lo * 60) / span * 100).toFixed(3) + '%';
+    let html = '<div class="cal-tl" style="--tl-hours:' + (hi - lo) + '"><div class="cal-tl-inner">';
+    html += '<div class="cal-tl-axis"><div class="cal-tl-label"></div><div class="cal-tl-ticks">';
+    for (let h = lo; h < hi; h++) html += '<span style="left:' + pct(h * 60) + '">' + fmtTime(String(h).padStart(2, '0') + ':00').replace(':00', '').replace(' ', '').toLowerCase() + '</span>';
+    html += '</div></div>';
+    const now = new Date(), nowMins = now.getHours() * 60 + now.getMinutes();
+    for (let i = 0; i < 7; i++){
+      const day = addDays(range.start, i);
+      const d = new Date(day + 'T00:00:00');
+      const bars = items.filter(it=> it.date === day)
+        .map(it=> chip(it, (it2, title, cls, attrs)=> ({ it: it2, title, cls, attrs: attrs || '' })))
+        .filter(Boolean)
+        .sort((a, b)=> mins(a.it.time) - mins(b.it.time));
+      // Greedy lanes: each bar goes in the first lane that's free by its start.
+      const laneEnds = [];
+      bars.forEach(b=>{
+        const start = mins(b.it.time), end = start + durOf(b.it);
+        let lane = laneEnds.findIndex(e=> e <= start);
+        if (lane === -1){ lane = laneEnds.length; laneEnds.push(end); } else laneEnds[lane] = end;
+        b.lane = lane; b.start = start; b.dur = durOf(b.it);
+      });
+      const lanes = Math.max(1, laneEnds.length);
+      html += '<div class="cal-tl-row' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + '">';
+      html += '<div class="cal-tl-label" data-cal-openday="' + day + '" role="button" tabindex="0" title="Open this day"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
+      html += '<div class="cal-tl-track" style="height:' + (lanes * 30 + 8) + 'px"' + (day < TODAY ? '' : ' data-cal-day="' + day + '" data-tl-lo="' + lo + '" data-tl-span="' + span + '"') + '>';
+      for (let h = lo + 1; h < hi; h++) html += '<i class="cal-tl-grid" style="left:' + pct(h * 60) + '"></i>';
+      if (day === TODAY && nowMins >= lo * 60 && nowMins <= hi * 60) html += '<i class="cal-tl-now" style="left:' + pct(nowMins) + '"></i>';
+      bars.forEach(b=>{
+        const label = b.title; // the bar's position already says when
+        html += '<div class="cal-tl-bar cal-chip ' + b.cls + (isPast(b.it.date, b.it.time) ? ' past' : '') + '"' + b.attrs
+          + ' data-tl-open="' + day + '" style="left:' + pct(b.start) + ';--bar-w:calc(' + (b.dur / span * 100).toFixed(3) + '% - 2px);width:var(--bar-w);top:' + (b.lane * 30 + 4) + 'px"'
+          + ' title="' + esc(fmtTime(b.it.time) + ' · ' + b.dur + ' min · ' + b.title) + '">' + esc(label) + '</div>';
+      });
+      html += '</div></div>';
+    }
+    return html + '</div></div>';
   }
 
   // List view: what's coming up from today, grouped by date (only dates
@@ -913,7 +963,7 @@
   // `date` (the current one is stored as null).
   function calGoTo(scope, view, date){
     if (view === 'day') calDays[scope] = date <= TODAY ? null : date;
-    else if (view === 'week'){ const w = mondayOf(date); calWeeks[scope] = w <= mondayOf(TODAY) ? null : w; }
+    else if (view === 'week' || view === 'timeline'){ const w = mondayOf(date); calWeeks[scope] = w <= mondayOf(TODAY) ? null : w; }
     else if (view === 'list'){ /* always from today */ }
     else { const m = monthStartOf(date); calMonths[scope] = m <= monthStartOf(TODAY) ? null : m; }
     calViews[scope] = view;
@@ -951,7 +1001,7 @@
         // Keep roughly the same place: the date being looked at now,
         // never earlier than today.
         const cur = calViews[scope];
-        let anchor = cur === 'day' ? calDays[scope] : cur === 'month' ? calMonths[scope] : cur === 'week' ? calWeeks[scope] : null;
+        let anchor = cur === 'day' ? calDays[scope] : cur === 'month' ? calMonths[scope] : (cur === 'week' || cur === 'timeline') ? calWeeks[scope] : null;
         if (!anchor || anchor < TODAY) anchor = TODAY;
         calGoTo(scope, view, anchor);
         if (scope === 'member') memberMoveFrom = null;
@@ -960,6 +1010,11 @@
     });
     root.querySelectorAll('[data-cal-more]').forEach(btn=>{
       btn.addEventListener('click', ()=>{ const scope = btn.getAttribute('data-cal-scope'); calListDays[scope] = Math.min(calListDays[scope] + 28, 364); rerender(); });
+    });
+    // Timeline: tapping a bar opens its day.
+    root.querySelectorAll('[data-tl-open]').forEach(bar=>{
+      const scope = root.querySelector('[data-cal-view]') ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
+      bar.addEventListener('click', ()=>{ if (!scope) return; calGoTo(scope, 'day', bar.getAttribute('data-tl-open')); rerender(); });
     });
     // Week and list views: a day's heading opens that day.
     root.querySelectorAll('[data-cal-openday]').forEach(head=>{
@@ -1000,6 +1055,7 @@
       html += '<div class="field-hint cal-tip">Tip: drag one of your bookings onto another time to move it.</div>';
     }
     if (range.list) return html + calListHtml(range, items, calItemHtml, 'member');
+    if (range.timeline) return html + calTimelineHtml(range, items, memberChipHtml);
     html += range.month ? calMonthHtml(range, items, memberChipHtml) : range.day ? calDayHtml(range, items, calItemHtml) : calGridHtml(range.start, items, calItemHtml);
     if (!items.length) html += '<div class="empty-msg">Nothing on this ' + (range.month ? 'month' : range.day ? 'day' : 'week') + '.</div>';
     return html;
@@ -1060,7 +1116,9 @@
     return '<div class="' + cls + (past ? '' : ' draggable') + '"' + drag + '>' + html + '</div>';
   }
   // Month-view chips. Same drag attributes as the week cards.
-  function memberChipHtml(it){
+  // `make` builds the output — a month chip by default, or a timeline bar.
+  function memberChipHtml(it, make){
+    make = make || calChipHtml;
     const past = isPast(it.date, it.time);
     if (it.kind === 'class'){
       const mine = memberBookingForSession(it.s.id, selfMemberId);
@@ -1068,21 +1126,22 @@
       let attrs = '';
       if (mine && !past && mine.status === 'confirmed') attrs = ' draggable="true" data-mdrag="class:' + mine.id + ':' + it.s.classId + '"';
       else if (!mine && !past && !full) attrs = ' data-mdrop="class:' + it.s.id + ':' + it.s.classId + '"';
-      return calChipHtml(it, it.cls.name, 'cal-class' + (mine ? ' mine' + (mine.status === 'waitlisted' ? ' wait' : '') : '') + (full && !mine ? ' full' : ''), attrs);
+      return make(it, it.cls.name, 'cal-class' + (mine ? ' mine' + (mine.status === 'waitlisted' ? ' wait' : '') : '') + (full && !mine ? ' full' : ''), attrs);
     }
-    if (it.kind === 'mypt') return calChipHtml(it, '1-on-1 · ' + trainerName(it.p.trainerId), 'cal-slot mine', past ? '' : ' draggable="true" data-mdrag="pt:' + it.p.id + '"');
+    if (it.kind === 'mypt') return make(it, '1-on-1 · ' + trainerName(it.p.trainerId), 'cal-slot mine', past ? '' : ' draggable="true" data-mdrag="pt:' + it.p.id + '"');
     if (past) return '';
-    return calChipHtml(it, '1-on-1 open', 'cal-slot', ' data-mdrop="slot:' + it.sl.id + '"');
+    return make(it, '1-on-1 open', 'cal-slot', ' data-mdrop="slot:' + it.sl.id + '"');
   }
-  function coachChipHtml(it, showCoach){
+  function coachChipHtml(it, showCoach, make){
+    make = make || calChipHtml;
     const past = isPast(it.date, it.time);
     const who = id => showCoach ? ' · ' + trainerName(id) : '';
     if (it.kind === 'class'){
-      return calChipHtml(it, it.cls.name + ' ' + sessionConfirmedCount(it.s.id) + '/' + sessionCapacity(it.s) + who(it.s.instructorId), 'cal-class',
+      return make(it, it.cls.name + ' ' + sessionConfirmedCount(it.s.id) + '/' + sessionCapacity(it.s) + who(it.s.instructorId), 'cal-class',
         past ? '' : ' draggable="true" data-drag="class:' + it.s.id + '"');
     }
     const booked = it.sl.status === 'booked' && it.pt;
-    return calChipHtml(it, (booked ? memberName(it.pt.userId) : it.sl.status === 'blocked' ? 'Blocked' : 'Open slot') + who(it.sl.trainerId),
+    return make(it, (booked ? memberName(it.pt.userId) : it.sl.status === 'blocked' ? 'Blocked' : 'Open slot') + who(it.sl.trainerId),
       booked ? 'cal-slot mine' : 'cal-slot' + (it.sl.status === 'blocked' ? ' blocked' : ''),
       past ? '' : ' draggable="true" data-drag="slot:' + it.sl.id + '"');
   }
@@ -1092,6 +1151,7 @@
     const items = coachCalendarItems(range.from, range.to, selfTrainerId);
     let html = calHeadHtml(range, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
     if (range.list) return html + calListHtml(range, items, it=> coachCalItemHtml(it, false), 'coach');
+    if (range.timeline) return html + calTimelineHtml(range, items, (it, make)=> coachChipHtml(it, false, make));
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, false));
     if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, false), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addslot="' + day + 'T' + t + '" aria-label="Add a slot at ' + fmtTime(t) + '">+ Slot</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
@@ -1111,6 +1171,7 @@
     trainers.forEach(t=> html += '<option value="' + t.id + '"' + (t.id===adminCalTrainer ? ' selected' : '') + '>' + esc(t.name) + '</option>');
     html += '</select></div></div>';
     if (range.list) return html + calListHtml(range, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), 'admin');
+    if (range.timeline) return html + calTimelineHtml(range, items, (it, make)=> coachChipHtml(it, adminCalTrainer === 'all', make));
     if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, adminCalTrainer === 'all'));
     if (range.day) return html + calDayHtml(range, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), (day, t)=> '<button class="cal-add cal-add-hour" data-cal-addsession="' + day + 'T' + t + '" aria-label="Add a session at ' + fmtTime(t) + '">+ Session</button>');
     html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
@@ -1123,7 +1184,7 @@
      / reschedule_pt_slot() (sql/63) move it and tell everyone booked. */
   let moveTarget = null; // { kind:'class'|'slot', id }
   // hour (day view): drop row's hour, keeping the item's minutes.
-  function openMoveDialog(ref, day, hour){
+  function openMoveDialog(ref, day, hour, exactTime){
     const [kind, id] = ref.split(':');
     const item = kind === 'class' ? getSession(id) : slots.find(x=>x.id===id);
     if (!item) return;
@@ -1146,7 +1207,7 @@
     const dateEl = document.getElementById('sched-move-date');
     dateEl.min = TODAY;
     dateEl.value = day || item.date;
-    document.getElementById('sched-move-time').value = hour ? hour + String(item.startTime).slice(2,5) : String(item.startTime).slice(0,5);
+    document.getElementById('sched-move-time').value = exactTime ? exactTime : hour ? hour + String(item.startTime).slice(2,5) : String(item.startTime).slice(0,5);
     document.getElementById('sched-move-panel-backdrop').classList.add('show');
     document.getElementById('sched-move-time').focus();
   }
@@ -1196,7 +1257,15 @@
         if (!dragging) return;
         e.preventDefault();
         dayEl.classList.remove('drop-ok');
-        openMoveDialog(dragging, day, dayEl.getAttribute('data-cal-hour'));
+        let exact = null;
+        if (dayEl.hasAttribute('data-tl-span')){
+          const rect = dayEl.getBoundingClientRect();
+          const lo = Number(dayEl.getAttribute('data-tl-lo')), span = Number(dayEl.getAttribute('data-tl-span'));
+          let m = lo * 60 + Math.round(((e.clientX - rect.left) / rect.width * span) / 15) * 15;
+          m = Math.max(lo * 60, Math.min(m, lo * 60 + span - 15));
+          exact = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+        }
+        openMoveDialog(dragging, day, dayEl.getAttribute('data-cal-hour'), exact);
       });
     });
   }
