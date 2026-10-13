@@ -400,6 +400,7 @@
   let adminSubTab = 'classes';
   let classFilter = 'all';
   let calWeekStart = null; // Calendar's Monday (YYYY-MM-DD); null = this week
+  let coachCalWeekStart = null; // same, for the coach's calendar
   let editingClassId = null;
   let activeSlotFormTrainer = null;
   let activeRosterSessionId = null;
@@ -519,13 +520,19 @@
       });
     });
     const addSlotBtn = body.querySelector('#sched-add-slot-btn');
-    if (addSlotBtn) addSlotBtn.addEventListener('click', ()=>{
-      activeSlotFormTrainer = selfTrainerId;
-      document.getElementById('sched-slot-date').value = '';
-      document.getElementById('sched-slot-time').value = '';
-      document.getElementById('sched-slot-duration').value = 60;
-      document.getElementById('sched-slot-panel-backdrop').classList.add('show');
+    if (addSlotBtn) addSlotBtn.addEventListener('click', ()=> openSlotPanel(''));
+    body.querySelectorAll('[data-cal-addslot]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openSlotPanel(btn.getAttribute('data-cal-addslot')));
     });
+    wireCalNav(body, ()=>{ renderCoachBody(); fillRatingComments(); });
+  }
+  function openSlotPanel(date){
+    activeSlotFormTrainer = selfTrainerId;
+    document.getElementById('sched-slot-date').value = date || '';
+    document.getElementById('sched-slot-time').value = '';
+    document.getElementById('sched-slot-duration').value = 60;
+    document.getElementById('sched-slot-panel-backdrop').classList.add('show');
+    if (date) document.getElementById('sched-slot-time').focus();
   }
 
   /* ============================================================
@@ -664,20 +671,53 @@
     return '<div class="' + cls + '">' + html + '</div>';
   }
 
-  function memberCalendarHtml(){
-    const start = calWeekStart || mondayOf(TODAY);
+  // Week header (‹ range › This week + legend) and the 7-day grid, shared
+  // by the member and coach calendars. `scope` keeps their weeks apart.
+  function calHeadHtml(start, scope, legend){
     const end = addDays(start, 6);
-    const items = calendarItems(start, end);
     const thisWeek = start === mondayOf(TODAY);
     const fmtShort = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
-
     let html = '<div class="cal-head">';
-    html += '<button class="btn2" data-cal="prev" aria-label="Previous week"' + (thisWeek ? ' disabled' : '') + '>‹</button>';
+    html += '<button class="btn2" data-cal="prev" data-cal-scope="' + scope + '" aria-label="Previous week"' + (thisWeek ? ' disabled' : '') + '>‹</button>';
     html += '<div class="cal-range">' + fmtShort(start) + ' – ' + fmtShort(end) + '</div>';
-    html += '<button class="btn2" data-cal="next" aria-label="Next week">›</button>';
-    if (!thisWeek) html += '<button class="btn2" data-cal="today">This week</button>';
-    html += '<div class="cal-legend"><span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours</div>';
-    html += '</div>';
+    html += '<button class="btn2" data-cal="next" data-cal-scope="' + scope + '" aria-label="Next week">›</button>';
+    if (!thisWeek) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">This week</button>';
+    html += '<div class="cal-legend">' + legend + '</div>';
+    return html + '</div>';
+  }
+  function calGridHtml(start, items, render, dayExtra){
+    let html = '<div class="cal-grid">';
+    for (let i = 0; i < 7; i++){
+      const day = addDays(start, i);
+      const d = new Date(day + 'T00:00:00');
+      const dayItems = items.filter(it=> it.date === day).map(render).filter(Boolean);
+      const extra = dayExtra ? dayExtra(day) : '';
+      html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length || extra ? '' : ' empty') + '">';
+      html += '<div class="cal-day-head"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
+      html += dayItems.length ? dayItems.join('') : '<div class="cal-none">—</div>';
+      html += extra + '</div>';
+    }
+    return html + '</div>';
+  }
+  // ‹ › / This week, for whichever calendar the buttons belong to.
+  function wireCalNav(root, rerender){
+    root.querySelectorAll('[data-cal]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const coach = btn.getAttribute('data-cal-scope') === 'coach';
+        const start = (coach ? coachCalWeekStart : calWeekStart) || mondayOf(TODAY);
+        const v = btn.getAttribute('data-cal');
+        let next = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
+        if (next && next <= mondayOf(TODAY)) next = null;
+        if (coach) coachCalWeekStart = next; else calWeekStart = next;
+        rerender();
+      });
+    });
+  }
+
+  function memberCalendarHtml(){
+    const start = calWeekStart || mondayOf(TODAY);
+    const items = calendarItems(start, addDays(start, 6));
+    let html = calHeadHtml(start, 'member', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours');
 
     const activeClasses = classes.filter(c=>c.status==='active');
     if (activeClasses.length > 1){
@@ -686,18 +726,59 @@
       html += '</div>';
     }
 
-    html += '<div class="cal-grid">';
-    for (let i = 0; i < 7; i++){
-      const day = addDays(start, i);
-      const d = new Date(day + 'T00:00:00');
-      const dayItems = items.filter(it=> it.date === day).map(calItemHtml).filter(Boolean);
-      html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length ? '' : ' empty') + '">';
-      html += '<div class="cal-day-head"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
-      html += dayItems.length ? dayItems.join('') : '<div class="cal-none">—</div>';
+    html += calGridHtml(start, items, calItemHtml);
+    if (!items.length) html += '<div class="empty-msg">Nothing on this week.</div>';
+    return html;
+  }
+
+  /* ---------------- COACH CALENDAR ----------------
+     The coach's own week: the classes they teach (with how full they
+     are and a Roster button) and all their 1-on-1 slots — open, blocked
+     or booked (with who) — plus "+ Slot" on each day to add availability. */
+  function coachCalendarItems(from, to){
+    const items = [];
+    sessions.filter(s=> s.instructorId===selfTrainerId && s.status==='scheduled' && s.date >= from && s.date <= to).forEach(s=>{
+      const cls = getClass(s.classId);
+      if (cls) items.push({ kind:'class', date:s.date, time:s.startTime, s, cls });
+    });
+    slots.filter(sl=> sl.trainerId===selfTrainerId && sl.date >= from && sl.date <= to).forEach(sl=>{
+      items.push({ kind:'slot', date:sl.date, time:sl.startTime, sl, pt: ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed') });
+    });
+    return items.sort((a,b)=> (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
+  }
+  function coachCalItemHtml(it){
+    const past = isPast(it.date, it.time);
+    let cls = 'cal-item' + (past ? ' past' : '');
+    let html = '';
+    if (it.kind === 'class'){
+      const cap = sessionCapacity(it.s), confirmed = sessionConfirmedCount(it.s.id);
+      const wl = sessionCounts && sessionCounts[it.s.id] ? sessionCounts[it.s.id].waitlisted : sessionWaitlist(it.s.id).length;
+      cls += ' cal-class';
+      html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + it.cls.duration + 'm</div>';
+      html += '<div class="cal-title">' + esc(it.cls.name) + '</div>';
+      html += '<div class="cal-meta">' + confirmed + '/' + cap + ' booked' + (wl ? ' · ' + wl + ' waiting' : '') + '</div>';
+      html += '<div class="cal-actions"><button class="btn2" data-action="open-roster" data-id="' + it.s.id + '">Roster</button></div>';
+    } else {
+      const sl = it.sl;
+      const booked = sl.status === 'booked' && it.pt;
+      cls += booked ? ' mine' : ' cal-slot' + (sl.status === 'blocked' ? ' blocked' : '');
+      html += '<div class="cal-time">' + fmtTime(it.time) + ' · ' + sl.duration + 'm</div>';
+      html += '<div class="cal-title">' + (booked ? esc(memberName(it.pt.userId)) : '1-on-1') + '</div>';
+      html += '<div class="cal-actions"><span class="status-pill ' + sl.status + '">' + (booked ? '1-on-1' : sl.status) + '</span>';
+      if (!past){
+        if (sl.status === 'open') html += '<button class="cal-link" data-action="block-slot" data-id="' + sl.id + '">Block</button>';
+        if (sl.status === 'blocked') html += '<button class="cal-link" data-action="unblock-slot" data-id="' + sl.id + '">Unblock</button>';
+        if (booked) html += '<button class="cal-link" data-action="cancel-pt-trainer" data-id="' + it.pt.id + '">Cancel</button>';
+      }
       html += '</div>';
     }
-    html += '</div>';
-    if (!items.length) html += '<div class="empty-msg">Nothing on this week.</div>';
+    return '<div class="' + cls + '">' + html + '</div>';
+  }
+  function trainerCalendarHtml(){
+    const start = coachCalWeekStart || mondayOf(TODAY);
+    const items = coachCalendarItems(start, addDays(start, 6));
+    let html = calHeadHtml(start, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
+    html += calGridHtml(start, items, coachCalItemHtml, day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
     return html;
   }
 
@@ -973,12 +1054,14 @@
     }
     let html = '<div class="sched-sub">';
     html += subBtn('roster', trainerSubTab, 'My Roster');
+    html += subBtn('calendar', trainerSubTab, 'Calendar');
     html += subBtn('classes', trainerSubTab, 'My Classes');
     html += subBtn('slots', trainerSubTab, 'My 1-on-1 Slots');
     html += subBtn('ratings', trainerSubTab, 'My Ratings');
     html += '</div>';
     if (trainerSubTab === 'roster') html += trainerRosterHtml();
     else if (trainerSubTab === 'classes') html += trainerClassesHtml();
+    else if (trainerSubTab === 'calendar') html += trainerCalendarHtml();
     else if (trainerSubTab === 'ratings') html += trainerRatingsHtml();
     else html += trainerSlotsHtml();
     return html;
@@ -2094,15 +2177,7 @@
       btn.addEventListener('click', ()=>{ classFilter = btn.getAttribute('data-filter'); renderBody(); });
     });
 
-    body.querySelectorAll('[data-cal]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const start = calWeekStart || mondayOf(TODAY);
-        const v = btn.getAttribute('data-cal');
-        calWeekStart = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
-        if (calWeekStart && calWeekStart <= mondayOf(TODAY)) calWeekStart = null;
-        renderBody();
-      });
-    });
+    wireCalNav(body, renderBody);
 
     const mbtSel = body.querySelector('#sched-mbt-trainer');
     if (mbtSel) mbtSel.addEventListener('change', ()=>{ memberTrainerId = mbtSel.value; renderBody(); });

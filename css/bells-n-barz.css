@@ -2104,6 +2104,9 @@ header.site{
 .sched-scope .cal-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:6px;}
 .sched-scope .cal-actions .btn2{padding:4px 10px; font-size:11px;}
 .sched-scope .cal-actions .status-pill{font-size:9.5px; padding:2px 7px;}
+.sched-scope .cal-item.cal-slot.blocked{border-color:#8a3a32; opacity:.7;}
+.sched-scope .cal-add{all:unset; cursor:pointer; margin-top:auto; text-align:center; padding:5px; border:1px dashed var(--line); border-radius:3px; color:var(--muted-2); font-family:'IBM Plex Mono',monospace; font-size:11px;}
+.sched-scope .cal-add:hover{color:var(--accent); border-color:var(--accent-dim);}
 .sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
 @media (max-width:900px){
   .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}
@@ -2111,6 +2114,7 @@ header.site{
   .sched-scope .cal-day.empty{display:none;}
   .sched-scope .cal-day-head{flex:0 0 100%; justify-content:flex-start; gap:8px;}
   .sched-scope .cal-item{flex:1 1 150px;}
+  .sched-scope .cal-add{flex:0 0 auto; margin-top:0; padding:8px 12px;}
   .sched-scope .cal-legend{margin-left:0; flex:0 0 100%;}
 }
 .sched-scope .panel-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:22px; padding-top:18px; border-top:1px solid var(--line);}
