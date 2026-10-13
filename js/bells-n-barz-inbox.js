@@ -12,6 +12,21 @@
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
 
+  // "Alice is typing…" line under the thread (window.bnbTyping, shell).
+  function typingLineHtml(id){ return `<div class="msg-typing" id="${id}" hidden aria-live="polite"></div>`; }
+  function showTyping(id, text){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.hidden = !text;
+    el.innerHTML = text ? esc(text) + '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>' : '';
+  }
+  function wireTypingInput(input, typing, role){
+    if (!typing) return;
+    input.addEventListener('input', () => { input.value.trim() ? typing.notify(role) : typing.stop(role); });
+    input.addEventListener('blur', () => typing.stop(role));
+  }
+  const typing = window.bnbTyping ? window.bnbTyping() : null;
+
   function fmtWhen(iso){
     const d = new Date(iso);
     return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' ' +
@@ -101,6 +116,7 @@
       }
       detailHtml = `
         <div class="msg-thread" id="inbox-thread">${messageListHtml(messages, me.id, selectedOtherUserName)}</div>
+        ${typingLineHtml('inbox-typing')}
         <div class="msg-compose">
           <textarea class="msg-input" id="inbox-input" placeholder="Message ${escAttr(selectedOtherUserName)}..."></textarea>
           <button class="weight-submit" id="inbox-send" type="button">Send</button>
@@ -148,6 +164,9 @@
 
     const threadEl = document.getElementById('inbox-thread');
     if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+    // A brand-new conversation has no thread id until its first message.
+    if (typing) typing.join(selectedThreadId ? 'dm:' + selectedThreadId : null, me.id,
+      who => showTyping('inbox-typing', who ? selectedOtherUserName + ' is typing' : ''));
 
     const sendBtn = document.getElementById('inbox-send');
     if (sendBtn){
@@ -164,9 +183,11 @@
           if (t){ t.textContent = sendErr.message || 'Could not send — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
           return;
         }
+        if (typing) typing.stop('user');
         input.value = '';
         renderInbox();
       });
+      wireTypingInput(input, typing, 'user');
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
       });

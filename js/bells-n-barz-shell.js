@@ -1737,6 +1737,66 @@ createIntervalTimer(
   });
 })();
 
+/* ---------------- TYPING INDICATOR ----------------
+   "Alice is typing…" for Inbox and Messages, over Supabase Realtime
+   broadcast: nothing is stored, the other person's browser just hears a
+   short signal on a channel named after the conversation. The signal
+   carries only the sender's user id and whether they're staff — never
+   the text. Each view creates its own indicator:
+
+     const typing = window.bnbTyping();
+     typing.join(conversationKey, me.id, who => show/hide)  // after each render
+     typing.notify(role) / typing.stop(role)               // from the textarea
+*/
+window.bnbTyping = function(){
+  const SEND_EVERY = 2000;  // at most one "typing" signal per 2s while typing
+  const SHOW_FOR = 5000;    // hide if nothing heard for 5s (never gets stuck)
+  let ch = null, key = null, meId = null, onUpdate = null, clearTimer = null, lastSent = 0, current = null;
+  function set(who){
+    current = who;
+    clearTimeout(clearTimer);
+    if (who) clearTimer = setTimeout(() => set(null), SHOW_FOR);
+    if (onUpdate) onUpdate(who);
+  }
+  function send(role, typing){
+    if (ch) ch.send({ type: 'broadcast', event: 'typing', payload: { uid: meId, role, typing } });
+  }
+  return {
+    // Call after every render: same conversation keeps the channel and
+    // just re-applies the current state to the freshly drawn page.
+    join(newKey, myId, cb){
+      onUpdate = cb;
+      if (newKey && newKey === key && ch){ cb(current); return; }
+      this.leave();
+      if (!newKey) return;
+      key = newKey; meId = myId;
+      ch = bnbClient.channel('typing:' + newKey, { config: { broadcast: { self: false } } });
+      ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
+        if (!payload || payload.uid === meId) return; // my own other tabs
+        set(payload.typing ? payload : null);
+      });
+      ch.subscribe();
+      cb(null);
+    },
+    notify(role){
+      const now = Date.now();
+      if (now - lastSent < SEND_EVERY) return;
+      lastSent = now;
+      send(role, true);
+    },
+    stop(role){
+      if (!lastSent) return; // never said we were typing
+      lastSent = 0;
+      send(role, false);
+    },
+    leave(){
+      if (ch) bnbClient.removeChannel(ch);
+      ch = null; key = null; lastSent = 0;
+      set(null);
+    }
+  };
+};
+
 /* ---------------- INBOX UNREAD BADGE ----------------
    A count on the INBOX nav button of conversations with a message you
    haven't opened yet, refreshed every minute (and when the tab comes back

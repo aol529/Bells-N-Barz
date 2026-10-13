@@ -7,6 +7,22 @@
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
 
+  // "Alice is typing…" line under the thread (window.bnbTyping, shell).
+  function typingLineHtml(id){ return `<div class="msg-typing" id="${id}" hidden aria-live="polite"></div>`; }
+  function showTyping(id, text){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.hidden = !text;
+    el.innerHTML = text ? esc(text) + '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>' : '';
+  }
+  function wireTypingInput(input, typing, role){
+    if (!typing) return;
+    input.addEventListener('input', () => { input.value.trim() ? typing.notify(role) : typing.stop(role); });
+    input.addEventListener('blur', () => typing.stop(role));
+  }
+  const memberTyping = window.bnbTyping ? window.bnbTyping() : null;
+  const staffTyping = window.bnbTyping ? window.bnbTyping() : null;
+
   function isStaffSelf(me){
     return !!(me && me.roles && me.roles.some(r => ['admin','trainer','staff'].includes(r)));
   }
@@ -63,6 +79,7 @@
       <div class="day-head"><h2>Messages — Staff</h2></div>
       <div class="day-focus">A direct line to your coaches and admin — any staff member can see and reply here.</div>
       <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false)}</div>
+      ${typingLineHtml('msg-member-typing')}
       <div class="msg-compose">
         <textarea class="msg-input" id="msg-member-input" placeholder="Write a message to staff..."></textarea>
         <button class="weight-submit" id="msg-member-send" type="button">Send</button>
@@ -73,6 +90,9 @@
     const sendBtn = document.getElementById('msg-member-send');
     const threadEl = document.getElementById('msg-member-thread');
     threadEl.scrollTop = threadEl.scrollHeight;
+    // Staff stay anonymous here ("Staff"), same as the message labels.
+    if (memberTyping) memberTyping.join(thread ? 'msg:' + thread.id : null, me.id,
+      who => showTyping('msg-member-typing', who ? 'Staff is typing' : ''));
     if (draft && draft.text){
       input.value = draft.text;
       if (draft.focused){ input.focus(); input.setSelectionRange(draft.start, draft.end); }
@@ -90,9 +110,11 @@
         if (t){ t.textContent = 'Could not send — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
         return;
       }
+      if (memberTyping) memberTyping.stop('member');
       input.value = '';
       renderMemberView();
     });
+    wireTypingInput(input, memberTyping, 'member');
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
     });
@@ -158,6 +180,7 @@
       // button) rather than only replying to members who already wrote in.
       detailHtml = `
         <div class="msg-thread" id="msg-staff-thread">${messageListHtml(messages, true)}</div>
+        ${typingLineHtml('msg-staff-typing')}
         <div class="msg-compose">
           <textarea class="msg-input" id="msg-staff-input" placeholder="Message ${escAttr(nameFor(selectedMemberId))}..."></textarea>
           <button class="weight-submit" id="msg-staff-send" type="button">Send</button>
@@ -181,6 +204,9 @@
 
     const threadEl = document.getElementById('msg-staff-thread');
     if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+    const openThread = (threads || []).find(t => t.member_id === selectedMemberId);
+    if (staffTyping) staffTyping.join(openThread ? 'msg:' + openThread.id : null, me.id,
+      who => showTyping('msg-staff-typing', !who ? '' : who.role === 'staff' ? 'Another staff member is typing' : nameFor(selectedMemberId) + ' is typing'));
 
     const newInput = document.getElementById('msg-staff-input');
     if (draft && newInput && draft.memberId === selectedMemberId && draft.text){
@@ -203,9 +229,11 @@
           if (t){ t.textContent = 'Could not send — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
           return;
         }
+        if (staffTyping) staffTyping.stop('staff');
         input.value = '';
         renderStaffView();
       });
+      wireTypingInput(input, staffTyping, 'staff');
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
       });
