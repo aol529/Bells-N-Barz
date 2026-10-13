@@ -402,7 +402,12 @@
     whose slot started without opening, telling those still waiting.
     Run after 66. Safe to re-run.
 
-68. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+68. **68-class-waitlist-reminders.sql** — `send_booking_reminders()`
+    also reminds members on a class waitlist (once, within 24 hours,
+    with their place) and moves leftover waitlist places to 'expired'
+    once the class starts, telling them. Run after 67. Safe to re-run.
+
+69. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
