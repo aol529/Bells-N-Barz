@@ -413,7 +413,14 @@
     (`send_coach_agendas`, called from `send_booking_reminders`;
     `coach_agenda_sent` keeps it to once). Run after 68. Safe to re-run.
 
-70. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+70. **70-open-slot-reminders.sql** — `send_open_slot_reminders()`
+    (called from `send_booking_reminders`): from noon, members with a
+    credit hear about tomorrow's free 1-on-1s with their coach(es);
+    coaches are nudged about a slot still open within 3 hours; and on
+    Sunday evening a coach with no slots next week is reminded to add
+    some. Each once. Run after 69. Safe to re-run.
+
+71. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
