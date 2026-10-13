@@ -1798,7 +1798,7 @@ createIntervalTimer(
   }
 
   // Booking notifications (sql/62) also get the chime and pop-up.
-  const BOOKING_TYPES = ['class_booked', 'class_cancelled', 'waitlist_promoted', 'pt_booked', 'pt_cancelled', 'booking_reminder'];
+  const BOOKING_TYPES = ['class_booked', 'class_cancelled', 'waitlist_promoted', 'pt_booked', 'pt_cancelled', 'booking_reminder', 'class_moved', 'pt_moved'];
 
   // Which screen shows each kind of message (notification link_tab).
   function viewFor(link){

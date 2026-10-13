@@ -2111,6 +2111,10 @@ header.site{
 .sched-scope .form-inline.cal-filter .field{flex-direction:row; align-items:center; gap:10px; margin:0; width:auto;}
 .sched-scope .form-inline.cal-filter label{margin:0;}
 .sched-scope .form-inline.cal-filter select{width:auto;}
+.sched-scope .cal-item.draggable{cursor:grab;}
+.sched-scope .cal-item.dragging{opacity:.4;}
+.sched-scope .cal-grid.drag-on .cal-day:not(.past){outline:1px dashed var(--line);}
+.sched-scope .cal-grid.drag-on .cal-day.drop-ok{outline:2px dashed var(--accent); background:rgba(var(--accent-rgb),.06);}
 .sched-scope .cal-link{all:unset; cursor:pointer; color:var(--muted); font-size:11px; font-family:'IBM Plex Mono',monospace; text-decoration:underline;}
 @media (max-width:900px){
   .sched-scope .cal-grid{grid-template-columns:1fr; gap:8px;}

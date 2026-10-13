@@ -3376,6 +3376,23 @@
      otherwise hide it along with the rest of an inactive tab. Used by Admin's
      class-session roster (inside Schedule) and by Coach's own roster/slots. -->
 <div class="sched-scope">
+  <!-- Move a class / 1-on-1 (calendar drag and drop) -->
+  <div class="panel-backdrop" id="sched-move-panel-backdrop">
+    <div class="panel">
+      <h2 id="sched-move-title">Move</h2>
+      <div class="field-hint" id="sched-move-from"></div>
+      <div class="field-row2" style="margin-top:14px;">
+        <div class="field"><label>New date</label><input type="date" id="sched-move-date"></div>
+        <div class="field"><label>New start time</label><input type="time" id="sched-move-time"></div>
+      </div>
+      <div class="field-hint" id="sched-move-who"></div>
+      <div class="panel-actions">
+        <button class="btn2" id="sched-move-cancel">Cancel</button>
+        <button class="btn2 primary" id="sched-move-save">Move</button>
+      </div>
+    </div>
+  </div>
+
   <div class="panel-backdrop" id="sched-slot-panel-backdrop">
     <div class="panel">
       <h2>Add Availability Slot</h2>

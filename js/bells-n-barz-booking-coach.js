@@ -526,6 +526,7 @@
       btn.addEventListener('click', ()=> openSlotPanel(btn.getAttribute('data-cal-addslot')));
     });
     wireCalNav(body, ()=>{ renderCoachBody(); fillRatingComments(); });
+    wireCalDrag(body);
   }
   function openSlotPanel(date){
     activeSlotFormTrainer = selfTrainerId;
@@ -693,7 +694,7 @@
       const d = new Date(day + 'T00:00:00');
       const dayItems = items.filter(it=> it.date === day).map(render).filter(Boolean);
       const extra = dayExtra ? dayExtra(day) : '';
-      html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length || extra ? '' : ' empty') + '">';
+      html += '<div class="cal-day' + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + (dayItems.length || extra ? '' : ' empty') + '" data-cal-day="' + day + '">';
       html += '<div class="cal-day-head"><span>' + d.toLocaleDateString(undefined, { weekday:'short' }) + '</span><b>' + d.getDate() + '</b></div>';
       html += dayItems.length ? dayItems.join('') : '<div class="cal-none">—</div>';
       html += extra + '</div>';
@@ -763,6 +764,7 @@
       html += coachLine(it.s.instructorId);
       html += '<div class="cal-meta">' + confirmed + '/' + cap + ' booked' + (wl ? ' · ' + wl + ' waiting' : '') + '</div>';
       html += '<div class="cal-actions"><button class="btn2" data-action="open-roster" data-id="' + it.s.id + '">Roster</button>';
+      if (!past) html += '<button class="cal-link" data-cal-move="class:' + it.s.id + '">Move</button>';
       if (admin && !past) html += '<button class="cal-link" data-action="cancel-session" data-id="' + it.s.id + '">Cancel</button>';
       html += '</div>';
     } else {
@@ -777,10 +779,13 @@
         if (sl.status === 'open') html += '<button class="cal-link" data-action="block-slot" data-id="' + sl.id + '">Block</button>';
         if (sl.status === 'blocked') html += '<button class="cal-link" data-action="unblock-slot" data-id="' + sl.id + '">Unblock</button>';
         if (booked) html += '<button class="cal-link" data-action="cancel-pt-trainer" data-id="' + it.pt.id + '">Cancel</button>';
+        html += '<button class="cal-link" data-cal-move="slot:' + sl.id + '">Move</button>';
       }
       html += '</div>';
     }
-    return '<div class="' + cls + '">' + html + '</div>';
+    // Drag to another day to reschedule (or use Move, e.g. on a phone).
+    const drag = past ? '' : ' draggable="true" data-drag="' + (it.kind === 'class' ? 'class:' + it.s.id : 'slot:' + it.sl.id) + '"';
+    return '<div class="' + cls + (past ? '' : ' draggable') + '"' + drag + '>' + html + '</div>';
   }
   function trainerCalendarHtml(){
     const start = calWeeks.coach || mondayOf(TODAY);
@@ -804,6 +809,89 @@
     html += '</select></div></div>';
     html += calGridHtml(start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
     return html;
+  }
+
+  /* ---------------- RESCHEDULE (drag and drop) ----------------
+     Coach and admin calendars: drag a class or 1-on-1 slot onto another
+     day (or tap Move), check the time, confirm. reschedule_class_session()
+     / reschedule_pt_slot() (sql/63) move it and tell everyone booked. */
+  let moveTarget = null; // { kind:'class'|'slot', id }
+  function openMoveDialog(ref, day){
+    const [kind, id] = ref.split(':');
+    const item = kind === 'class' ? getSession(id) : slots.find(x=>x.id===id);
+    if (!item) return;
+    moveTarget = { kind, id };
+    let title, who;
+    if (kind === 'class'){
+      const cls = getClass(item.classId);
+      title = 'Move ' + (cls ? cls.name : 'class');
+      const n = (sessionCounts && sessionCounts[id]) ? sessionCounts[id].confirmed + sessionCounts[id].waitlisted
+        : bookings.filter(b=>b.sessionId===id && (b.status==='confirmed' || b.status==='waitlisted')).length;
+      who = n ? n + (n === 1 ? ' person is' : ' people are') + ' booked — they\'ll be told it moved.' : 'Nobody is booked yet.';
+    } else {
+      const pt = ptBookings.find(p=>p.slotId===id && p.status==='confirmed');
+      title = 'Move 1-on-1' + (pt ? ' with ' + memberName(pt.userId) : ' slot');
+      who = pt ? memberName(pt.userId) + ' will be told it moved.' : 'Nobody has booked this slot yet.';
+    }
+    document.getElementById('sched-move-title').textContent = title;
+    document.getElementById('sched-move-from').textContent = 'Now: ' + fmtDate(item.date) + ', ' + fmtTime(item.startTime);
+    document.getElementById('sched-move-who').textContent = who;
+    const dateEl = document.getElementById('sched-move-date');
+    dateEl.min = TODAY;
+    dateEl.value = day || item.date;
+    document.getElementById('sched-move-time').value = String(item.startTime).slice(0,5);
+    document.getElementById('sched-move-panel-backdrop').classList.add('show');
+    document.getElementById('sched-move-time').focus();
+  }
+  function closeMoveDialog(){ document.getElementById('sched-move-panel-backdrop').classList.remove('show'); moveTarget = null; }
+  async function confirmMove(){
+    if (!moveTarget) return;
+    const date = document.getElementById('sched-move-date').value, time = document.getElementById('sched-move-time').value;
+    if (!date || !time){ toast('Pick a date and time.'); return; }
+    const btn = document.getElementById('sched-move-save');
+    btn.disabled = true;
+    const fn = moveTarget.kind === 'class' ? 'reschedule_class_session' : 'reschedule_pt_slot';
+    const args = moveTarget.kind === 'class' ? { p_session_id: moveTarget.id, p_date: date, p_time: time } : { p_slot_id: moveTarget.id, p_date: date, p_time: time };
+    const { data: told, error } = await bnbClient.rpc(fn, args);
+    btn.disabled = false;
+    if (error){ toast(error.message || 'Could not move that.'); return; }
+    closeMoveDialog();
+    toast('Moved to ' + fmtDate(date) + ', ' + fmtTime(time) + (told ? ' — ' + told + ' booked ' + (told === 1 ? 'person' : 'people') + ' told.' : '.'));
+    await Promise.all([refreshSessionsFromSupabase(), refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
+    afterBookingChange();
+  }
+  function wireCalDrag(root){
+    root.querySelectorAll('[data-cal-move]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openMoveDialog(btn.getAttribute('data-cal-move')));
+    });
+    let dragging = null;
+    root.querySelectorAll('[data-drag]').forEach(el=>{
+      el.addEventListener('dragstart', e=>{
+        dragging = el.getAttribute('data-drag');
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', dragging); } catch(err){}
+        el.classList.add('dragging');
+        root.querySelectorAll('.cal-grid').forEach(g=> g.classList.add('drag-on'));
+      });
+      el.addEventListener('dragend', ()=>{
+        dragging = null;
+        el.classList.remove('dragging');
+        root.querySelectorAll('.drop-ok').forEach(d=> d.classList.remove('drop-ok'));
+        root.querySelectorAll('.drag-on').forEach(g=> g.classList.remove('drag-on'));
+      });
+    });
+    root.querySelectorAll('[data-cal-day]').forEach(dayEl=>{
+      const day = dayEl.getAttribute('data-cal-day');
+      if (day < TODAY) return;
+      dayEl.addEventListener('dragover', e=>{ if (!dragging) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; dayEl.classList.add('drop-ok'); });
+      dayEl.addEventListener('dragleave', e=>{ if (!dayEl.contains(e.relatedTarget)) dayEl.classList.remove('drop-ok'); });
+      dayEl.addEventListener('drop', e=>{
+        if (!dragging) return;
+        e.preventDefault();
+        dayEl.classList.remove('drop-ok');
+        openMoveDialog(dragging, day);
+      });
+    });
   }
 
   function memberBookTrainerHtml(){
@@ -2204,6 +2292,7 @@
     });
 
     wireCalNav(body, renderBody);
+    if (view === 'admin') wireCalDrag(body);
     const calTrainer = body.querySelector('#sched-admin-cal-trainer');
     if (calTrainer) calTrainer.addEventListener('change', ()=>{ adminCalTrainer = calTrainer.value; renderBody(); });
     body.querySelectorAll('[data-cal-addsession]').forEach(btn=>{
@@ -2277,6 +2366,9 @@
   document.getElementById('sched-class-recurring').addEventListener('input', renderRecurringPreview);
   document.getElementById('sched-class-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-class-panel-backdrop') closeClassPanel(); });
 
+  document.getElementById('sched-move-cancel').addEventListener('click', closeMoveDialog);
+  document.getElementById('sched-move-save').addEventListener('click', confirmMove);
+  document.getElementById('sched-move-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-move-panel-backdrop') closeMoveDialog(); });
   document.getElementById('sched-slot-cancel').addEventListener('click', ()=> document.getElementById('sched-slot-panel-backdrop').classList.remove('show'));
   document.getElementById('sched-slot-save').addEventListener('click', ()=>{
     addSlot(activeSlotFormTrainer, document.getElementById('sched-slot-date').value, document.getElementById('sched-slot-time').value, document.getElementById('sched-slot-duration').value);

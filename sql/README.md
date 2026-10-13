@@ -370,7 +370,13 @@
     Run after 61. Safe to re-run — and re-run it after gym.sql, which
     would restore the old member write policies on `bookings`.
 
-63. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+63. **63-reschedule.sql** — drag-and-drop rescheduling in the coach and
+    admin calendars: `reschedule_class_session` / `reschedule_pt_slot`
+    (staff only) move a class or 1-on-1, keep its bookings, tell everyone
+    booked and re-arm their reminder. A moved recurring session becomes a
+    one-off. Run after 62. Safe to re-run.
+
+64. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
