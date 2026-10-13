@@ -389,7 +389,14 @@
     on?"), `set_pt_booking_notes` changes it later, and the coach's
     booking notification includes it. Run after 64. Safe to re-run.
 
-66. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+66. **66-pt-waitlist.sql** — a waitlist on booked 1-on-1 slots
+    (`pt_waitlist`, `join_pt_waitlist` / `leave_pt_waitlist` /
+    `pt_waitlist_counts`). When a slot goes from booked back to open, a
+    trigger books the longest-waiting member in (1 credit, their note
+    kept) or skips them if they have no credit / an overlapping 1-on-1.
+    Run after 65. Safe to re-run.
+
+67. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

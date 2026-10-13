@@ -294,8 +294,17 @@
     if (error) return;
     if (data) await refreshSessionsFromSupabase();
   }
+  // 1-on-1 waitlists (sql/66): how many wait per slot, and your place.
+  let ptWaitCounts = {}; // slotId -> { waiting, myPlace }
+  async function refreshPtWaitlist(){
+    const { data, error } = await bnbClient.rpc('pt_waitlist_counts');
+    if (error) return; // before sql/66, or signed out
+    ptWaitCounts = {};
+    (data || []).forEach(r=>{ ptWaitCounts[r.slot_id] = { waiting: r.waiting, myPlace: r.my_place }; });
+    if (typeof renderBody === 'function') renderBody();
+  }
   async function afterBookingChange(){
-    await Promise.all([refreshBookingsFromSupabase(), refreshSessionCounts()]);
+    await Promise.all([refreshBookingsFromSupabase(), refreshSessionCounts(), refreshPtWaitlist()]);
     renderBody();
     if (activeRosterSessionId && document.getElementById('sched-session-panel-backdrop').classList.contains('show')) renderRosterLists();
   }
@@ -1160,6 +1169,7 @@
       html += '<div class="cal-title">' + (booked ? esc(memberName(it.pt.userId)) : '1-on-1') + '</div>';
       html += coachLine(sl.trainerId);
       if (booked && it.pt.notes) html += '<div class="cal-note" title="' + esc(it.pt.notes) + '">“' + esc(it.pt.notes) + '”</div>';
+      if ((ptWaitCounts[sl.id] || {}).waiting) html += '<div class="cal-meta">+' + ptWaitCounts[sl.id].waiting + ' waiting</div>';
       html += '<div class="cal-actions"><span class="status-pill ' + sl.status + '">' + (booked ? '1-on-1' : sl.status) + '</span>';
       if (!past){
         if (sl.status === 'open') html += '<button class="cal-link" data-action="block-slot" data-id="' + sl.id + '">Block</button>';
@@ -1388,7 +1398,9 @@
     html += '</div></div>';
 
     // Open slots
-    const open = slots.filter(sl=> sl.status==='open' && !isPast(sl.date, sl.startTime) && (any || sl.trainerId===memberTrainerId)
+    // Open slots, plus booked ones (someone else's) you can wait for.
+    const mineSlot = id => ptBookings.some(p=> p.slotId===id && p.userId===selfMemberId && p.status==='confirmed');
+    const open = slots.filter(sl=> (sl.status==='open' || (sl.status==='booked' && !mineSlot(sl.id))) && !isPast(sl.date, sl.startTime) && (any || sl.trainerId===memberTrainerId)
         && (slotDayFilter==='all' || String(isoDow(sl.date))===slotDayFilter)
         && (slotPartFilter==='all' || partOf(sl.startTime)===slotPartFilter))
       .sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
@@ -1399,9 +1411,13 @@
       groupByDate(open, 'date').forEach(g=>{
         html += '<div class="slot-day"><h4>' + fmtDate(g.date) + '</h4>';
         g.items.forEach(sl=>{
-          html += '<div class="slot-row"><span class="slot-time">' + fmtTime(sl.startTime) + '</span><span class="slot-dur">' + sl.duration + ' min</span>';
+          const full = sl.status === 'booked';
+          const w = ptWaitCounts[sl.id] || { waiting: 0, myPlace: null };
+          html += '<div class="slot-row' + (full ? ' full' : '') + '"><span class="slot-time">' + fmtTime(sl.startTime) + '</span><span class="slot-dur">' + sl.duration + ' min</span>';
           if (any) html += '<button class="slot-coach" data-pick-coach="' + sl.trainerId + '">' + coachAvatarHtml(sl.trainerId, 22) + esc(trainerName(sl.trainerId)) + '</button>';
-          html += '<button class="btn2 primary" data-action="member-book-slot" data-id="' + sl.id + '">Book</button></div>';
+          if (!full) html += '<button class="btn2 primary" data-action="member-book-slot" data-id="' + sl.id + '">Book</button></div>';
+          else if (w.myPlace) html += '<span class="slot-wait">On waitlist · #' + w.myPlace + '</span><button class="btn2" data-action="member-leave-ptwait" data-id="' + sl.id + '">Leave</button></div>';
+          else html += '<span class="slot-wait">Booked' + (w.waiting ? ' · ' + w.waiting + ' waiting' : '') + '</span><button class="btn2" data-action="member-join-ptwait" data-id="' + sl.id + '">Join waitlist</button></div>';
         });
         html += '</div>';
       });
@@ -1411,7 +1427,28 @@
   }
 
   // ---- Book (with a note) ----
-  let bookingSlotId = null, editingNoteFor = null;
+  let bookingSlotId = null, editingNoteFor = null, waitingSlotId = null;
+  function openWaitPanel(slotId){
+    const sl = slots.find(x=>x.id===slotId); if (!sl) return;
+    bookingSlotId = null; editingNoteFor = null; waitingSlotId = slotId;
+    const w = ptWaitCounts[slotId] || { waiting: 0 };
+    const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
+    document.getElementById('sched-ptbook-title').textContent = 'Join the waitlist';
+    document.getElementById('sched-ptbook-when').textContent = trainerName(sl.trainerId) + ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) + ' · ' + (w.waiting ? w.waiting + ' already waiting' : 'nobody waiting yet');
+    document.getElementById('sched-ptbook-credits').textContent = 'If it opens up, you\'re booked in automatically and 1 credit is used'
+      + (credits > 0 ? '.' : ' — you have none right now, so you\'d be skipped unless you get one first.') + ' You can leave the waitlist any time.';
+    document.getElementById('sched-ptbook-notes').value = '';
+    document.getElementById('sched-ptbook-save').textContent = 'Join Waitlist';
+    document.getElementById('sched-ptbook-panel-backdrop').classList.add('show');
+    document.getElementById('sched-ptbook-notes').focus();
+  }
+  async function leavePtWaitlist(slotId){
+    if (!confirm('Leave the waitlist for this 1-on-1?')) return;
+    const { error } = await bnbClient.rpc('leave_pt_waitlist', { p_slot_id: slotId, p_member_id: selfMemberId });
+    if (error){ toast(error.message || 'Could not leave the waitlist.'); return; }
+    toast('Removed from the waitlist.');
+    refreshPtWaitlist();
+  }
   function memberBookSlot(slotId){
     const sl = slots.find(x=>x.id===slotId); if (!sl || sl.status !== 'open') { toast('That slot is no longer available.'); return; }
     const start = timeToMinutes(sl.startTime), end = start + Number(sl.duration);
@@ -1425,7 +1462,7 @@
     if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
     const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
     if (credits <= 0){ toast('No session credits left. Buy a package or redeem points to book.'); return; }
-    bookingSlotId = slotId; editingNoteFor = null;
+    bookingSlotId = slotId; editingNoteFor = null; waitingSlotId = null;
     document.getElementById('sched-ptbook-title').textContent = 'Book a 1-on-1';
     document.getElementById('sched-ptbook-when').textContent = trainerName(sl.trainerId) + ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) + ' · ' + sl.duration + ' min';
     document.getElementById('sched-ptbook-credits').textContent = 'Uses 1 of your ' + credits + ' credit' + (credits === 1 ? '' : 's') + '. Cancel more than 24 hours before and you get it back.';
@@ -1437,7 +1474,7 @@
   function openNoteEditor(ptId){
     const p = ptBookings.find(x=>x.id===ptId); if (!p) return;
     const sl = slots.find(x=>x.id===p.slotId);
-    bookingSlotId = null; editingNoteFor = ptId;
+    bookingSlotId = null; editingNoteFor = ptId; waitingSlotId = null;
     document.getElementById('sched-ptbook-title').textContent = 'What do you want to work on?';
     document.getElementById('sched-ptbook-when').textContent = trainerName(p.trainerId) + (sl ? ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) : '');
     document.getElementById('sched-ptbook-credits').textContent = 'Your coach sees this before the session.';
@@ -1446,10 +1483,20 @@
     document.getElementById('sched-ptbook-panel-backdrop').classList.add('show');
     document.getElementById('sched-ptbook-notes').focus();
   }
-  function closeBookPanel(){ document.getElementById('sched-ptbook-panel-backdrop').classList.remove('show'); bookingSlotId = null; editingNoteFor = null; }
+  function closeBookPanel(){ document.getElementById('sched-ptbook-panel-backdrop').classList.remove('show'); bookingSlotId = null; editingNoteFor = null; waitingSlotId = null; }
   async function confirmBookPanel(){
     const notes = document.getElementById('sched-ptbook-notes').value.trim();
     const btn = document.getElementById('sched-ptbook-save');
+    if (waitingSlotId){
+      btn.disabled = true;
+      const { data: place, error } = await bnbClient.rpc('join_pt_waitlist', { p_slot_id: waitingSlotId, p_member_id: selfMemberId, p_notes: notes || null });
+      btn.disabled = false;
+      if (error){ toast(error.message || 'Could not join the waitlist.'); closeBookPanel(); refreshSlotsFromSupabase(); return; }
+      closeBookPanel();
+      toast('You\'re on the waitlist — #' + place + '. We\'ll book you in if it opens up.');
+      refreshPtWaitlist();
+      return;
+    }
     if (editingNoteFor){
       btn.disabled = true;
       const { error } = await bnbClient.rpc('set_pt_booking_notes', { p_booking_id: editingNoteFor, p_notes: notes });
@@ -1550,6 +1597,16 @@
       html += '</table>';
     }
 
+    const myWaits = Object.keys(ptWaitCounts).filter(id=> ptWaitCounts[id].myPlace).map(id=> slots.find(sl=> sl.id===id)).filter(Boolean)
+      .sort((a,b)=> (a.date+a.startTime) < (b.date+b.startTime) ? -1 : 1);
+    if (myWaits.length){
+      html += '<div class="section-sub-head"><h3>1-on-1 Waitlists</h3></div>';
+      html += '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th>Place</th><th></th></tr>';
+      myWaits.forEach(sl=>{
+        html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td><span class="status-pill waitlisted">#'+ptWaitCounts[sl.id].myPlace+'</span></td><td><div class="row-actions"><button data-action="member-leave-ptwait" data-id="'+sl.id+'">Leave</button></div></td></tr>';
+      });
+      html += '</table>';
+    }
     html += '<div class="section-sub-head"><h3>1-on-1 Sessions</h3></div>';
     if (!myPt.length) html += '<div class="empty-msg">No upcoming 1-on-1 sessions.</div>';
     else {
@@ -1874,7 +1931,7 @@
     html += '<table class="admin-table"><tr><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     mySlots.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span>'+((ptWaitCounts[sl.id]||{}).waiting?'<div class="field-hint">'+ptWaitCounts[sl.id].waiting+' waiting</div>':'')+'</td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -2605,7 +2662,7 @@
     let html = '<table class="admin-table"><tr><th>Trainer</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th><th>Booked by</th><th></th></tr>';
     all.forEach(sl=>{
       const pt = ptBookings.find(p=>p.slotId===sl.id && p.status==='confirmed');
-      html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span></td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
+      html += '<tr><td>'+esc(trainerName(sl.trainerId))+'</td><td>'+fmtDate(sl.date)+'</td><td>'+fmtTime(sl.startTime)+'</td><td>'+sl.duration+' min</td><td><span class="status-pill '+sl.status+'">'+sl.status+'</span>'+((ptWaitCounts[sl.id]||{}).waiting?'<div class="field-hint">'+ptWaitCounts[sl.id].waiting+' waiting</div>':'')+'</td><td>'+(pt?esc(memberName(pt.userId))+(pt.notes?'<div class="field-hint">“'+esc(pt.notes)+'”</div>':''):'—')+'</td><td><div class="row-actions">';
       if (sl.status === 'open') html += '<button data-action="block-slot" data-id="'+sl.id+'">Block</button>';
       if (sl.status === 'blocked') html += '<button data-action="unblock-slot" data-id="'+sl.id+'">Unblock</button>';
       if (sl.status === 'booked' && pt) html += '<button class="del" data-action="cancel-pt-trainer" data-id="'+pt.id+'">Cancel Session</button>';
@@ -2657,7 +2714,7 @@
       window.BNB_USERS.setCreditsFromServer(p.userId, window.BNB_USERS.getCredits(p.userId) + 1);
     }
     toast(refunded ? '1-on-1 session cancelled — credit refunded.' : '1-on-1 session cancelled. No refund within 24 hours of the session.');
-    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase()]);
+    await Promise.all([refreshSlotsFromSupabase(), refreshPtBookingsFromSupabase(), refreshPtWaitlist()]);
     renderIdentityRow();
     renderBody();
   }
@@ -2922,6 +2979,8 @@
         else if (action === 'member-book-slot') memberBookSlot(id);
         else if (action === 'member-cancel-pt') memberCancelPt(id);
         else if (action === 'edit-pt-note') openNoteEditor(id);
+        else if (action === 'member-join-ptwait') openWaitPanel(id);
+        else if (action === 'member-leave-ptwait') leavePtWaitlist(id);
         else if (action === 'open-roster') openRoster(id);
         else if (action === 'cancel-session') cancelSession(id);
         else if (action === 'edit-class') openClassPanel(id);
@@ -3010,7 +3069,7 @@
 
   // Ratings are refetched on every tab open (not just page load) since
   // the module loads before sign-in, when there's no one to fetch for.
-  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); ensureRecurringSessions(); refreshSessionCounts(); refreshCoachProfiles(); };
+  window.schedOnTabShown = function(){ renderIdentityRow(); renderCoachIdentityRow(); renderBody(); refreshCoachRatings(); ensureRecurringSessions(); refreshSessionCounts(); refreshCoachProfiles(); refreshPtWaitlist(); };
   // A booking notification arrived (shell.js) — pull the latest.
   window.schedRefreshBookings = function(){ refreshSlotsFromSupabase(); refreshPtBookingsFromSupabase(); afterBookingChange(); };
   // Booking/Roster data refreshes on its own whenever a schedule action fires,
@@ -3031,6 +3090,6 @@
       renderCoachDashboard();
     }, 200);
   });
-  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); ensureRecurringSessions(); refreshCoachProfiles(); };
+  window.coachOnTabShown = function(){ renderCoachIdentityRow(); renderCoachDashboard(); refreshCoachRatings(); ensureRecurringSessions(); refreshCoachProfiles(); refreshPtWaitlist(); };
 
 })();
