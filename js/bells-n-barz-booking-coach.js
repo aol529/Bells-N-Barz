@@ -401,6 +401,14 @@
   let classFilter = 'all';
   // Each calendar's Monday (YYYY-MM-DD); null = this week.
   const calWeeks = { member: null, coach: null, admin: null };
+  // Week or month view per calendar (remembered on this device), and the
+  // month shown (first of the month; null = this month).
+  const calViews = (function(){
+    const v = { member: 'week', coach: 'week', admin: 'week' };
+    try { Object.assign(v, JSON.parse(localStorage.getItem('bnb-cal-views') || '{}')); } catch(e){}
+    return v;
+  })();
+  const calMonths = { member: null, coach: null, admin: null };
   let adminCalTrainer = 'all'; // admin calendar's coach filter
   let editingClassId = null;
   let activeSlotFormTrainer = null;
@@ -766,18 +774,66 @@
 
   // Week header (‹ range › This week + legend) and the 7-day grid, shared
   // by the member and coach calendars. `scope` keeps their weeks apart.
-  function calHeadHtml(start, scope, legend){
-    const end = addDays(start, 6);
-    const thisWeek = start === mondayOf(TODAY);
+  function monthStartOf(iso){ return iso.slice(0, 8) + '01'; }
+  function addMonths(iso, n){ const d = new Date(iso + 'T00:00:00'); d.setDate(1); d.setMonth(d.getMonth() + n); return isoDate(d); }
+  // What a calendar is showing: { month, start, from, to } — `start` is the
+  // Monday (week) or the 1st (month); from/to is the date range drawn.
+  function calRange(scope){
+    if (calViews[scope] === 'month'){
+      const first = calMonths[scope] || monthStartOf(TODAY);
+      const last = addDays(addMonths(first, 1), -1);
+      return { month: true, start: first, from: mondayOf(first), to: addDays(mondayOf(last), 6) };
+    }
+    const start = calWeeks[scope] || mondayOf(TODAY);
+    return { month: false, start, from: start, to: addDays(start, 6) };
+  }
+
+  // Header: ‹ range › This week/month, Week | Month, legend. Shared by the
+  // member, coach and admin calendars; `scope` keeps their state apart.
+  function calHeadHtml(range, scope, legend){
+    const isNow = range.month ? range.start === monthStartOf(TODAY) : range.start === mondayOf(TODAY);
     const fmtShort = iso => new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month:'short', day:'numeric' });
+    const label = range.month ? new Date(range.start + 'T00:00:00').toLocaleDateString(undefined, { month:'long', year:'numeric' })
+      : fmtShort(range.start) + ' – ' + fmtShort(addDays(range.start, 6));
+    const unit = range.month ? 'month' : 'week';
     let html = '<div class="cal-head">';
-    html += '<button class="btn2" data-cal="prev" data-cal-scope="' + scope + '" aria-label="Previous week"' + (thisWeek ? ' disabled' : '') + '>‹</button>';
-    html += '<div class="cal-range">' + fmtShort(start) + ' – ' + fmtShort(end) + '</div>';
-    html += '<button class="btn2" data-cal="next" data-cal-scope="' + scope + '" aria-label="Next week">›</button>';
-    if (!thisWeek) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">This week</button>';
+    html += '<button class="btn2" data-cal="prev" data-cal-scope="' + scope + '" aria-label="Previous ' + unit + '"' + (isNow ? ' disabled' : '') + '>‹</button>';
+    html += '<div class="cal-range">' + label + '</div>';
+    html += '<button class="btn2" data-cal="next" data-cal-scope="' + scope + '" aria-label="Next ' + unit + '">›</button>';
+    if (!isNow) html += '<button class="btn2" data-cal="today" data-cal-scope="' + scope + '">This ' + unit + '</button>';
+    html += '<div class="cal-view" role="group" aria-label="Calendar view">';
+    ['week', 'month'].forEach(v=> html += '<button class="' + (calViews[scope] === v ? 'active' : '') + '" data-cal-view="' + v + '" data-cal-scope="' + scope + '">' + (v === 'week' ? 'Week' : 'Month') + '</button>');
+    html += '</div>';
     html += '<div class="cal-legend">' + legend + '</div>';
     return html + '</div>';
   }
+
+  // Month grid: compact chips (up to 3 a day, then "+N more"); tapping a
+  // day opens that week, where the full buttons are. Chips keep their
+  // drag attributes, so dragging works here too.
+  function calMonthHtml(range, items, chip){
+    const first = range.start;
+    const nextMonth = addMonths(first, 1);
+    let html = '<div class="cal-month"><div class="cal-mhead">';
+    for (let i = 0; i < 7; i++) html += '<span>' + new Date(addDays(range.from, i) + 'T00:00:00').toLocaleDateString(undefined, { weekday:'short' }) + '</span>';
+    html += '</div><div class="cal-mgrid">';
+    for (let day = range.from; day <= range.to; day = addDays(day, 1)){
+      const out = day < first || day >= nextMonth;
+      const chips = items.filter(it=> it.date === day).map(chip).filter(Boolean);
+      html += '<div class="cal-mday' + (out ? ' out' : '') + (day === TODAY ? ' today' : '') + (day < TODAY ? ' past' : '') + '" data-cal-day="' + day + '" data-cal-open="' + day + '" role="button" tabindex="0" aria-label="' + fmtDate(day) + (chips.length ? ', ' + chips.length + ' on' : '') + '">';
+      html += '<div class="cal-mnum">' + Number(day.slice(8)) + (chips.length ? '<span class="cal-mcount">' + chips.length + '</span>' : '') + '</div>';
+      html += chips.slice(0, 3).join('');
+      if (chips.length > 3) html += '<div class="cal-more">+' + (chips.length - 3) + ' more</div>';
+      html += '</div>';
+    }
+    return html + '</div></div>';
+  }
+  // One compact line in the month view.
+  function calChipHtml(it, title, kindCls, attrs){
+    return '<div class="cal-chip ' + kindCls + (isPast(it.date, it.time) ? ' past' : '') + '"' + (attrs || '') + ' title="' + esc(fmtTime(it.time) + ' ' + title) + '">'
+      + '<b>' + fmtTime(it.time).replace(':00', '').replace(' ', '').toLowerCase() + '</b> ' + esc(title) + '</div>';
+  }
+
   function calGridHtml(start, items, render, dayExtra){
     let html = '<div class="cal-grid">';
     for (let i = 0; i < 7; i++){
@@ -797,20 +853,61 @@
     root.querySelectorAll('[data-cal]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const scope = btn.getAttribute('data-cal-scope');
-        const start = calWeeks[scope] || mondayOf(TODAY);
         const v = btn.getAttribute('data-cal');
-        let next = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
-        if (next && next <= mondayOf(TODAY)) next = null;
-        calWeeks[scope] = next;
+        if (calViews[scope] === 'month'){
+          const start = calMonths[scope] || monthStartOf(TODAY);
+          let next = v === 'today' ? null : addMonths(start, v === 'next' ? 1 : -1);
+          if (next && next <= monthStartOf(TODAY)) next = null;
+          calMonths[scope] = next;
+        } else {
+          const start = calWeeks[scope] || mondayOf(TODAY);
+          let next = v === 'today' ? null : addDays(start, v === 'next' ? 7 : -7);
+          if (next && next <= mondayOf(TODAY)) next = null;
+          calWeeks[scope] = next;
+        }
         rerender();
       });
+    });
+    root.querySelectorAll('[data-cal-view]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const scope = btn.getAttribute('data-cal-scope');
+        const view = btn.getAttribute('data-cal-view');
+        if (calViews[scope] === view) return;
+        // Keep roughly the same place: month of the week shown, or the
+        // month's first week (this week if that's the current month).
+        if (view === 'month'){
+          const m = monthStartOf(calWeeks[scope] || TODAY);
+          calMonths[scope] = m <= monthStartOf(TODAY) ? null : m;
+        } else {
+          const w = mondayOf(calMonths[scope] || TODAY);
+          calWeeks[scope] = w <= mondayOf(TODAY) ? null : w;
+        }
+        calViews[scope] = view;
+        if (scope === 'member') memberMoveFrom = null;
+        try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
+        rerender();
+      });
+    });
+    // Month view: a day opens its week.
+    root.querySelectorAll('[data-cal-open]').forEach(cell=>{
+      const scope = (root.querySelector('[data-cal-view]') || {}).getAttribute ? root.querySelector('[data-cal-view]').getAttribute('data-cal-scope') : null;
+      const open = ()=>{
+        if (!scope) return;
+        const w = mondayOf(cell.getAttribute('data-cal-open'));
+        calWeeks[scope] = w <= mondayOf(TODAY) ? null : w;
+        calViews[scope] = 'week';
+        try { localStorage.setItem('bnb-cal-views', JSON.stringify(calViews)); } catch(e){}
+        rerender();
+      };
+      cell.addEventListener('click', open);
+      cell.addEventListener('keydown', e=>{ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
     });
   }
 
   function memberCalendarHtml(){
-    const start = calWeeks.member || mondayOf(TODAY);
-    const items = calendarItems(start, addDays(start, 6));
-    let html = calHeadHtml(start, 'member', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours');
+    const range = calRange('member');
+    const items = calendarItems(range.from, range.to);
+    let html = calHeadHtml(range, 'member', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>1-on-1 open<span class="cal-key mine"></span>Yours');
 
     const activeClasses = classes.filter(c=>c.status==='active');
     if (activeClasses.length > 1){
@@ -822,11 +919,11 @@
     if (memberMoveFrom){
       const what = memberMoveFrom.kind === 'class' ? 'class' : '1-on-1';
       html += '<div class="cal-move-banner">Pick a new time for your ' + what + ' — tap <b>Move here</b> on ' + (memberMoveFrom.kind === 'class' ? 'another time of the same class' : 'an open 1-on-1 slot') + '. <button class="cal-link" data-mmove-cancel>Cancel</button></div>';
-    } else if (items.some(it=> (it.kind === 'mypt' || (it.kind === 'class' && memberBookingForSession(it.s.id, selfMemberId))) && !isPast(it.date, it.time))){
+    } else if (!range.month && items.some(it=> (it.kind === 'mypt' || (it.kind === 'class' && memberBookingForSession(it.s.id, selfMemberId))) && !isPast(it.date, it.time))){
       html += '<div class="field-hint cal-tip">Tip: drag one of your bookings onto another time to move it.</div>';
     }
-    html += calGridHtml(start, items, calItemHtml);
-    if (!items.length) html += '<div class="empty-msg">Nothing on this week.</div>';
+    html += range.month ? calMonthHtml(range, items, memberChipHtml) : calGridHtml(range.start, items, calItemHtml);
+    if (!items.length) html += '<div class="empty-msg">Nothing on this ' + (range.month ? 'month' : 'week') + '.</div>';
     return html;
   }
 
@@ -884,11 +981,40 @@
     const drag = past ? '' : ' draggable="true" data-drag="' + (it.kind === 'class' ? 'class:' + it.s.id : 'slot:' + it.sl.id) + '"';
     return '<div class="' + cls + (past ? '' : ' draggable') + '"' + drag + '>' + html + '</div>';
   }
+  // Month-view chips. Same drag attributes as the week cards.
+  function memberChipHtml(it){
+    const past = isPast(it.date, it.time);
+    if (it.kind === 'class'){
+      const mine = memberBookingForSession(it.s.id, selfMemberId);
+      const full = sessionConfirmedCount(it.s.id) >= sessionCapacity(it.s);
+      let attrs = '';
+      if (mine && !past && mine.status === 'confirmed') attrs = ' draggable="true" data-mdrag="class:' + mine.id + ':' + it.s.classId + '"';
+      else if (!mine && !past && !full) attrs = ' data-mdrop="class:' + it.s.id + ':' + it.s.classId + '"';
+      return calChipHtml(it, it.cls.name, 'cal-class' + (mine ? ' mine' + (mine.status === 'waitlisted' ? ' wait' : '') : '') + (full && !mine ? ' full' : ''), attrs);
+    }
+    if (it.kind === 'mypt') return calChipHtml(it, '1-on-1 · ' + trainerName(it.p.trainerId), 'cal-slot mine', past ? '' : ' draggable="true" data-mdrag="pt:' + it.p.id + '"');
+    if (past) return '';
+    return calChipHtml(it, '1-on-1 open', 'cal-slot', ' data-mdrop="slot:' + it.sl.id + '"');
+  }
+  function coachChipHtml(it, showCoach){
+    const past = isPast(it.date, it.time);
+    const who = id => showCoach ? ' · ' + trainerName(id) : '';
+    if (it.kind === 'class'){
+      return calChipHtml(it, it.cls.name + ' ' + sessionConfirmedCount(it.s.id) + '/' + sessionCapacity(it.s) + who(it.s.instructorId), 'cal-class',
+        past ? '' : ' draggable="true" data-drag="class:' + it.s.id + '"');
+    }
+    const booked = it.sl.status === 'booked' && it.pt;
+    return calChipHtml(it, (booked ? memberName(it.pt.userId) : it.sl.status === 'blocked' ? 'Blocked' : 'Open slot') + who(it.sl.trainerId),
+      booked ? 'cal-slot mine' : 'cal-slot' + (it.sl.status === 'blocked' ? ' blocked' : ''),
+      past ? '' : ' draggable="true" data-drag="slot:' + it.sl.id + '"');
+  }
+
   function trainerCalendarHtml(){
-    const start = calWeeks.coach || mondayOf(TODAY);
-    const items = coachCalendarItems(start, addDays(start, 6), selfTrainerId);
-    let html = calHeadHtml(start, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
-    html += calGridHtml(start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
+    const range = calRange('coach');
+    const items = coachCalendarItems(range.from, range.to, selfTrainerId);
+    let html = calHeadHtml(range, 'coach', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
+    if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, false));
+    html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, false), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addslot="' + day + '">+ Slot</button>');
     return html;
   }
 
@@ -898,13 +1024,14 @@
   function adminCalendarHtml(){
     const trainers = getSchedTrainers();
     if (adminCalTrainer !== 'all' && !trainers.some(t=>t.id===adminCalTrainer)) adminCalTrainer = 'all';
-    const start = calWeeks.admin || mondayOf(TODAY);
-    const items = coachCalendarItems(start, addDays(start, 6), adminCalTrainer);
-    let html = calHeadHtml(start, 'admin', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
+    const range = calRange('admin');
+    const items = coachCalendarItems(range.from, range.to, adminCalTrainer);
+    let html = calHeadHtml(range, 'admin', '<span class="cal-key cal-class"></span>Class<span class="cal-key cal-slot"></span>Open slot<span class="cal-key mine"></span>Booked 1-on-1');
     html += '<div class="form-inline cal-filter"><div class="field"><label>Coach</label><select id="sched-admin-cal-trainer"><option value="all">All coaches</option>';
     trainers.forEach(t=> html += '<option value="' + t.id + '"' + (t.id===adminCalTrainer ? ' selected' : '') + '>' + esc(t.name) + '</option>');
     html += '</select></div></div>';
-    html += calGridHtml(start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
+    if (range.month) return html + calMonthHtml(range, items, it=> coachChipHtml(it, adminCalTrainer === 'all'));
+    html += calGridHtml(range.start, items, it=> coachCalItemHtml(it, adminCalTrainer === 'all', true), day=> day < TODAY ? '' : '<button class="cal-add" data-cal-addsession="' + day + '">+ Session</button>');
     return html;
   }
 
