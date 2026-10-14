@@ -719,18 +719,33 @@
     // it once refreshProgramFromSupabase() responds (see below).
     return clone(DEFAULT_PROGRAM);
   }
+  // Runs at load and again on every sign-in / sign-out ('bnb-auth-changed'
+  // from js/bells-n-barz-users.js): at load the signed-in person usually
+  // isn't known yet, so that first call alone would leave the default
+  // program showing. Signed out: back to the default.
   async function refreshProgramFromSupabase(){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
-    if (!me) return; // nobody logged in yet
+    if (!me){
+      if (programRowId){ programRowId = null; programData = clone(DEFAULT_PROGRAM); rerenderProgramViews(); }
+      return;
+    }
     const { data, error } = await bnbClient.from('programs').select('*').eq('owner_id', me.id);
     if (error) { console.error('Supabase load programs failed:', error); return; }
     if (data && data.length){
       programRowId = data[0].id;
       programData = data[0].data;
-      if (typeof render === 'function') render();
-      renderTodayProgram();
+      rerenderProgramViews();
     }
   }
+  // Everything drawn from programData: the Manual's day pages, Today's
+  // Program, and both Live Sessions.
+  function rerenderProgramViews(){
+    renderAllPerform();
+    renderTodayProgram();
+    renderMlsDay();
+    renderSessionDay();
+  }
+  document.addEventListener('bnb-auth-changed', refreshProgramFromSupabase);
   function saveProgram(){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return; // guest / nobody logged in — local-only for this session
@@ -855,7 +870,7 @@
   function renderPerform(day){
     const container = document.querySelector('.perform-render[data-day="' + day + '"]');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = dayStatsLine(programData[day]);
     const blocks = (programData[day] || []);
     blocks.forEach(block => {
       const table = document.createElement('table');
@@ -909,7 +924,7 @@
     if (viewFullEl) viewFullEl.onclick = (e) => { e.preventDefault(); if (typeof switchTab === 'function') switchTab(todayKey); };
 
     const blocks = programData[todayKey] || [];
-    blocksEl.innerHTML = '';
+    blocksEl.innerHTML = dayStatsLine(blocks);
     if (!blocks.length){
       const p = document.createElement('p');
       p.style.cssText = 'color:var(--muted);font-size:14px;';
@@ -970,7 +985,18 @@
 
   function renderAdminBlocks(){
     renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks,
-      { blockExtras: blockWorkoutLink });
+      { blockExtras: blockWorkoutLink, stats: true, onChange: renderAdminDayStats });
+    renderAdminDayStats();
+  }
+  // The whole day's summary, under the blocks.
+  function renderAdminDayStats(){
+    const el = document.getElementById('admin-day-stats');
+    if (!el) return;
+    const blocks = adminProgramData[adminDay] || [];
+    const all = { exercises: blocks.flatMap(b => b.exercises || []) };
+    el.innerHTML = blocks.length > 0 && all.exercises.length
+      ? '<div class="admin-day-stats-head">' + esc(DAY_META[adminDay].title.split('—')[0].trim()) + ' total</div>' + workoutStatsHtml(all)
+      : '';
   }
 
   /* Block/exercise editor shared by Program Builder (blocks of one day)
@@ -1012,6 +1038,10 @@
       head.appendChild(nameInput); head.appendChild(headBtns);
       bDiv.appendChild(head);
       if (opts && opts.blockExtras) opts.blockExtras(block, bDiv);
+      // Per-block summary, redrawn as rows are typed into (opts.stats).
+      const statsEl = document.createElement('div');
+      const drawBlockStats = ()=>{ statsEl.innerHTML = workoutStatsHtml(block); };
+      const changed = ()=>{ save(); if (opts && opts.stats){ drawBlockStats(); if (opts.onChange) opts.onChange(); } };
 
       block.exercises.forEach((ex, eIdx)=>{
         const row = document.createElement('div');
@@ -1028,7 +1058,7 @@
           <div class="crud-col crud-col-del"><label>&nbsp;</label><button class="crud-remove" type="button" title="Remove exercise">✕</button></div>
         `;
         row.querySelectorAll('input').forEach(inp=>{
-          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; save(); };
+          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; changed(); };
         });
         row.querySelector('.crud-remove').onclick = ()=>{
           block.exercises.splice(eIdx,1); save(); rerender();
@@ -1043,7 +1073,7 @@
         let picker = null;
         const placePicker = ()=>{
           const next = buildAltPicker({ name: ex.name, baseAlts: ex.alternates }, val => {
-            ex.name = val; nameInp.value = val; save(); placePicker();
+            ex.name = val; nameInp.value = val; changed(); placePicker();
           });
           if (picker) picker.remove();
           picker = next;
@@ -1055,6 +1085,11 @@
         bDiv.appendChild(row);
       });
 
+      if (opts && opts.stats && block.exercises.length){
+        statsEl.className = 'crud-block-stats';
+        drawBlockStats();
+        bDiv.appendChild(statsEl);
+      }
       wrap.appendChild(bDiv);
     });
   }
@@ -2263,6 +2298,7 @@
 
   function renderMlsProgramBlocks(wrap, day){
     const blocks = programData[day] || [];
+    wrap.insertAdjacentHTML('beforeend', dayStatsLine(blocks));
     blocks.forEach((block, bIdx)=>{
       const bDiv = document.createElement('div');
       bDiv.className = 'ls-block';
@@ -2860,8 +2896,8 @@
      A coach's own shelf of workouts they've come across and want to try
      (sql/61, coach_workouts — private to the coach who saved them). Built
      in the same editor as Program Builder: each version is a block of
-     exercises with sets, reps, load, rest, tempo, equipment and
-     alternates, the same rows a client's program uses. Pasted text still works as
+     exercises with sets, reps, load, rest, tempo, equipment and alternates,
+     so the card stats come from real numbers. Pasted text still works as
      a shortcut — it's split into versions at lines ending in ":"
      ("Strength:", "If your goal is Hypertrophy:"), each "Name: 3 x 8" line
      becomes a row to check. Try loads a version into the Live Session's
@@ -2992,6 +3028,68 @@
     if (typeof window.switchTab === 'function') window.switchTab('session');
     showToast('Loaded into your Live Session — ' + dayLabel);
     return true;
+  }
+
+  /* Summary for a list of rows (a version, a block, a day):
+       exercises — rows with a name.
+       sets      — the Sets fields added up (blank, e.g. a hold, is 1).
+       rest      — each row's Rest × its sets, counting the rest after the
+                   last set too (the move to the next exercise). With no
+                   Rest set: 2½ min for 1–5 reps, 90 s for 6–12, 60 s for
+                   13+ or timed/distance work.
+       minutes   — work + rest. Work per set is reps × the tempo's seconds
+                   (3-1-1 or 3010 = 5 s / 4 s; X = 1 s) or ~3 s a rep, the
+                   time written in for timed work ("60s"), or ~45 s for
+                   distance ("24m"). A rep counts for 20 s at most. */
+  function workoutStats(variant){
+    let exercises = 0, sets = 0, restSec = 0, seconds = 0;
+    const secs = (num, unit) => num * (/^m/i.test(unit) ? 60 : 1);
+    (variant.exercises || []).map(structuredExercise).forEach(ex => {
+      if (!String(ex.name).trim()) return;
+      exercises++;
+      const n = Math.min(parseInt(ex.sets, 10) || 1, 10);
+      sets += n;
+      const r = String(ex.reps || '').toLowerCase().trim();
+      const timeM = r.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(s|secs?|seconds?|mins?|minutes?)\b/);
+      const distM = r.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|metres?|yd|yards?|km)\b/);
+      const repM = r.match(/^(\d+)(?:\s*[-–]\s*(\d+))?/);
+      const tempoText = String(ex.tempo || '').trim();
+      const phases = /^[\dx]{3,4}$/i.test(tempoText) ? tempoText.split('') : tempoText.split(/[-–\/\s]+/);
+      const tempoSec = Math.min(phases.map(t => /^x$/i.test(t.trim()) ? 1 : parseFloat(t)).filter(x => x >= 0).reduce((a, b) => a + b, 0), 20);
+      let repsPerSet = null, workSec;
+      if (timeM) workSec = secs(timeM[2] ? (parseFloat(timeM[1]) + parseFloat(timeM[2])) / 2 : parseFloat(timeM[1]), timeM[3]);
+      else if (distM) workSec = 45;
+      else if (repM){
+        repsPerSet = repM[2] ? (parseInt(repM[1], 10) + parseInt(repM[2], 10)) / 2 : parseInt(repM[1], 10);
+        workSec = repsPerSet * (tempoSec || 3);
+      } else workSec = 30;
+      const restM = String(ex.rest || '').toLowerCase().match(/(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(s|secs?|seconds?|m|mins?|minutes?|'|")?/);
+      const rest = restM ? secs(restM[2] ? (parseFloat(restM[1]) + parseFloat(restM[2])) / 2 : parseFloat(restM[1]), restM[3] === "'" ? 'm' : (restM[3] || (parseFloat(restM[1]) <= 5 ? 'm' : 's')))
+        : repsPerSet === null ? 60 : repsPerSet <= 5 ? 150 : repsPerSet <= 12 ? 90 : 60;
+      restSec += n * rest;
+      seconds += n * (workSec + rest);
+    });
+    return { exercises, sets, restMinutes: Math.round(restSec / 60), minutes: Math.round(seconds / 60) };
+  }
+  // "9 exercises · 29 sets · ≈ 57 min · ≈ 31 min rest"
+  function workoutStatsText(st){
+    return st.exercises + ' exercise' + (st.exercises === 1 ? '' : 's') + ' · ' + st.sets + ' set' + (st.sets === 1 ? '' : 's') +
+      ' · ≈ ' + st.minutes + ' min · ≈ ' + st.restMinutes + ' min rest';
+  }
+  // One short line for client-facing day views; nothing on a rest day.
+  function dayStatsLine(blocks){
+    const st = workoutStats({ exercises: (blocks || []).flatMap(b => b.exercises || []) });
+    return st.exercises ? '<div class="day-stats-line">' + workoutStatsText(st) + '</div>' : '';
+  }
+  // Coach-side: the four numbers as labelled boxes.
+  function workoutStatsHtml(variant){
+    const s = workoutStats(variant);
+    const box = (label, val, title) => '<div class="cw-stat"' + (title ? ' title="' + esc(title) + '"' : '') + '><span class="cw-stat-label">' + label + '</span><span class="cw-stat-val">' + val + '</span></div>';
+    return '<div class="cw-stats">' +
+      box('Exercises', s.exercises) + box('Sets', s.sets) +
+      box('Time', '≈ ' + s.minutes + ' min', 'Estimate: reps × tempo (about 3 s a rep without one), or the time written in, plus rest') +
+      box('Rest', '≈ ' + s.restMinutes + ' min', 'Rest × sets, after every set. With no Rest set: 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+') +
+      '</div>';
   }
 
   /* Send to Program Builder: opens Program Builder with a bar on top —
@@ -3275,6 +3373,7 @@
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
                   <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="btn2 cw-try" data-cw="mine" data-v="${vIdx}" type="button" title="Loads into your own MEMBER > Live Session as Freeform, on the day you pick">Send to My Freeform</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this version">✕</button></span></div>
                 <ul class="cw-ex">${v.exercises.map(ex => { const plan = planString(ex); return `<li><b>${esc(ex.name)}</b>${plan ? ` <span>${esc(plan)}</span>` : ''}</li>`; }).join('')}</ul>
+                ${workoutStatsHtml(v)}
               </div>`).join('')}
           </div>`).join('')}
       </div>
@@ -3290,6 +3389,7 @@
         <div class="crud-actions" style="padding-left:0;">
           <button class="btn2" id="cw-add-version" type="button">+ Add Version</button>
         </div>
+        <div id="cw-draft-stats"></div>
         <div class="crud-actions" style="padding-left:0;">
           <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
           <button class="btn2" id="cw-save-load" type="button">Save &amp; Load to Program Builder</button>
@@ -3300,8 +3400,13 @@
 
     const titleEl = body.querySelector('#cw-title');
     titleEl.oninput = ()=>{ draft.title = titleEl.value; };
+    const statsEl = body.querySelector('#cw-draft-stats');
+    const drawStats = ()=>{
+      const vs = cwDraftVariants(draft);
+      statsEl.innerHTML = vs.map(v => '<div class="cw-draft-stat">' + (vs.length > 1 ? '<div class="cw-draft-stat-name">' + esc(v.name) + '</div>' : '') + workoutStatsHtml(v) + '</div>').join('');
+    };
     const editorEl = body.querySelector('#cw-editor');
-    const drawEditor = ()=>{ renderBlockEditor(editorEl, draft.versions, ()=>{}, drawEditor, { noun: 'Version' }); };
+    const drawEditor = ()=>{ renderBlockEditor(editorEl, draft.versions, drawStats, drawEditor, { noun: 'Version' }); drawStats(); };
     drawEditor();
     body.querySelector('#cw-add-version').onclick = ()=>{
       draft.versions.push({ name: 'Version ' + (draft.versions.length + 1), exercises: [Object.assign(blankExercise(), { name: '' })] });

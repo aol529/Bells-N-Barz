@@ -526,6 +526,9 @@
       refreshCheckinsFromSupabase();
       refreshAssessmentsFromSupabase();
     }
+    // For other modules that load per-person data (e.g. the training
+    // program in js/bells-n-barz-training-core.js).
+    document.dispatchEvent(new CustomEvent('bnb-auth-changed', { detail: { signedIn: !!selfId } }));
   }
 
   /* ================= MEMBER: SIGN UP ================= */
