@@ -1435,6 +1435,24 @@ body{margin:0;}
 .outer-link:hover{color:var(--text);}
 .outer-link.active{color:var(--on-accent); background:var(--accent);}
 .outer-nav-toggle{display:none; background:transparent; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; font-size:16px;}
+/* Admin > Switchboard (js/bells-n-barz-features.js) */
+.switchboard .sb-list{list-style:none; margin:0; padding:0; border:1px solid var(--line); border-radius:2px;}
+.switchboard .sb-row{display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px;}
+.switchboard .sb-row + .sb-row{border-top:1px solid var(--line);}
+.switchboard .sb-name{font-weight:600; color:var(--text); margin-bottom:4px;}
+.switchboard .sb-desc{font-size:13px; color:var(--muted); line-height:1.5;}
+.switchboard .sb-state{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:10px; margin-left:6px; vertical-align:middle;}
+.switchboard .sb-state.on{color:var(--accent); background:rgba(var(--accent-rgb),.12);}
+.switchboard .sb-state.off{color:var(--muted); background:var(--surface-2);}
+.switchboard .switch{position:relative; width:40px; height:22px; flex:0 0 auto;}
+.switchboard .switch input{opacity:0; width:0; height:0;}
+.switchboard .switch .slider{position:absolute; inset:0; background:var(--surface-2); border:1px solid var(--line); border-radius:20px; cursor:pointer; transition:.2s;}
+.switchboard .switch .slider::before{content:''; position:absolute; width:16px; height:16px; left:2px; top:2px; background:var(--muted); border-radius:50%; transition:.2s;}
+.switchboard .switch input:checked + .slider{background:rgba(var(--accent-rgb),.25); border-color:var(--accent);}
+.switchboard .switch input:checked + .slider::before{transform:translateX(18px); background:var(--accent);}
+.switchboard .switch input:disabled + .slider{opacity:.5; cursor:not-allowed;}
+.switchboard .switch input:focus-visible + .slider{outline:2px solid var(--accent); outline-offset:2px;}
+
 /* USD/KES price switch (js/bells-n-barz-currency.js) */
 .cur-switch{display:flex; border:1px solid var(--line); border-radius:20px; padding:2px; flex-shrink:0;}
 .cur-switch button{

@@ -227,7 +227,7 @@
       <button class="outer-link" data-site="about">About</button>
       <button class="outer-link" data-site="contacts">Contacts</button>
     </nav>
-    <div class="cur-switch" id="cur-switch" role="group" aria-label="Show prices in">
+    <div class="cur-switch" id="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in">
       <button type="button" data-cur="USD">USD</button>
       <button type="button" data-cur="KES">KES</button>
     </div>
@@ -933,7 +933,7 @@
           </div>
         </div>
       </div>
-      <div class="field-hint" style="margin-bottom:10px;">Joining has a one-time registration fee of <b><span data-usd="0.5">$0.50</span></b>. It's added to your account as an invoice; pay at the front desk.</div>
+      <div class="field-hint" data-feature="registration-fee" style="margin-bottom:10px;">Joining has a one-time registration fee of <b><span data-usd="0.5">$0.50</span></b>. It's added to your account as an invoice; pay at the front desk.</div>
       <div class="field-hint" id="usr-su-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-signup-btn">Create Account</button>
@@ -2967,6 +2967,7 @@
     <button class="plate" data-tab="users"><span class="plate-title">Users</span><span class="plate-desc">Member and staff accounts, roles and notes</span></button>
     <button class="plate" data-tab="sessions"><span class="plate-title">Sessions</span><span class="plate-desc">Classes, trainer availability and rosters</span></button>
     <button class="plate" data-tab="reports"><span class="plate-title">Reports</span><span class="plate-desc">Revenue, attendance and retention</span></button>
+    <button class="plate" data-tab="switchboard"><span class="plate-title">Switchboard</span><span class="plate-desc">Turn app features on or off</span></button>
   </div>
 
 <section class="admin-section active" id="tab-billing">
@@ -3097,6 +3098,11 @@
 <section class="admin-section" id="tab-reports">
   <div class="day-head"><h2>Reports — Revenue, Attendance &amp; Retention</h2><span class="day-sub">Gym-wide trends across invoices, payments, check-ins, and bookings</span></div>
   <div id="reports-body"></div>
+</section>
+
+<section class="admin-section" id="tab-switchboard">
+  <div class="day-head"><h2>Switchboard — Feature Switches</h2><span class="day-sub">Turn a feature off and the app behaves as if it isn't there, for everyone, until it's turned back on</span></div>
+  <div id="switchboard-body" class="switchboard"></div>
 </section>
 
 </div>
@@ -3767,6 +3773,7 @@
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->
+<script src="js/bells-n-barz-features.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-currency.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-users.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-shell.js?v=__BUILD__"></script>

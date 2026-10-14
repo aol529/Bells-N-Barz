@@ -22,12 +22,18 @@
     if (c && c.rate > 0){ rate = c.rate; rateAt = c.at || 0; }
   } catch(e){}
 
+  // What's actually shown: always USD while Admin > Switchboard has the
+  // switch turned off (js/bells-n-barz-features.js).
+  function shown(){
+    return (window.BNB_FEATURES && !window.BNB_FEATURES.on('currency-switch')) ? 'USD' : mode;
+  }
+
   // Plain text, for textContent / summaries. opts.short drops a trailing
   // ".00" on dollar amounts (the Shop's style). Shillings are always whole.
   function format(usd, opts){
     const n = Number(usd) || 0;
     const sign = n < 0 ? '-' : '';
-    if (mode === 'KES') return sign + 'KSh ' + Math.round(Math.abs(n) * rate).toLocaleString('en-US');
+    if (shown() === 'KES') return sign + 'KSh ' + Math.round(Math.abs(n) * rate).toLocaleString('en-US');
     let s = Math.abs(n).toFixed(2);
     if (opts && opts.short) s = s.replace(/\.00$/, '');
     return sign + '$' + s;
@@ -37,7 +43,7 @@
   function formatUsd(usd){
     const n = Number(usd) || 0;
     const d = (n < 0 ? '-' : '') + '$' + Math.abs(n).toFixed(2);
-    return mode === 'KES' ? d + ' (≈ ' + format(n) + ')' : d;
+    return shown() === 'KES' ? d + ' (≈ ' + format(n) + ')' : d;
   }
   // HTML, for innerHTML. Tagged with the dollar amount so a currency
   // switch can re-label it in place without the owning module re-rendering.
@@ -63,7 +69,7 @@
     const sw = document.getElementById('cur-switch');
     if (sw) sw.title = 'Prices are in US dollars. ' + rateLabel();
     // For amounts shown as plain text (open panels, order totals).
-    document.dispatchEvent(new CustomEvent('bnb-currency-change', { detail: { mode, rate } }));
+    document.dispatchEvent(new CustomEvent('bnb-currency-change', { detail: { mode: shown(), rate } }));
   }
 
   function setMode(m){
@@ -90,13 +96,14 @@
 
   window.BNB_CURRENCY = {
     format, formatUsd, html, setMode,
-    mode(){ return mode; },
+    mode(){ return shown(); },
     rate(){ return rate; }
   };
 
   document.querySelectorAll('#cur-switch button').forEach(b => {
     b.addEventListener('click', () => setMode(b.dataset.cur));
   });
+  document.addEventListener('bnb-features-change', refresh);
   refresh();
   fetchRate();
 })();
