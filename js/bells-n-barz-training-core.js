@@ -782,7 +782,9 @@
   // mlsOnTabShown/schedOnTabShown/bnbAccountabilityOnTabShown.
   window.bnbProgramBuilderOnShown = function(){
     populateAdminClientPicker();
-    fillAdminLoadWorkout();
+    // Re-draw once the coach's Workouts to Try are in, for the blocks'
+    // "From: …" links and Update buttons.
+    fillAdminLoadWorkout().then(renderAdminBlocks);
   };
 
   async function loadAdminProgramFor(ownerId){
@@ -967,7 +969,8 @@
   }
 
   function renderAdminBlocks(){
-    renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks);
+    renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks,
+      { blockExtras: blockWorkoutLink });
   }
 
   /* Block/exercise editor shared by Program Builder (blocks of one day)
@@ -1008,6 +1011,7 @@
       headBtns.appendChild(addExBtn); headBtns.appendChild(delBlockBtn);
       head.appendChild(nameInput); head.appendChild(headBtns);
       bDiv.appendChild(head);
+      if (opts && opts.blockExtras) opts.blockExtras(block, bDiv);
 
       block.exercises.forEach((ex, eIdx)=>{
         const row = document.createElement('div');
@@ -3050,13 +3054,105 @@
      pick the client (the usual picker) and the day, then add the version
      as a new block or replace that day with it — the rows copy across
      as they are, Load and Alternates included. */
-  function workoutVariantToBlock(variant, title){
-    return {
+  /* Program Builder blocks and Workouts to Try. A block sent from a saved
+     workout keeps src { workoutId, ownerId, version, vIdx }. Edits stay in
+     the program; nothing goes back until the coach presses Update, which
+     makes that version an exact copy of the block (rows added or removed
+     too). The version is found by name — its index may have moved — with
+     vIdx breaking ties. Another coach's link shows nothing (their
+     workouts are private); a link to a deleted workout or version offers
+     Save as New, and a block with no link offers Save to Workouts to Try. */
+  function blockSourceIndex(w, src){
+    const vs = w.variants || [];
+    if (vs[src.vIdx] && vs[src.vIdx].name === src.version) return src.vIdx;
+    return vs.findIndex(v => v.name === src.version);
+  }
+  function blockAsVariantExercises(block){
+    return (block.exercises || []).filter(ex => String(ex.name || '').trim())
+      .map(ex => { const out = structuredExercise(ex); out.name = String(ex.name).trim(); out.presc = planString(out); return out; });
+  }
+  function blockWorkoutLink(block, bDiv){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me || coachWorkouts === null) return;
+    const src = block.src;
+    if (src && src.ownerId && src.ownerId !== me.id) return;
+    const w = src && (coachWorkouts || []).find(x => x.id === src.workoutId);
+    const idx = w ? blockSourceIndex(w, src) : -1;
+    const bar = document.createElement('div');
+    bar.className = 'crud-src';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn2';
+    if (w && idx >= 0){
+      const label = w.title + (w.variants.length > 1 || w.variants[idx].name !== 'Workout' ? ' — ' + w.variants[idx].name : '');
+      bar.innerHTML = '<span>From Workouts to Try: <b>' + esc(label) + '</b></span>';
+      btn.textContent = '↻ Update Workout to Try';
+      btn.title = 'Copy this block\u2019s exercises back to the saved workout';
+      btn.onclick = ()=> updateWorkoutFromBlock(block, w, idx, label, btn);
+    } else if (src){
+      bar.innerHTML = '<span>Its saved workout (' + esc(src.version || 'version') + ') was deleted.</span>';
+      btn.textContent = 'Save as New Workout to Try';
+      btn.onclick = ()=> saveBlockAsWorkout(block, btn);
+    } else {
+      bar.classList.add('crud-src-none');
+      btn.textContent = 'Save to Workouts to Try';
+      btn.title = 'Keep this block as one of your saved workouts';
+      btn.onclick = ()=> saveBlockAsWorkout(block, btn);
+    }
+    bar.appendChild(btn);
+    bDiv.appendChild(bar);
+  }
+  async function updateWorkoutFromBlock(block, w, idx, label, btn){
+    const exercises = blockAsVariantExercises(block);
+    if (!exercises.length){ showToast('Add an exercise with a name first.'); return; }
+    if (!confirm('Replace "' + label + '" in Workouts to Try with this block\u2019s ' + exercises.length + ' exercise' + (exercises.length === 1 ? '' : 's') + '?')) return;
+    const variants = (w.variants || []).map((v, i) => i === idx ? { name: v.name, exercises } : v);
+    btn.disabled = true;
+    const { error } = await bnbClient.from('coach_workouts')
+      .update({ variants, source: workoutVariantsToText(structuredVariants(variants)), updated_at: new Date().toISOString() })
+      .eq('id', w.id);
+    btn.disabled = false;
+    if (error){ console.error('Supabase update coach_workouts failed:', error); showToast('Couldn\u2019t update — ' + (error.message || 'try again')); return; }
+    block.src = Object.assign({}, block.src, { vIdx: idx });
+    saveAdminProgram();
+    await refreshCoachWorkouts();
+    renderAdminBlocks();
+    if (cwDraft && cwDraft.forId === w.id) cwDraft = null;
+    renderCoachWorkouts();
+    showToast('Updated "' + label + '"');
+  }
+  async function saveBlockAsWorkout(block, btn){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    const exercises = blockAsVariantExercises(block);
+    if (!exercises.length){ showToast('Add an exercise with a name first.'); return; }
+    const title = String(block.name || '').trim() || 'Untitled workout';
+    const variants = [{ name: 'Workout', exercises }];
+    btn.disabled = true;
+    const { data, error } = await bnbClient.from('coach_workouts').insert([{
+      owner_id: me.id, title, variants, source: workoutVariantsToText(variants), updated_at: new Date().toISOString()
+    }]).select('id');
+    btn.disabled = false;
+    if (error){ console.error('Supabase insert coach_workouts failed:', error); showToast('Couldn\u2019t save — ' + (error.message || 'try again')); return; }
+    block.src = { workoutId: data[0].id, ownerId: me.id, version: 'Workout', vIdx: 0 };
+    saveAdminProgram();
+    await refreshCoachWorkouts();
+    renderAdminBlocks();
+    renderCoachWorkouts();
+    showToast('Saved "' + title + '" to Workouts to Try');
+  }
+
+  // src remembers which saved workout and version the block came from, so
+  // Program Builder can offer to copy edits back (blockWorkoutLink below).
+  function workoutVariantToBlock(variant, title, src){
+    const block = {
       name: variant.name && variant.name !== 'Workout' ? title + ' — ' + variant.name : title,
       exercises: (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim())
     };
+    if (src) block.src = src;
+    return block;
   }
-  function sendWorkoutToProgramBuilder(variants, title, vIdx){
+  function sendWorkoutToProgramBuilder(variants, title, vIdx, workoutId){
     vIdx = vIdx || 0;
     let variant = variants[vIdx];
     const btn = document.querySelector('#coach-section-switch [data-coach-section="program"]');
@@ -3086,7 +3182,7 @@
       </div>`;
     const daySel = bar.querySelector('#admin-incoming-day');
     const varSel = bar.querySelector('#admin-incoming-variant');
-    if (varSel) varSel.onchange = ()=>{ variant = variants[+varSel.value]; };
+    if (varSel) varSel.onchange = ()=>{ vIdx = +varSel.value; variant = variants[vIdx]; };
     daySel.onchange = ()=>{ adminDay = daySel.value; renderAdminDayTabs(); renderAdminBlocks(); };
     daySel.onchange();
     bar.querySelectorAll('[data-inc]').forEach(b => b.onclick = ()=>{
@@ -3098,7 +3194,8 @@
       const picker = document.getElementById('admin-client-picker');
       const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent : 'this client';
       const dayLabel = DAY_META[day].title.split('—')[0].trim();
-      const block = workoutVariantToBlock(variant, title);
+      const block = workoutVariantToBlock(variant, title,
+        workoutId ? { workoutId, ownerId: me.id, version: variant.name, vIdx } : null);
       const label = labelOf(variant);
       if (act === 'replace'){
         if ((adminProgramData[day] || []).length &&
@@ -3131,7 +3228,7 @@
       const [wIdx, vIdx] = sel.value.split(':').map(Number);
       const w = list[wIdx];
       sel.value = '';
-      if (w && w.variants[vIdx]) sendWorkoutToProgramBuilder(w.variants, w.title, vIdx);
+      if (w && w.variants[vIdx]) sendWorkoutToProgramBuilder(w.variants, w.title, vIdx, w.id);
     };
   }
 
@@ -3269,16 +3366,16 @@
       if (!variants.length){ showToast('Add at least one exercise with a name.'); return; }
       const row = { title, source: workoutVariantsToText(variants), variants, updated_at: new Date().toISOString() };
       btn.disabled = true;
-      const { error } = editing
-        ? await bnbClient.from('coach_workouts').update(row).eq('id', editing.id)
-        : await bnbClient.from('coach_workouts').insert([{ ...row, owner_id: me.id }]);
+      const { data: saved, error } = editing
+        ? await bnbClient.from('coach_workouts').update(row).eq('id', editing.id).select('id')
+        : await bnbClient.from('coach_workouts').insert([{ ...row, owner_id: me.id }]).select('id');
       btn.disabled = false;
       if (error){ console.error('Supabase save coach_workouts failed:', error); showToast('Couldn’t save — ' + (error.message || 'try again')); return; }
       coachWorkoutEditing = null;
       cwDraft = null;
       await refreshCoachWorkouts();
       renderCoachWorkouts();
-      if (thenLoad) sendWorkoutToProgramBuilder(variants, title, 0);
+      if (thenLoad) sendWorkoutToProgramBuilder(variants, title, 0, saved && saved[0] ? saved[0].id : (editing && editing.id));
       else showToast(editing ? 'Workout updated' : 'Workout saved');
     };
     body.querySelector('#cw-save').onclick = e => saveWorkout(e.currentTarget, false);
@@ -3317,7 +3414,7 @@
         btn.onclick = async ()=>{
           const act = btn.dataset.cw;
           if (act === 'try') return tryWorkoutInSession(variants[+btn.dataset.v], w.title);
-          if (act === 'send') return sendWorkoutToProgramBuilder(variants, w.title, +btn.dataset.v);
+          if (act === 'send') return sendWorkoutToProgramBuilder(variants, w.title, +btn.dataset.v, w.id);
           if (act === 'mine'){
             // Pick the day first, in a small row under the version's buttons.
             const variantEl = btn.closest('.cw-variant');
