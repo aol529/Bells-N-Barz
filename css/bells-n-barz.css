@@ -1489,8 +1489,13 @@ body{margin:0;}
 }
 .cur-switch button:hover{color:var(--text);}
 .cur-switch button.active{color:var(--on-accent); background:var(--accent);}
+/* Placement: right-hand end of a section heading, next to the Shop's
+   Shop|Admin switch, or small and inline in a line of text. */
+.day-head .cur-switch{margin-left:auto; align-self:center;}
+.header-tools{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+.cur-switch-inline{display:inline-flex; vertical-align:middle; margin-left:4px;}
+.cur-switch-inline button{padding:2px 8px; font-size:10.5px;}
 @media (max-width:760px){
-  .cur-switch{margin-left:auto;}
   .outer-nav{
     display:none; position:absolute; top:100%; left:0; right:0;
     flex-direction:column; background:var(--surface-2,#171512);

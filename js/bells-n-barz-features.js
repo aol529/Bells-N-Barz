@@ -17,7 +17,7 @@
   // defaultOn: false (for features whose SQL may not have been run yet).
   const FEATURES = [
     { key: 'currency-switch', name: 'USD / KES price switch',
-      desc: 'The USD | KES switch in the header. Off: the switch disappears and every price shows in US dollars.' },
+      desc: 'The USD | KES switches wherever money is shown (Shop, Billing, Reports, Users, coach dashboard, sign-up). Off: the switches disappear and every price shows in US dollars.' },
     { key: 'registration-fee', name: 'Registration fee',
       desc: 'New sign-ups get a one-time $0.50 Registration invoice, and the sign-up form mentions it. Off: no invoice, no mention.' },
     { key: 'forgot-password', name: 'Forgot password', defaultOn: false,

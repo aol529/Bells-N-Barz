@@ -229,10 +229,6 @@
       <button class="outer-link" data-site="about">About</button>
       <button class="outer-link" data-site="contacts">Contacts</button>
     </nav>
-    <div class="cur-switch" id="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in">
-      <button type="button" data-cur="USD">USD</button>
-      <button type="button" data-cur="KES">KES</button>
-    </div>
     <button class="outer-nav-toggle" id="outer-nav-toggle" aria-label="Menu" type="button">☰</button>
   </div>
 </header>
@@ -728,9 +724,12 @@
       <div class="eyebrow">Wang' Kalam Agok Buk</div>
       <h1>Shop</h1>
     </div>
-    <div class="mode-switch" id="shop-mode-switch">
-      <button class="active" data-mode="view">Shop</button>
-      <button data-mode="admin">Admin</button>
+    <div class="header-tools">
+      <div class="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div>
+      <div class="mode-switch" id="shop-mode-switch">
+        <button class="active" data-mode="view">Shop</button>
+        <button data-mode="admin">Admin</button>
+      </div>
     </div>
   </div>
 </header>
@@ -1075,7 +1074,7 @@
           </div>
         </div>
       </div>
-      <div class="field-hint" data-feature="registration-fee" style="margin-bottom:10px;">Joining has a one-time registration fee of <b><span data-usd="0.5">$0.50</span></b>. It's added to your account as an invoice; pay at the front desk.</div>
+      <div class="field-hint" data-feature="registration-fee" style="margin-bottom:10px;">Joining has a one-time registration fee of <b><span data-usd="0.5">$0.50</span></b>. It's added to your account as an invoice; pay at the front desk. <div class="cur-switch cur-switch-inline" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div></div>
       <div class="field-hint" id="usr-su-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-signup-btn">Create Account</button>
@@ -3113,7 +3112,7 @@
   </div>
 
 <section class="admin-section active" id="tab-billing">
-  <div class="day-head"><h2>Billing — Invoices &amp; Payments</h2><span class="day-sub">Member balances, invoice log, and payment history</span></div>
+  <div class="day-head"><h2>Billing — Invoices &amp; Payments</h2><span class="day-sub">Member balances, invoice log, and payment history</span><div class="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div></div>
   <div class="admin-notice">Invoices and payments save to the database. This is a billing <b>log</b>, not a payment processor: no cards are charged here. Each member's Outstanding Balance in Admin &gt; Users is kept in sync with what's logged here.</div>
   <div class="sched-scope">
     <div class="view-switch" id="bill-view-switch">
@@ -3188,7 +3187,7 @@
 <!-- ================= ADMIN: MEMBERS (moved from the old Members page Admin mode) ================= -->
 <section class="admin-section" id="tab-users">
 <div class="users-scope">
-  <div class="day-head"><h2>Members — Admin</h2><span class="day-sub">Account, role, membership/billing, and internal notes</span></div>
+  <div class="day-head"><h2>Members — Admin</h2><span class="day-sub">Account, role, membership/billing, and internal notes</span><div class="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div></div>
   <div class="wrap">
     <div class="admin-toolbar">
       <button class="btn2 primary" id="usr-new-user-btn">+ Add Member</button>
@@ -3238,7 +3237,7 @@
 </section>
 
 <section class="admin-section" id="tab-reports">
-  <div class="day-head"><h2>Reports — Revenue, Attendance &amp; Retention</h2><span class="day-sub">Gym-wide trends across invoices, payments, check-ins, and bookings</span></div>
+  <div class="day-head"><h2>Reports — Revenue, Attendance &amp; Retention</h2><span class="day-sub">Gym-wide trends across invoices, payments, check-ins, and bookings</span><div class="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div></div>
   <div id="reports-body"></div>
 </section>
 

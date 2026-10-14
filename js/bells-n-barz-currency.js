@@ -1,8 +1,10 @@
 (function(){
 
   // Prices are stored and charged in US dollars — this module only changes
-  // how they're shown. The USD/KES switch in the outer header flips every
-  // amount rendered through BNB_CURRENCY.html() to its Kenyan shilling
+  // how they're shown. A USD/KES switch sits wherever money is shown (Shop,
+  // Billing, Reports, Users, the coach dashboard, sign-up); any of them
+  // flips every amount rendered through BNB_CURRENCY.html() to its Kenyan
+  // shilling
   // equivalent. The rate comes from open.er-api.com once a day (no key,
   // no user data sent), cached in localStorage; if that fails it keeps the
   // last good rate, or DEFAULT_RATE if it has never had one.
@@ -57,17 +59,24 @@
     return '1 USD ≈ ' + rate.toFixed(2) + ' KES' + when;
   }
 
+  // The switch's markup, for screens that render it from JS. Static ones
+  // in the page use the same markup; all of them stay in step.
+  function switchHtml(extraClass){
+    const btn = c => '<button type="button" data-cur="' + c + '"' + (c === mode ? ' class="active" aria-pressed="true"' : ' aria-pressed="false"') + '>' + c + '</button>';
+    return '<div class="cur-switch' + (extraClass ? ' ' + extraClass : '') + '" data-feature="currency-switch" role="group" aria-label="Show prices in" title="' +
+      ('Prices are in US dollars. ' + rateLabel()).replace(/"/g, '&quot;') + '">' + btn('USD') + btn('KES') + '</div>';
+  }
+
   function refresh(){
     document.querySelectorAll('[data-usd]').forEach(el => {
       el.textContent = format(el.dataset.usd, { short: el.dataset.usdShort === '1' });
     });
-    document.querySelectorAll('#cur-switch button').forEach(b => {
+    document.querySelectorAll('.cur-switch button[data-cur]').forEach(b => {
       const on = b.dataset.cur === mode;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-    const sw = document.getElementById('cur-switch');
-    if (sw) sw.title = 'Prices are in US dollars. ' + rateLabel();
+    document.querySelectorAll('.cur-switch').forEach(sw => { sw.title = 'Prices are in US dollars. ' + rateLabel(); });
     // For amounts shown as plain text (open panels, order totals).
     document.dispatchEvent(new CustomEvent('bnb-currency-change', { detail: { mode: shown(), rate } }));
   }
@@ -95,13 +104,15 @@
   }
 
   window.BNB_CURRENCY = {
-    format, formatUsd, html, setMode,
+    format, formatUsd, html, setMode, switchHtml,
     mode(){ return shown(); },
     rate(){ return rate; }
   };
 
-  document.querySelectorAll('#cur-switch button').forEach(b => {
-    b.addEventListener('click', () => setMode(b.dataset.cur));
+  // One listener for every switch, including ones rendered later.
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('.cur-switch button[data-cur]');
+    if (b) setMode(b.dataset.cur);
   });
   document.addEventListener('bnb-features-change', refresh);
   refresh();

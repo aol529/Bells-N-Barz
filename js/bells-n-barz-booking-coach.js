@@ -1511,7 +1511,7 @@
     const slotId = bookingSlotId; if (!slotId) return;
     const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
     if (me && Number(me.balance) > 0){
-      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
+      if (!confirm('Your account has an outstanding balance of ' + BNB_CURRENCY.format(me.balance) + '. Book this session anyway?')) return;
     }
     btn.disabled = true;
     const { data: left, error } = await bnbClient.rpc('book_pt_slot', { p_slot_id: slotId, p_member_id: selfMemberId, p_notes: notes || null });
@@ -2513,7 +2513,7 @@
       if (unpaid.length){
         const total = unpaid.reduce((sum,i)=> sum + i.amount, 0);
         html += '<div class="admin-notice">' + unpaid.length + ' unpaid invoice' + (unpaid.length===1?'':'s') + ' among your clients, totaling ' + BNB_CURRENCY.html(total) + ': ' +
-          unpaid.map(i=> esc(memberName(i.userId)) + ' (' + BNB_CURRENCY.html(i.amount) + ', ' + esc(i.status) + ')').join(', ') + '</div>';
+          unpaid.map(i=> esc(memberName(i.userId)) + ' (' + BNB_CURRENCY.html(i.amount) + ', ' + esc(i.status) + ')').join(', ') + ' ' + BNB_CURRENCY.switchHtml('cur-switch-inline') + '</div>';
       }
     }
 
@@ -2684,7 +2684,7 @@
     // still see it plainly.
     const me = window.BNB_USERS ? window.BNB_USERS.getById(selfMemberId) : null;
     if (me && Number(me.balance) > 0){
-      if (!confirm('Your account has an outstanding balance of ' + Number(me.balance).toFixed(2) + '. Book this session anyway?')) return;
+      if (!confirm('Your account has an outstanding balance of ' + BNB_CURRENCY.format(me.balance) + '. Book this session anyway?')) return;
     }
     // book_class() (sql/62) checks capacity on the server, so two people
     // can't both take the last spot.
