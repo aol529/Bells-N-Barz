@@ -21,7 +21,9 @@
     { key: 'registration-fee', name: 'Registration fee',
       desc: 'New sign-ups get a one-time $0.50 Registration invoice, and the sign-up form mentions it. Off: no invoice, no mention.' },
     { key: 'forgot-password', name: 'Forgot password', defaultOn: false,
-      desc: 'Log In > "Forgot your password?": checks the email has an account, then offers a reset link, a one-time code, or asking an admin. Off: the link is replaced by "Ask at the front desk". Staff reset emails and admin temporary passwords work either way.' }
+      desc: 'Log In > "Forgot your password?": checks the email has an account, then offers a reset link, a one-time code, or asking an admin. Off: the link is replaced by "Ask at the front desk". Staff reset emails and admin temporary passwords work either way.' },
+    { key: 'library', name: 'Library', defaultOn: false,
+      desc: 'The Library page: the books that inspired Bells n Barz, with why each matters and short takeaways. Off: the Library link disappears from the menu.' }
   ];
 
   const CACHE_KEY = 'bnb-features-v1';

@@ -86,9 +86,9 @@ document.querySelectorAll('table').forEach(t => {
   const nav = document.getElementById('outer-nav');
 
   function switchSite(key){
-    // Blog/Gallery/Shop each have their own module — load it the first
+    // Blog/Gallery/Library/Shop each have their own module — load it the first
     // time someone actually navigates there.
-    const SITE_TO_MODULE = { blog: 'blog', gallery: 'gallery', shop: 'shop' };
+    const SITE_TO_MODULE = { blog: 'blog', gallery: 'gallery', library: 'library', shop: 'shop' };
     if (SITE_TO_MODULE[key] && typeof bnbLoadModule === 'function'){
       bnbLoadModule(SITE_TO_MODULE[key]).catch(err => console.error(err));
     }

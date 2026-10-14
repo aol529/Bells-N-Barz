@@ -149,6 +149,7 @@
     fasting:      { file: 'js/bells-n-barz-fasting.js' },
     blog:         { file: 'js/bells-n-barz-blog.js' },
     gallery:      { file: 'js/bells-n-barz-gallery.js' },
+    library:      { file: 'js/bells-n-barz-library.js' },
     // Shop's checkout flow calls window.BNB_BILLING.createInvoice()
     // directly with no fallback if it's missing — Billing must be loaded
     // first or a real purchase would fail with "Checkout unavailable."
@@ -223,6 +224,7 @@
       <button class="outer-link" data-site="gym">Gym</button>
       <button class="outer-link" data-site="blog">Blog</button>
       <button class="outer-link" data-site="gallery">Gallery</button>
+      <button class="outer-link" data-site="library" data-feature="library">Library</button>
       <button class="outer-link" data-site="shop">Shop</button>
       <button class="outer-link" data-site="about">About</button>
       <button class="outer-link" data-site="contacts">Contacts</button>
@@ -596,6 +598,116 @@
 </div>
 
 <div class="gal-toast" id="gal-toast"></div>
+</div>
+</section>
+
+<section class="site-page" id="site-library">
+<div class="library-scope">
+<header class="site">
+  <div class="header-inner">
+    <div class="brand-block">
+      <div class="eyebrow">Wang' Kalam Agok Buk</div>
+      <h1>Library</h1>
+    </div>
+    <div class="mode-switch" id="lib-mode-switch">
+      <button class="active" data-mode="shelf">Shelf</button>
+      <button data-mode="admin">Admin</button>
+    </div>
+  </div>
+</header>
+
+<!-- ================= SHELF ================= -->
+<section class="view active" id="lib-view-shelf">
+  <div class="wrap">
+    <div class="lib-intro">
+      <p>The books behind Bells n Barz. Each one shaped how we train and coach. Tap a book for why it matters to us and what we took from it, then get your own copy.</p>
+      <div class="result-count" id="lib-count"></div>
+    </div>
+    <div class="lib-shelf" id="lib-shelf"></div>
+    <div class="empty-msg" id="lib-empty" style="display:none;"></div>
+  </div>
+</section>
+
+<!-- ================= ADMIN ================= -->
+<section class="view" id="lib-view-admin">
+  <div class="wrap">
+    <div class="admin-notice">Write the notes and takeaways in your own words, and keep any quote to a sentence or two. The books are still in copyright, so the shelf points people to them rather than copying them. Hide takes a book off the shelf without deleting it.</div>
+    <div class="admin-notice lib-error" id="lib-admin-error" style="display:none;"></div>
+    <div class="admin-toolbar">
+      <button class="btn2 primary" id="lib-new-btn">+ Add Book</button>
+    </div>
+    <table class="admin-grid-table">
+      <thead><tr><th></th><th>Book</th><th>Status</th><th>Order</th><th></th></tr></thead>
+      <tbody id="lib-admin-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="site">Wang' Kalam Agok Buk — Library</footer>
+
+<!-- ================= BOOK DETAIL ================= -->
+<div class="panel-backdrop" id="lib-detail-backdrop">
+  <div class="panel lib-detail" role="dialog" aria-modal="true" aria-label="Book details">
+    <button class="lib-detail-close" id="lib-detail-close" type="button" aria-label="Close">✕</button>
+    <div id="lib-detail-body"></div>
+  </div>
+</div>
+
+<!-- ================= EDITOR ================= -->
+<div class="panel-backdrop" id="lib-panel-backdrop">
+  <div class="panel">
+    <h2 id="lib-panel-title">Add Book</h2>
+    <div class="field-row2">
+      <div class="field">
+        <label for="lib-f-title">Title</label>
+        <input type="text" id="lib-f-title" placeholder="e.g. Never Let Go">
+      </div>
+      <div class="field">
+        <label for="lib-f-author">Author</label>
+        <input type="text" id="lib-f-author" placeholder="e.g. Dan John">
+      </div>
+    </div>
+    <div class="field">
+      <label for="lib-f-cover">Cover image</label>
+      <div class="lib-cover-row">
+        <input type="text" id="lib-f-cover" placeholder="Paste an image link, or upload →">
+        <button class="btn2" id="lib-upload-btn" type="button">Upload</button>
+      </div>
+      <input type="file" id="lib-f-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+      <div class="field-hint">Leave empty for a plain cover with the title and author.</div>
+      <div class="preview-wrap" id="lib-preview-wrap" style="display:none;"><img id="lib-preview-img" alt="Cover preview"></div>
+    </div>
+    <div class="field">
+      <label for="lib-f-why">Why this book</label>
+      <textarea id="lib-f-why" rows="3" placeholder="How it shaped Bells n Barz"></textarea>
+    </div>
+    <div class="field">
+      <label for="lib-f-takeaways">Takeaways</label>
+      <textarea id="lib-f-takeaways" rows="5" placeholder="One per line, short and direct"></textarea>
+      <div class="field-hint">One per line. Each line becomes a bullet.</div>
+    </div>
+    <div class="field">
+      <label for="lib-f-quote">Short quote (optional)</label>
+      <input type="text" id="lib-f-quote" placeholder="A sentence or two at most">
+    </div>
+    <div class="field">
+      <label for="lib-f-buy">"Get the book" link (optional)</label>
+      <input type="text" id="lib-f-buy" placeholder="https://…">
+    </div>
+    <div class="field">
+      <div class="featured-toggle">
+        <label class="switch"><input type="checkbox" id="lib-f-hidden"><span class="slider"></span></label>
+        <span class="field-hint" style="margin:0;">Hidden (keep it off the shelf for now)</span>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="lib-panel-cancel" type="button">Cancel</button>
+      <button class="btn2 primary" id="lib-panel-save" type="button">Save Book</button>
+    </div>
+  </div>
+</div>
+
+<div class="gal-toast" id="lib-toast"></div>
 </div>
 </section>
 
