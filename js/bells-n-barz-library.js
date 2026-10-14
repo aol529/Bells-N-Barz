@@ -200,10 +200,110 @@
     $('lib-preview-img').src = src || '';
   }
 
+  /* ---------------- LOOK UP ---------------- */
+  // Free book databases, no key: Open Library and Google Books. Only the
+  // search text is sent.
+  function isbnOf(q){
+    const digits = q.replace(/[\s-]/g, '');
+    return /^(\d{9}[\dXx]|\d{13})$/.test(digits) ? digits : '';
+  }
+  function joinTitle(title, subtitle){
+    return subtitle ? title + ': ' + subtitle : title;
+  }
+
+  async function searchOpenLibrary(q){
+    const isbn = isbnOf(q);
+    const url = 'https://openlibrary.org/search.json?limit=8&fields=key,title,subtitle,author_name,first_publish_year,cover_i&' +
+      (isbn ? 'isbn=' + isbn : 'q=' + encodeURIComponent(q));
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Open Library ' + res.status);
+    const data = await res.json();
+    return (data.docs || []).map(d => ({
+      title: joinTitle(d.title || '', d.subtitle),
+      author: (d.author_name || []).slice(0, 3).join(' & '),
+      year: d.first_publish_year || '',
+      cover: d.cover_i ? 'https://covers.openlibrary.org/b/id/' + d.cover_i + '-L.jpg' : '',
+      link: d.key ? 'https://openlibrary.org' + d.key : '',
+      source: 'Open Library'
+    }));
+  }
+
+  async function searchGoogleBooks(q){
+    const isbn = isbnOf(q);
+    const res = await fetch('https://www.googleapis.com/books/v1/volumes?maxResults=8&q=' + encodeURIComponent(isbn ? 'isbn:' + isbn : q));
+    if (!res.ok) throw new Error('Google Books ' + res.status);
+    const data = await res.json();
+    return (data.items || []).map(it => {
+      const v = it.volumeInfo || {};
+      const img = (v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail)) || '';
+      return {
+        title: joinTitle(v.title || '', v.subtitle),
+        author: (v.authors || []).slice(0, 3).join(' & '),
+        year: (v.publishedDate || '').slice(0, 4),
+        cover: img.replace(/^http:/, 'https:').replace('&edge=curl', ''),
+        link: v.canonicalVolumeLink || v.infoLink || '',
+        source: 'Google Books'
+      };
+    });
+  }
+
+  let lookupResults = [];
+  async function lookUp(){
+    const q = $('lib-lookup-q').value.trim() || f.title.value.trim();
+    const box = $('lib-lookup-results');
+    if (!q){ toast('Type a title, author or ISBN first.'); $('lib-lookup-q').focus(); return; }
+    const btn = $('lib-lookup-btn');
+    btn.disabled = true;
+    box.innerHTML = '<div class="lib-lookup-msg">Searching…</div>';
+    // Both at once: Open Library's matches first, then Google Books' (which
+    // often has a cover when Open Library doesn't). Without a key Google
+    // Books shares one daily quota with everyone, so it's a bonus: null
+    // means it failed.
+    const [ol, gb] = await Promise.all([
+      searchOpenLibrary(q).catch(e => { console.warn('Open Library lookup failed', e); return null; }),
+      searchGoogleBooks(q).catch(e => { console.warn('Google Books lookup failed', e); return null; })
+    ]);
+    const down = [ol ? '' : 'Open Library', gb ? '' : 'Google Books'].filter(Boolean);
+    const downNote = down.length ? '<div class="lib-lookup-msg">' + down.join(' and ') + (down.length > 1 ? ' are' : ' is') + ' not answering right now' + (down.length > 1 ? '. Try again later.' : ', so these are ' + (ol ? 'Open Library' : 'Google Books') + ' matches only.') + '</div>' : '';
+    const results = (ol || []).slice(0, 6).concat((gb || []).slice(0, 4));
+    btn.disabled = false;
+    lookupResults = results.filter(r => r.title);
+    if (!lookupResults.length){
+      box.innerHTML = '<div class="lib-lookup-msg">No matches' + (down.length ? ' (' + down.join(' and ') + (down.length > 1 ? ' are' : ' is') + ' not answering right now)' : '') + '. Try fewer words, the author\'s name, or the ISBN.</div>';
+      return;
+    }
+    box.innerHTML = lookupResults.map((r, i) =>
+      '<button type="button" class="lib-lookup-item" data-i="' + i + '">' +
+        '<div class="lib-thumb">' + (r.cover ? '<img src="' + escAttr(r.cover) + '" alt="" loading="lazy">' : '<div class="lib-cover-plain"></div>') + '</div>' +
+        '<div><div class="lib-lookup-title">' + esc(r.title) + '</div>' +
+        '<div class="lib-admin-author">' + esc([r.author, r.year].filter(Boolean).join(' · ')) + '</div>' +
+        '<div class="lib-lookup-src">' + esc(r.source) + (r.cover ? '' : ' · no cover') + '</div></div>' +
+      '</button>').join('') + downNote;
+    box.querySelectorAll('.lib-lookup-item').forEach(el => {
+      el.addEventListener('click', () => useResult(lookupResults[Number(el.dataset.i)]));
+    });
+  }
+
+  // Fills the book's facts. Leaves the why/takeaways/quote alone, keeps a
+  // buy link already typed in, and keeps the cover when the match has none.
+  function useResult(r){
+    f.title.value = r.title;
+    if (r.author) f.author.value = r.author;
+    if (r.cover){ f.cover.value = r.cover; pendingFile = null; f.file.value = ''; showPreview(r.cover); }
+    if (r.link && !f.buy.value.trim()) f.buy.value = r.link;
+    $('lib-lookup-results').innerHTML = '';
+    toast('Filled in from ' + r.source + '. Check it, then Save Book.');
+  }
+
+  $('lib-lookup-btn').addEventListener('click', lookUp);
+  $('lib-lookup-q').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); lookUp(); } });
+
   function openEditor(id){
     editingId = id || null;
     const b = id ? books.find(x => x.id === id) : null;
     $('lib-panel-title').textContent = b ? 'Edit Book' : 'Add Book';
+    $('lib-lookup-q').value = b ? [b.title.split(':')[0], b.author.split(/ (?:&|with) /)[0]].filter(Boolean).join(' ') : '';
+    $('lib-lookup-results').innerHTML = '';
     pendingFile = null;
     f.file.value = '';
     f.title.value = b ? b.title : '';

@@ -657,6 +657,15 @@
 <div class="panel-backdrop" id="lib-panel-backdrop">
   <div class="panel">
     <h2 id="lib-panel-title">Add Book</h2>
+    <div class="field lib-lookup">
+      <label for="lib-lookup-q">Look up a book</label>
+      <div class="lib-cover-row">
+        <input type="text" id="lib-lookup-q" placeholder="Title, author or ISBN">
+        <button class="btn2" id="lib-lookup-btn" type="button">🔍 Look up</button>
+      </div>
+      <div class="field-hint">Pick a match to fill in the title, author and cover, plus a "Get the book" link if that's empty. Your notes stay as they are.</div>
+      <div class="lib-lookup-results" id="lib-lookup-results"></div>
+    </div>
     <div class="field-row2">
       <div class="field">
         <label for="lib-f-title">Title</label>
