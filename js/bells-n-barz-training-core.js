@@ -3049,7 +3049,8 @@
         <div class="crud-actions" style="padding-left:0;">
           <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
           <button class="btn2" id="cw-save-load" type="button">Save &amp; Load to Program Builder</button>
-          ${editing ? '<button class="btn2" id="cw-cancel" type="button">Cancel</button>' : ''}
+          <button class="btn2" id="cw-copy" type="button" title="Copy the title and workout text to paste elsewhere">Copy Text</button>
+          <button class="btn2" id="cw-cancel" type="button">${editing ? 'Cancel' : 'Clear'}</button>
         </div>
       </div>`;
 
@@ -3087,8 +3088,29 @@
     };
     body.querySelector('#cw-save').onclick = e => saveWorkout(e.currentTarget, false);
     body.querySelector('#cw-save-load').onclick = e => saveWorkout(e.currentTarget, true);
-    const cancel = body.querySelector('#cw-cancel');
-    if (cancel) cancel.onclick = ()=>{ coachWorkoutEditing = null; renderCoachWorkouts(); };
+    // Editing: leave without saving. New workout: clear the form.
+    body.querySelector('#cw-cancel').onclick = ()=>{
+      if (!editing && (titleEl.value.trim() || textEl.value.trim()) && !confirm('Clear this workout without saving?')) return;
+      coachWorkoutEditing = null;
+      renderCoachWorkouts();
+    };
+    // Title + workout text as typed, e.g. to paste into WhatsApp or a note.
+    body.querySelector('#cw-copy').onclick = async ()=>{
+      const text = [titleEl.value.trim(), textEl.value.trim()].filter(Boolean).join('\n\n');
+      if (!text){ showToast('Nothing to copy yet.'); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch(e){
+        // Older browsers / no clipboard permission: copy via a hidden textarea.
+        const tmp = document.createElement('textarea');
+        tmp.value = text; tmp.setAttribute('readonly', ''); tmp.style.position = 'fixed'; tmp.style.opacity = '0';
+        document.body.appendChild(tmp); tmp.select();
+        const ok = document.execCommand('copy');
+        tmp.remove();
+        if (!ok){ showToast('Couldn’t copy — select the text and copy it by hand.'); return; }
+      }
+      showToast('Workout copied');
+    };
 
     body.querySelectorAll('.cw-card').forEach(card => {
       const w = list.find(x => x.id === card.dataset.id);
