@@ -1006,6 +1006,88 @@
   function blankExercise(){
     return { name:'New Exercise', sets:'3', reps:'10', load:'', rest:'', tempo:'', equipment:'', alternates:'' };
   }
+  // In a split version, "+ Exercise" adds to the last block.
+  function addExerciseRow(exercises){
+    const last = exercises[exercises.length - 1];
+    exercises.push(Object.assign(blankExercise(), last && last.block ? { block: last.block } : {}));
+  }
+  // Header where a block starts inside a version: its name (rename it
+  // there) and ✕, which merges its rows into the block above — or into the
+  // one below for the first block. With one block left, the split goes.
+  function subBlockHeader(exercises, start, save, rerender){
+    const name = exercises[start].block;
+    let end = start;
+    while (end + 1 < exercises.length && exercises[end + 1].block === name) end++;
+    const head = document.createElement('div');
+    head.className = 'crud-sub-head';
+    const input = document.createElement('input');
+    input.value = name;
+    input.setAttribute('aria-label', 'Block name');
+    input.onchange = ()=>{
+      const v = input.value.trim();
+      if (!v){ input.value = name; return; }
+      for (let i = start; i <= end; i++) exercises[i].block = v;
+      save(); rerender();
+    };
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'crud-remove'; del.title = 'Remove this block break'; del.textContent = '✕';
+    del.onclick = ()=>{
+      const into = start > 0 ? exercises[start - 1].block : (end + 1 < exercises.length ? exercises[end + 1].block : '');
+      for (let i = start; i <= end; i++) exercises[i].block = into;
+      if (new Set(exercises.map(ex => ex.block || '')).size <= 1) exercises.forEach(ex => { ex.block = ''; });
+      save(); rerender();
+    };
+    head.appendChild(input); head.appendChild(del);
+    return head;
+  }
+  // "+ Insert block here" after row i: opens a small name box with the
+  // next free name. The rest of row i's block moves into the new block;
+  // after the last row of a block, the new block starts with a blank row.
+  // The first break also names the rows above it (Block A / Block 1).
+  function insertBlockLine(exercises, i, save, rerender){
+    const line = document.createElement('div');
+    line.className = 'crud-insert-block';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '+ Insert block here';
+    btn.onclick = ()=>{
+      line.innerHTML = '';
+      line.classList.add('open');
+      const input = document.createElement('input');
+      input.value = nextBlockName(exercises);
+      input.setAttribute('aria-label', 'New block name');
+      const ok = document.createElement('button');
+      ok.type = 'button'; ok.className = 'btn2 primary'; ok.textContent = 'Add Block';
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'btn2'; cancel.textContent = 'Cancel';
+      const label = document.createElement('span');
+      label.textContent = 'Name the new block';
+      line.appendChild(label); line.appendChild(input); line.appendChild(ok); line.appendChild(cancel);
+      input.focus(); input.select();
+      const go = ()=>{
+        const name = input.value.trim();
+        if (!name){ input.focus(); return; }
+        if (!exercises.some(ex => ex.block)){
+          const first = /\d/.test(blockToken(name)) ? 'Block 1' : 'Block A';
+          exercises.forEach(ex => { ex.block = first; });
+        }
+        const cur = exercises[i].block;
+        let j = i + 1;
+        if (j < exercises.length && exercises[j].block === cur){
+          for (; j < exercises.length && exercises[j].block === cur; j++) exercises[j].block = name;
+        } else {
+          exercises.splice(i + 1, 0, Object.assign(blankExercise(), { name: '', block: name }));
+        }
+        save(); rerender();
+      };
+      ok.onclick = go;
+      input.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); go(); } if (e.key === 'Escape') rerender(); };
+      cancel.onclick = rerender;
+    };
+    line.appendChild(btn);
+    return line;
+  }
+
   function renderBlockEditor(wrap, blocks, save, rerender, opts){
     const noun = (opts && opts.noun) || 'Block';
     wrap.innerHTML = '';
@@ -1025,7 +1107,7 @@
       const addExBtn = document.createElement('button');
       addExBtn.className = 'btn2'; addExBtn.type = 'button'; addExBtn.textContent = '+ Exercise';
       addExBtn.onclick = ()=>{
-        block.exercises.push(blankExercise());
+        addExerciseRow(block.exercises);
         save(); rerender();
       };
       const delBlockBtn = document.createElement('button');
@@ -1043,7 +1125,15 @@
       const drawBlockStats = ()=>{ statsEl.innerHTML = workoutStatsHtml(block); };
       const changed = ()=>{ save(); if (opts && opts.stats){ drawBlockStats(); if (opts.onChange) opts.onChange(); } };
 
+      // opts.subBlocks (Workouts to Try): rows split into blocks by their
+      // `block` field — a header where each block starts, an "Insert block
+      // here" line between rows, and A1/A2 labels by the names.
+      const sub = !!(opts && opts.subBlocks);
+      const labels = sub ? exerciseLabels(block.exercises) : [];
       block.exercises.forEach((ex, eIdx)=>{
+        if (sub && ex.block && (eIdx === 0 || block.exercises[eIdx - 1].block !== ex.block)){
+          bDiv.appendChild(subBlockHeader(block.exercises, eIdx, save, rerender));
+        }
         const row = document.createElement('div');
         row.className = 'crud-ex-row';
         row.innerHTML = `
@@ -1069,6 +1159,12 @@
         const nameLine = document.createElement('div');
         nameLine.className = 'crud-name-line';
         nameInp.replaceWith(nameLine);
+        if (labels[eIdx]){
+          const tag = document.createElement('span');
+          tag.className = 'crud-ex-label';
+          tag.textContent = labels[eIdx];
+          nameLine.appendChild(tag);
+        }
         nameLine.appendChild(nameInp);
         let picker = null;
         const placePicker = ()=>{
@@ -1083,6 +1179,7 @@
         nameInp.onchange = placePicker;
         row.querySelector('input[data-f="alternates"]').onchange = placePicker;
         bDiv.appendChild(row);
+        if (sub) bDiv.appendChild(insertBlockLine(block.exercises, eIdx, save, rerender));
       });
 
       if (opts && opts.stats && block.exercises.length){
@@ -1404,9 +1501,12 @@
       if (!ex || !String(ex.name || '').trim()) return;
       const nSets = Math.min(parseInt(ex.sets, 10) || 3, 10);
       const start = (swapOf && swapOf(bIdx, eIdx)) || splitAltFromName(ex.name).name;
+      const tok = blockToken(block.name);
+      const sep = /^\d/.test(tok) ? '.' : '';
       list.push({
         name: start, seed: start,
         base: ex.name, baseAlts: ex.alternates || '', presc: prescString(ex),
+        group: block.name || '', label: tok ? tok + sep + (eIdx + 1) : '',
         sets: Array.from({ length: nSets }, () => ({ wt:'', reps:'', done:false }))
       });
     }));
@@ -1454,6 +1554,12 @@
      the prescription underneath when it came from the program. A typed-in
      exercise with no program base gets its dropdown once the name is set. */
   function buildFreeformNameRow(ex, exHead, save){
+    if (ex.label){
+      const tag = document.createElement('span');
+      tag.className = 'crud-ex-label';
+      tag.textContent = ex.label;
+      exHead.appendChild(tag);
+    }
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'cs-freeform-name';
@@ -1535,6 +1641,7 @@
     }
     const copied = source.map(ex => ({
       name: ex.name, seed: ex.seed, base: ex.base, baseAlts: ex.baseAlts, from: ex.from, presc: ex.presc,
+      group: ex.group || '', label: ex.label || '',
       sets: (ex.sets && ex.sets.length ? ex.sets : [{}]).map(()=> ({ wt:'', reps:'', done:false }))
     }));
     saveFreeformExercises(toSlot, day, copied);
@@ -1686,6 +1793,8 @@
 
     list.forEach((ex, eIdx)=>{
       if (!ex.sets || !ex.sets.length) ex.sets = [{ wt:'', reps:'', done:false }];
+      const groupHead = freeformGroupHead(list, eIdx);
+      if (groupHead) bDiv.appendChild(groupHead);
       const exDiv = document.createElement('div');
       exDiv.className = 'ls-exercise cs-freeform-exercise';
 
@@ -2373,6 +2482,8 @@
 
     list.forEach((ex, eIdx)=>{
       if (!ex.sets || !ex.sets.length) ex.sets = [{ wt:'', reps:'', done:false }];
+      const groupHead = freeformGroupHead(list, eIdx);
+      if (groupHead) bDiv.appendChild(groupHead);
       const exDiv = document.createElement('div');
       exDiv.className = 'ls-exercise cs-freeform-exercise';
 
@@ -2924,10 +3035,24 @@
       const t = h.replace(/:\s*$/, '').replace(/^i?f\s+your\s+goal\s+is\s+/i, '').trim();
       return t.charAt(0).toUpperCase() + t.slice(1);
     };
+    let block = '';
     String(text || '').split(/\r?\n/).forEach(raw => {
-      const line = raw.replace(/^\s*(?:[-*•▪◦]|\d+[.)])\s*/, '').trim();
+      let line = raw.replace(/^\s*(?:[-*•▪◦]|\d+[.)])\s*/, '').trim();
       if (!line) return;
-      if (/:\s*$/.test(line)){ cur = { name: tidyHeading(line), exercises: [] }; variants.push(cur); return; }
+      if (/:\s*$/.test(line)){
+        // "Block A:", "A:", "Superset 1:", "Circuit 2:" start a block in
+        // the current version; any other heading starts a new version.
+        const bn = blockHeadingName(line.replace(/:\s*$/, ''));
+        if (bn){
+          if (!cur){ cur = { name: 'Workout', exercises: [] }; variants.push(cur); }
+          block = bn;
+          return;
+        }
+        cur = { name: tidyHeading(line), exercises: [] }; variants.push(cur); block = ''; return;
+      }
+      // "A1. Back Squat" / "B2) RDL": Block A / Block B, prefix dropped.
+      const ab = line.match(/^([A-Z])(\d{1,2})\s*[.):-]\s*(.+)$/);
+      if (ab){ block = 'Block ' + ab[1]; line = ab[3].trim(); }
       let name = line, presc = '';
       const colon = line.match(/^(.+?)\s*(?::|\s[–—-]\s)\s*(.+)$/);
       const inline = line.match(/^(.*?[a-z)])\s+(\d+\s*[x×*]\s*\S.*)$/i);
@@ -2936,9 +3061,66 @@
       const m = presc.match(/(\d+)\s*[x×*]\s*\d/) || presc.match(/(\d+)\s*sets?\b/i);
       const sets = Math.min(Math.max(m ? parseInt(m[1], 10) : 3, 1), 10);
       if (!cur){ cur = { name: 'Workout', exercises: [] }; variants.push(cur); }
-      cur.exercises.push({ name: name.trim().slice(0, 120), presc: presc.trim().slice(0, 200), sets });
+      cur.exercises.push({ name: name.trim().slice(0, 120), presc: presc.trim().slice(0, 200), sets, block });
     });
     return variants.filter(v => v.exercises.length);
+  }
+
+  /* Blocks inside a version: each exercise row carries `block` (its block's
+     name, '' when the version isn't split). Consecutive rows with the same
+     name make one block — the "Insert block here" breaks in the editor.
+     Names like "Block A", "B", "Superset 2" give the A1, A2… labels. */
+  function blockHeadingName(text){
+    const t = String(text || '').trim();
+    const m = t.match(/^(block|superset|circuit|part|section|round)\s*([a-z]|\d{1,2})$/i);
+    if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() + ' ' + m[2].toUpperCase();
+    if (/^[a-z]$/i.test(t)) return 'Block ' + t.toUpperCase();
+    // Named sections of one workout, not alternative versions of it.
+    if (/^(warm[\s-]?up|cool[\s-]?down|finisher|core|conditioning|mobility|activation|accessor(y|ies)|main( lifts?| sets?)?|metcon|wod|cardio|abs)$/i.test(t)){
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    return '';
+  }
+  // "Block A", "B", "Superset 2", or a longer name ending in one of those
+  // ("Leg day — Block A") → "A" / "B" / "2".
+  function blockToken(name){
+    const t = String(name || '').trim();
+    const m = t.match(/^(?:(?:block|superset|circuit|part|section|round)\s*)?([a-z]|\d{1,2})$/i) ||
+              t.match(/(?:^|\s)(?:block|superset|circuit|part|section|round)\s+([a-z]|\d{1,2})$/i);
+    return m ? m[1].toUpperCase() : '';
+  }
+  // A1, A2, B1… for each row; 3.1, 3.2 for numbered blocks; '' when its
+  // block has no letter or number.
+  function exerciseLabels(exercises){
+    let prev = null, n = 0;
+    return (exercises || []).map(ex => {
+      const b = ex.block || '';
+      n = b === prev ? n + 1 : 1;
+      prev = b;
+      const tok = b ? blockToken(b) : '';
+      return tok ? tok + (/^\d/.test(tok) ? '.' : '') + n : '';
+    });
+  }
+  // Runs of rows with the same block, in order: [{ name, exercises }].
+  function versionBlocks(exercises){
+    const runs = [];
+    (exercises || []).forEach(ex => {
+      const b = ex.block || '';
+      if (!runs.length || runs[runs.length - 1].name !== b) runs.push({ name: b, exercises: [] });
+      runs[runs.length - 1].exercises.push(ex);
+    });
+    return runs;
+  }
+  // The next free block name, in the style already used: Block 1, 2, 3…
+  // when every block is numbered, otherwise Block A, B, C….
+  function nextBlockName(exercises){
+    const toks = [...new Set((exercises || []).map(ex => blockToken(ex.block)).filter(Boolean))];
+    if (toks.length && toks.every(t => /^\d+$/.test(t))){
+      return 'Block ' + (Math.max(0, ...toks.filter(t => /^\d+$/.test(t)).map(Number)) + 1);
+    }
+    const letters = toks.filter(t => /^[A-Z]$/.test(t)).map(t => t.charCodeAt(0));
+    const next = letters.length ? Math.max(...letters) + 1 : 66; // none named yet: the rows above become A
+    return 'Block ' + String.fromCharCode(Math.min(next, 90));
   }
 
   // One exercise as editor fields. Already structured: filled out with any
@@ -2947,7 +3129,7 @@
   // else stays in Reps. A line whose "3 * 15" ended up in the name (saved
   // before "*" was understood) is split back out first.
   function structuredExercise(ex){
-    const base = { name:'', sets:'', reps:'', load:'', rest:'', tempo:'', equipment:'', alternates:'' };
+    const base = { name:'', sets:'', reps:'', load:'', rest:'', tempo:'', equipment:'', alternates:'', block:'' };
     if (ex && 'reps' in ex){
       const out = Object.assign(base, ex);
       delete out.presc;
@@ -2958,7 +3140,7 @@
       const re = parseWorkoutText(name)[0];
       if (re && re.exercises[0] && re.exercises[0].presc){ name = re.exercises[0].name; presc = re.exercises[0].presc; }
     }
-    const out = Object.assign(base, { name });
+    const out = Object.assign(base, { name, block: (ex && ex.block) || '' });
     let rest = presc;
     const restM = rest.match(/,?\s*rest\s*:?\s*(\d+(?:\.\d+)?(?:\s*[-–]\s*\d+)?\s*(?:s|secs?|seconds?|m|mins?|minutes?)\b)/i) ||
                   rest.match(/,?\s*(\d+(?:\.\d+)?(?:\s*[-–]\s*\d+)?\s*(?:s|secs?|seconds?|mins?|minutes?))\s+rest\b/i);
@@ -2989,20 +3171,35 @@
   // Versions back to text in a format parseWorkoutText() reads — kept as
   // the row's source, and what Copy Text copies.
   function workoutVariantsToText(variants){
-    return variants.map(v => v.name + ':\n' + (v.exercises || []).map(ex => {
+    const line = ex => {
       const p = [(ex.sets && ex.reps ? ex.sets + ' x ' + ex.reps : ex.reps || (ex.sets ? ex.sets + ' sets' : '')) + (ex.load ? ' @ ' + ex.load : ''),
                  ex.rest ? 'rest ' + ex.rest : ''].filter(Boolean).join(', ');
       return p ? ex.name + ': ' + p : ex.name;
-    }).join('\n')).join('\n\n');
+    };
+    return variants.map(v => v.name + ':\n' + versionBlocks(v.exercises).map(run =>
+      (run.name ? run.name + ':\n' : '') + run.exercises.map(line).join('\n')).join('\n')).join('\n\n');
   }
 
   // A version as a Freeform list: blank sets to match, the plan under each
   // name, and its own Alternates in the ⇄ dropdown.
   function workoutFreeformList(variant){
-    return (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim()).map(ex => ({
+    const rows = (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim());
+    const labels = exerciseLabels(rows);
+    return rows.map((ex, i) => ({
       name: ex.name, seed: ex.name, base: ex.name, baseAlts: ex.alternates || '', from: 'workout', presc: planString(ex),
+      group: ex.block || '', label: labels[i],
       sets: Array.from({ length: setsCount(ex) }, () => ({ wt:'', reps:'', done:false }))
     }));
+  }
+  // Freeform: a heading where a block starts (group set by a split workout
+  // or the program's blocks).
+  function freeformGroupHead(list, eIdx){
+    const g = list[eIdx].group;
+    if (!g || (eIdx > 0 && list[eIdx - 1].group === g)) return null;
+    const h = document.createElement('div');
+    h.className = 'ff-group-head';
+    h.textContent = g;
+    return h;
   }
 
   // Loads one variant into the Live Session's current slot + day.
@@ -3125,20 +3322,23 @@
     const src = block.src;
     if (src && src.ownerId && src.ownerId !== me.id) return;
     const w = src && (coachWorkouts || []).find(x => x.id === src.workoutId);
-    const idx = w ? blockSourceIndex(w, src) : -1;
+    let idx = w ? blockSourceIndex(w, src) : -1;
+    // Sent as one block of a split version: that block must still be there.
+    if (idx >= 0 && src.block && !(w.variants[idx].exercises || []).some(ex => ex.block === src.block)) idx = -1;
     const bar = document.createElement('div');
     bar.className = 'crud-src';
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'btn2';
     if (w && idx >= 0){
-      const label = w.title + (w.variants.length > 1 || w.variants[idx].name !== 'Workout' ? ' — ' + w.variants[idx].name : '');
+      const label = w.title + (w.variants.length > 1 || w.variants[idx].name !== 'Workout' ? ' — ' + w.variants[idx].name : '') +
+        (src.block ? ' — ' + src.block : '');
       bar.innerHTML = '<span>From Workouts to Try: <b>' + esc(label) + '</b></span>';
       btn.textContent = '↻ Update Workout to Try';
       btn.title = 'Copy this block\u2019s exercises back to the saved workout';
       btn.onclick = ()=> updateWorkoutFromBlock(block, w, idx, label, btn);
     } else if (src){
-      bar.innerHTML = '<span>Its saved workout (' + esc(src.version || 'version') + ') was deleted.</span>';
+      bar.innerHTML = '<span>Its saved workout (' + esc([src.version, src.block].filter(Boolean).join(' — ') || 'version') + ') was deleted.</span>';
       btn.textContent = 'Save as New Workout to Try';
       btn.onclick = ()=> saveBlockAsWorkout(block, btn);
     } else {
@@ -3154,7 +3354,19 @@
     const exercises = blockAsVariantExercises(block);
     if (!exercises.length){ showToast('Add an exercise with a name first.'); return; }
     if (!confirm('Replace "' + label + '" in Workouts to Try with this block\u2019s ' + exercises.length + ' exercise' + (exercises.length === 1 ? '' : 's') + '?')) return;
-    const variants = (w.variants || []).map((v, i) => i === idx ? { name: v.name, exercises } : v);
+    // A block of a split version replaces just that block's rows, where
+    // they were; otherwise the whole version.
+    const sb = block.src && block.src.block;
+    const variants = (w.variants || []).map((v, i) => {
+      if (i !== idx) return v;
+      if (!sb) return { name: v.name, exercises };
+      const old = v.exercises || [];
+      const first = old.findIndex(ex => ex.block === sb);
+      const kept = old.filter(ex => ex.block !== sb);
+      const at = old.slice(0, first).filter(ex => ex.block !== sb).length;
+      kept.splice(at, 0, ...exercises.map(ex => Object.assign(ex, { block: sb })));
+      return { name: v.name, exercises: kept };
+    });
     btn.disabled = true;
     const { error } = await bnbClient.from('coach_workouts')
       .update({ variants, source: workoutVariantsToText(structuredVariants(variants)), updated_at: new Date().toISOString() })
@@ -3169,14 +3381,15 @@
     renderCoachWorkouts();
     showToast('Updated "' + label + '"');
   }
-  // The whole day as one new workout: every block's exercises in order,
-  // as a single version (a version is one complete workout; blocks are
-  // parts of it). Named for the day and whose program it is.
+  // The whole day as one new workout: a single version (a version is one
+  // complete workout) split into the day's blocks, in order. Named for the
+  // day and whose program it is.
   async function saveDayAsWorkout(btn){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me){ showToast('Sign in to save workouts.'); return; }
     const blocks = adminProgramData[adminDay] || [];
-    const exercises = blocks.flatMap(blockAsVariantExercises);
+    const exercises = blocks.flatMap((b, bi) => blockAsVariantExercises(b)
+      .map(ex => Object.assign(ex, { block: blocks.length > 1 ? (String(b.name || '').trim() || 'Block ' + (bi + 1)) : '' })));
     const dayName = DAY_META[adminDay].title.split('—')[0].trim();
     if (!exercises.length){ showToast('Nothing on ' + dayName + ' to save yet.'); return; }
     const picker = document.getElementById('admin-client-picker');
@@ -3200,7 +3413,7 @@
   async function saveBlockAsWorkout(block, btn){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return;
-    const exercises = blockAsVariantExercises(block);
+    const exercises = blockAsVariantExercises(block).map(ex => Object.assign(ex, { block: '' }));
     if (!exercises.length){ showToast('Add an exercise with a name first.'); return; }
     const title = String(block.name || '').trim() || 'Untitled workout';
     const variants = [{ name: 'Workout', exercises }];
@@ -3218,15 +3431,21 @@
     showToast('Saved "' + title + '" to Workouts to Try');
   }
 
-  // src remembers which saved workout and version the block came from, so
-  // Program Builder can offer to copy edits back (blockWorkoutLink below).
-  function workoutVariantToBlock(variant, title, src){
-    const block = {
-      name: variant.name && variant.name !== 'Workout' ? title + ' — ' + variant.name : title,
-      exercises: (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim())
-    };
-    if (src) block.src = src;
-    return block;
+  // A version as Program Builder blocks: one per block in it (just one if
+  // it isn't split). src remembers the saved workout, version and block
+  // each came from, so Program Builder can offer to copy edits back
+  // (blockWorkoutLink).
+  function workoutVariantToBlocks(variant, title, src){
+    const base = variant.name && variant.name !== 'Workout' ? title + ' — ' + variant.name : title;
+    const rows = (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim());
+    return versionBlocks(rows).map(run => {
+      const block = {
+        name: run.name ? base + ' — ' + run.name : base,
+        exercises: run.exercises.map(ex => { const out = Object.assign({}, ex); delete out.block; return out; })
+      };
+      if (src) block.src = Object.assign({}, src, run.name ? { block: run.name } : {});
+      return block;
+    });
   }
   function sendWorkoutToProgramBuilder(variants, title, vIdx, workoutId){
     vIdx = vIdx || 0;
@@ -3252,7 +3471,7 @@
       <div class="admin-incoming-row">
         ${variants.length > 1 ? `<select id="admin-incoming-variant">${variants.map((v, i) => `<option value="${i}"${i === vIdx ? ' selected' : ''}>${esc(v.name)} (${countOf(v)})</option>`).join('')}</select>` : ''}
         <select id="admin-incoming-day">${DAY_ORDER.map(d => `<option value="${d}"${d === adminDay ? ' selected' : ''}>${esc(DAY_META[d].title.split('—')[0].trim())}</option>`).join('')}</select>
-        <button class="btn2 primary" type="button" data-inc="add">Add as New Block</button>
+        <button class="btn2 primary" type="button" data-inc="add">Add as New Block${variants.some(v => versionBlocks(v.exercises).length > 1) ? 's' : ''}</button>
         <button class="btn2" type="button" data-inc="replace">Replace That Day</button>
         <button class="btn2" type="button" data-inc="cancel">Cancel</button>
       </div>`;
@@ -3270,15 +3489,15 @@
       const picker = document.getElementById('admin-client-picker');
       const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent : 'this client';
       const dayLabel = DAY_META[day].title.split('—')[0].trim();
-      const block = workoutVariantToBlock(variant, title,
+      const newBlocks = workoutVariantToBlocks(variant, title,
         workoutId ? { workoutId, ownerId: me.id, version: variant.name, vIdx } : null);
       const label = labelOf(variant);
       if (act === 'replace'){
         if ((adminProgramData[day] || []).length &&
             !confirm('Replace everything on ' + who + "'s " + dayLabel + ' with "' + label + '"?')) return;
-        adminProgramData[day] = [block];
+        adminProgramData[day] = newBlocks;
       } else {
-        (adminProgramData[day] = adminProgramData[day] || []).push(block);
+        (adminProgramData[day] = adminProgramData[day] || []).push(...newBlocks);
       }
       adminDay = day;
       saveAdminProgram(); renderAdminDayTabs(); renderAdminBlocks();
@@ -3378,7 +3597,11 @@
               <div class="cw-variant">
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
                   <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="btn2 cw-try" data-cw="mine" data-v="${vIdx}" type="button" title="Loads into your own MEMBER > Live Session as Freeform, on the day you pick">Send to My Freeform</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this version">✕</button></span></div>
-                <ul class="cw-ex">${v.exercises.map(ex => { const plan = planString(ex); return `<li><b>${esc(ex.name)}</b>${plan ? ` <span>${esc(plan)}</span>` : ''}</li>`; }).join('')}</ul>
+                <ul class="cw-ex">${(()=>{ const lb = exerciseLabels(v.exercises); return v.exercises.map((ex, i) => {
+                  const plan = planString(ex);
+                  const head = ex.block && (i === 0 || v.exercises[i - 1].block !== ex.block) ? `<li class="cw-ex-block">${esc(ex.block)}</li>` : '';
+                  return head + `<li>${lb[i] ? `<span class="crud-ex-label">${esc(lb[i])}</span>` : ''}<b>${esc(ex.name)}</b>${plan ? ` <span>${esc(plan)}</span>` : ''}</li>`;
+                }).join(''); })()}</ul>
                 ${workoutStatsHtml(v)}
               </div>`).join('')}
           </div>`).join('')}
@@ -3412,7 +3635,7 @@
       statsEl.innerHTML = vs.map(v => '<div class="cw-draft-stat">' + (vs.length > 1 ? '<div class="cw-draft-stat-name">' + esc(v.name) + '</div>' : '') + workoutStatsHtml(v) + '</div>').join('');
     };
     const editorEl = body.querySelector('#cw-editor');
-    const drawEditor = ()=>{ renderBlockEditor(editorEl, draft.versions, drawStats, drawEditor, { noun: 'Version' }); drawStats(); };
+    const drawEditor = ()=>{ renderBlockEditor(editorEl, draft.versions, drawStats, drawEditor, { noun: 'Version', subBlocks: true }); drawStats(); };
     drawEditor();
     body.querySelector('#cw-add-version').onclick = ()=>{
       draft.versions.push({ name: 'Version ' + (draft.versions.length + 1), exercises: [Object.assign(blankExercise(), { name: '' })] });

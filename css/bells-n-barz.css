@@ -3186,6 +3186,21 @@ body > *{flex-shrink:0;}
 .admin-day-stats-head{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:13px;color:var(--accent);}
 .admin-day-stats .cw-stats{margin-top:6px;}
 .day-stats-line{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:0 0 10px;padding:6px 10px;border:1px solid var(--line-soft);border-radius:3px;display:inline-block;}
+/* Blocks inside a Workouts to Try version: header where a block starts,
+   the "+ Insert block here" line between rows, A1/A2 labels; the same
+   headings and labels in Freeform and on the cards. */
+.crud-sub-head{display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid var(--line);background:rgba(var(--accent-rgb),.08);}
+.crud-sub-head input{flex:1 1 auto;min-width:0;background:transparent;border:1px solid transparent;color:var(--accent);font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:13px;font-weight:600;padding:3px 6px;border-radius:2px;}
+.crud-sub-head input:hover, .crud-sub-head input:focus{border-color:var(--line-soft);background:var(--bg);}
+.crud-insert-block{display:flex;align-items:center;gap:8px;padding:0 12px;min-height:14px;}
+.crud-insert-block > button:only-child{width:100%;background:transparent;border:none;border-top:1px dashed transparent;color:transparent;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;padding:2px 0;}
+.crud-insert-block:hover > button:only-child, .crud-insert-block > button:only-child:focus-visible{border-top-color:var(--accent-dim);color:var(--accent);}
+@media (hover:none){ .crud-insert-block > button:only-child{color:var(--muted-2);border-top-color:var(--line-soft);} }
+.crud-insert-block.open{padding:8px 12px;flex-wrap:wrap;background:var(--surface-2);font-size:12.5px;color:var(--muted);}
+.crud-insert-block.open input{background:var(--bg);border:1px solid var(--line-soft);color:var(--text);padding:5px 8px;border-radius:2px;font-size:12.5px;min-width:0;}
+.crud-ex-label{display:inline-flex;align-items:center;justify-content:center;min-width:26px;padding:1px 5px;margin-right:6px;border-radius:3px;background:rgba(var(--accent-rgb),.15);color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;flex:0 0 auto;}
+.ff-group-head{padding:6px 12px;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:12.5px;color:var(--accent);border-top:1px solid var(--line);background:rgba(var(--accent-rgb),.06);}
+.cw-ex li.cw-ex-block{list-style:none;margin:8px 0 2px -18px;font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:12.5px;color:var(--accent);}
 /* Program Builder block linked to a saved workout (blockWorkoutLink). */
 .crud-src{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line-soft);font-size:12.5px;color:var(--muted);background:rgba(var(--accent-rgb),.05);}
 .crud-src b{color:var(--text);}
