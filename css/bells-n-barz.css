@@ -1248,7 +1248,7 @@ button.t-ghost:hover{color:var(--text);border-color:var(--accent-dim);}
 .crud-block-head input{background:transparent;border:none;color:var(--text);font-family:'Oswald',sans-serif;
   text-transform:uppercase;letter-spacing:.04em;font-size:14px;font-weight:600;width:60%;}
 .crud-block-head input:focus{outline:1px solid var(--accent-dim);}
-.crud-ex-row{display:grid;grid-template-columns:1.6fr .55fr .7fr .6fr .6fr .9fr 1.1fr auto;gap:6px;
+.crud-ex-row{display:grid;grid-template-columns:1.6fr .5fr .7fr .6fr .6fr .6fr .9fr 1.1fr auto;gap:6px;
   padding:8px 12px;border-top:1px solid var(--line-soft);align-items:center;}
 .crud-ex-row input{background:var(--bg);border:1px solid var(--line-soft);color:var(--text);
   padding:6px 7px;font-size:12px;border-radius:2px;width:100%;font-family:'IBM Plex Sans',sans-serif;}
@@ -3172,7 +3172,15 @@ body > *{flex-shrink:0;}
 .cw-form{border:1px solid var(--line-soft);border-radius:4px;padding:14px;margin-top:18px;background:var(--surface);}
 .cw-form-head{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;}
 .cw-form textarea{width:100%;box-sizing:border-box;font-family:inherit;}
-.cw-preview{margin:6px 0 4px;}
+.cw-paste{margin:0 0 14px;border:1px dashed var(--line);border-radius:4px;padding:8px 12px;}
+.cw-paste summary{cursor:pointer;font-size:13px;color:var(--muted);}
+.cw-paste[open] summary{margin-bottom:8px;}
+.cw-paste textarea{width:100%;box-sizing:border-box;font-family:inherit;}
+.cw-paste-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;}
+.cw-paste-row .field-hint{margin:0;}
+.cw-draft-stat{margin-bottom:6px;}
+.cw-draft-stat-name{font-weight:700;color:var(--accent);font-size:13px;margin-top:6px;}
+.cw-form .crud-block-head input{width:70%;}
 .cw-list{display:grid;gap:14px;}
 .cw-card{border:1px solid var(--line-soft);border-radius:4px;padding:14px;background:var(--surface);min-width:0;}
 .cw-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;}
@@ -3200,6 +3208,14 @@ body > *{flex-shrink:0;}
 .admin-load-workout{max-width:260px;background:var(--bg);border:1px solid var(--line-soft);color:var(--text);
   font-family:inherit;font-size:13px;padding:8px 10px;border-radius:2px;cursor:pointer;}
 #coach-section-program .crud-actions{flex-wrap:wrap;}
+/* Phones: exercise name across the top, the other fields two to a row,
+   ✕ at the end — instead of nine squeezed columns. */
+@media (max-width:640px){
+  .crud-ex-row{grid-template-columns:repeat(2, minmax(0, 1fr));}
+  .crud-ex-row .crud-col-name, .crud-ex-row .crud-col-del{grid-column:1 / -1;}
+  .crud-ex-row .crud-col-del{align-items:flex-end;}
+  .crud-ex-row .crud-col-del label{display:none;}
+}
 
 /* ---------------- Library (js/bells-n-barz-library.js) ----------------
    Same frame as the Gallery: sticky header with a Shelf | Admin switch,

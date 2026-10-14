@@ -841,6 +841,7 @@
 
   function metaLine(ex){
     const parts = [];
+    if (ex.load) parts.push('Load ' + ex.load);
     if (ex.rest) parts.push('Rest ' + ex.rest);
     if (ex.tempo) parts.push('Tempo ' + ex.tempo);
     if (ex.equipment) parts.push('Equip: ' + ex.equipment);
@@ -966,9 +967,19 @@
   }
 
   function renderAdminBlocks(){
-    const wrap = document.getElementById('admin-blocks');
+    renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks);
+  }
+
+  /* Block/exercise editor shared by Program Builder (blocks of one day)
+     and Coach > Workouts to Try (versions of one workout). Edits change
+     `blocks` in place; save() runs after each one, rerender() after rows
+     are added or removed. opts.noun names a block ("Version"). */
+  function blankExercise(){
+    return { name:'New Exercise', sets:'3', reps:'10', load:'', rest:'', tempo:'', equipment:'', alternates:'' };
+  }
+  function renderBlockEditor(wrap, blocks, save, rerender, opts){
+    const noun = (opts && opts.noun) || 'Block';
     wrap.innerHTML = '';
-    const blocks = adminProgramData[adminDay] || [];
 
     blocks.forEach((block, bIdx)=>{
       const bDiv = document.createElement('div');
@@ -978,20 +989,21 @@
       head.className = 'crud-block-head';
       const nameInput = document.createElement('input');
       nameInput.value = block.name;
-      nameInput.oninput = ()=>{ block.name = nameInput.value; saveAdminProgram(); };
+      nameInput.setAttribute('aria-label', noun + ' name');
+      nameInput.oninput = ()=>{ block.name = nameInput.value; save(); };
       const headBtns = document.createElement('div');
       headBtns.style.cssText = 'display:flex;gap:6px;';
       const addExBtn = document.createElement('button');
-      addExBtn.className = 'btn2'; addExBtn.textContent = '+ Exercise';
+      addExBtn.className = 'btn2'; addExBtn.type = 'button'; addExBtn.textContent = '+ Exercise';
       addExBtn.onclick = ()=>{
-        block.exercises.push({name:'New Exercise', sets:'3', reps:'10', rest:'', tempo:'', equipment:'', alternates:''});
-        saveAdminProgram(); renderAdminBlocks();
+        block.exercises.push(blankExercise());
+        save(); rerender();
       };
       const delBlockBtn = document.createElement('button');
-      delBlockBtn.className = 'crud-remove'; delBlockBtn.title = 'Delete block'; delBlockBtn.textContent = '✕';
+      delBlockBtn.className = 'crud-remove'; delBlockBtn.type = 'button'; delBlockBtn.title = 'Delete ' + noun.toLowerCase(); delBlockBtn.textContent = '✕';
       delBlockBtn.onclick = ()=>{
         if(!confirm('Delete "' + block.name + '" and all its exercises?')) return;
-        blocks.splice(bIdx,1); saveAdminProgram(); renderAdminBlocks();
+        blocks.splice(bIdx,1); save(); rerender();
       };
       headBtns.appendChild(addExBtn); headBtns.appendChild(delBlockBtn);
       head.appendChild(nameInput); head.appendChild(headBtns);
@@ -1001,20 +1013,21 @@
         const row = document.createElement('div');
         row.className = 'crud-ex-row';
         row.innerHTML = `
-          <div class="crud-col"><label>Exercise</label><input data-f="name" value="${esc(ex.name)}"></div>
+          <div class="crud-col crud-col-name"><label>Exercise</label><input data-f="name" value="${esc(ex.name)}" placeholder="Exercise name"></div>
           <div class="crud-col"><label>Sets</label><input data-f="sets" value="${esc(ex.sets)}"></div>
           <div class="crud-col"><label>Reps</label><input data-f="reps" value="${esc(ex.reps)}"></div>
+          <div class="crud-col"><label>Load</label><input data-f="load" value="${esc(ex.load)}" placeholder="e.g. 80kg"></div>
           <div class="crud-col"><label>Rest</label><input data-f="rest" value="${esc(ex.rest)}" placeholder="e.g. 90s"></div>
           <div class="crud-col"><label>Tempo</label><input data-f="tempo" value="${esc(ex.tempo)}" placeholder="e.g. 3-1-1"></div>
           <div class="crud-col"><label>Equipment</label><input data-f="equipment" value="${esc(ex.equipment)}" placeholder="e.g. Barbell"></div>
           <div class="crud-col"><label>Alternates</label><input data-f="alternates" value="${esc(ex.alternates)}" placeholder="comma, separated"></div>
-          <div class="crud-col"><label>&nbsp;</label><button class="crud-remove" title="Remove exercise">✕</button></div>
+          <div class="crud-col crud-col-del"><label>&nbsp;</label><button class="crud-remove" type="button" title="Remove exercise">✕</button></div>
         `;
         row.querySelectorAll('input').forEach(inp=>{
-          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; saveAdminProgram(); };
+          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; save(); };
         });
         row.querySelector('.crud-remove').onclick = ()=>{
-          block.exercises.splice(eIdx,1); saveAdminProgram(); renderAdminBlocks();
+          block.exercises.splice(eIdx,1); save(); rerender();
         };
         // ⇄ next to the name: swap this exercise for one of its alternatives
         // (rebuilt when the name or Alternates change, so the list follows).
@@ -1026,7 +1039,7 @@
         let picker = null;
         const placePicker = ()=>{
           const next = buildAltPicker({ name: ex.name, baseAlts: ex.alternates }, val => {
-            ex.name = val; nameInp.value = val; saveAdminProgram(); placePicker();
+            ex.name = val; nameInp.value = val; save(); placePicker();
           });
           if (picker) picker.remove();
           picker = next;
@@ -2841,11 +2854,16 @@
 
   /* --------------------- COACH: WORKOUTS TO TRY ---------------------------
      A coach's own shelf of workouts they've come across and want to try
-     (sql/61, coach_workouts — private to the coach who saved them). Paste
-     the workout as text; it's split into variants at lines ending in ":"
-     ("Strength:", "If your goal is Hypertrophy:") and each "Name: 3 x 8"
-     line becomes an exercise. Try loads a variant into the Live Session's
-     current slot and day as Freeform, sets ready and ⇄ alternatives on. */
+     (sql/61, coach_workouts — private to the coach who saved them). Built
+     in the same editor as Program Builder: each version is a block of
+     exercises with sets, reps, load, rest, tempo, equipment and alternates,
+     so the card stats come from real numbers. Pasted text still works as
+     a shortcut — it's split into versions at lines ending in ":"
+     ("Strength:", "If your goal is Hypertrophy:"), each "Name: 3 x 8" line
+     becomes a row to check. Try loads a version into the Live Session's
+     current slot and day as Freeform, sets ready and ⇄ alternatives on.
+     Workouts saved before the editor hold { name, presc, sets } only;
+     structuredExercise() turns those into rows when they're read. */
   function showToast(msg){
     const el = document.getElementById('t-toast'); if (!el) return;
     el.textContent = msg; el.classList.add('show');
@@ -2877,11 +2895,68 @@
     return variants.filter(v => v.exercises.length);
   }
 
-  // Variants back to text in the same format parseWorkoutText() reads —
-  // used when one variant is deleted, so Edit doesn't bring it back.
+  // One exercise as editor fields. Already structured: filled out with any
+  // missing fields. Saved from text ({ name, presc, sets }): "3 x 8 @ 80kg,
+  // rest 90s" splits into Sets 3 / Reps 8 / Load 80kg / Rest 90s, anything
+  // else stays in Reps. A line whose "3 * 15" ended up in the name (saved
+  // before "*" was understood) is split back out first.
+  function structuredExercise(ex){
+    const base = { name:'', sets:'', reps:'', load:'', rest:'', tempo:'', equipment:'', alternates:'' };
+    if (ex && 'reps' in ex){
+      const out = Object.assign(base, ex);
+      delete out.presc;
+      return out;
+    }
+    let name = String((ex && ex.name) || '').trim(), presc = String((ex && ex.presc) || '').trim();
+    if (!presc){
+      const re = parseWorkoutText(name)[0];
+      if (re && re.exercises[0] && re.exercises[0].presc){ name = re.exercises[0].name; presc = re.exercises[0].presc; }
+    }
+    const out = Object.assign(base, { name });
+    let rest = presc;
+    const restM = rest.match(/,?\s*rest\s*:?\s*(\d+(?:\.\d+)?(?:\s*[-–]\s*\d+)?\s*(?:s|secs?|seconds?|m|mins?|minutes?)\b)/i) ||
+                  rest.match(/,?\s*(\d+(?:\.\d+)?(?:\s*[-–]\s*\d+)?\s*(?:s|secs?|seconds?|mins?|minutes?))\s+rest\b/i);
+    if (restM){ out.rest = restM[1].trim(); rest = rest.replace(restM[0], ''); }
+    const loadM = rest.match(/\s*@\s*(\d+(?:\.\d+)?\s*(?:kg|kgs|lbs?|%)?)/i) || rest.match(/\s+(\d+(?:\.\d+)?\s*(?:kg|kgs|lbs?))\b/i);
+    if (loadM){ out.load = loadM[1].trim(); rest = rest.replace(loadM[0], ''); }
+    const sx = rest.match(/^\s*(\d+)\s*[x×*]\s*(.+)$/i);
+    if (sx){ out.sets = sx[1]; out.reps = sx[2].trim(); }
+    else {
+      const sm = rest.match(/(\d+)\s*sets?\b/i);
+      out.sets = sm ? sm[1] : String((ex && ex.sets) || '');
+      out.reps = rest.trim();
+    }
+    out.reps = out.reps.replace(/[,;]\s*$/, '').replace(/^\((.*)\)$/, '$1').trim();
+    return out;
+  }
+  function structuredVariants(variants){
+    return (variants || []).map(v => ({ name: v.name || 'Workout', exercises: (v.exercises || []).map(structuredExercise) }));
+  }
+  function setsCount(ex){ return Math.min(Math.max(parseInt(ex.sets, 10) || 3, 1), 10); }
+
+  // The plan as one line: "3 × 8 @ 80kg · rest 90s · tempo 3-1-1".
+  function planString(ex){
+    const main = prescString(ex) + (ex.load ? ' @ ' + ex.load : '');
+    return [main, ex.rest ? 'rest ' + ex.rest : '', ex.tempo ? 'tempo ' + ex.tempo : ''].filter(Boolean).join(' · ');
+  }
+
+  // Versions back to text in a format parseWorkoutText() reads — kept as
+  // the row's source, and what Copy Text copies.
   function workoutVariantsToText(variants){
-    return variants.map(v => v.name + ':\n' +
-      (v.exercises || []).map(ex => ex.presc ? ex.name + ': ' + ex.presc : ex.name).join('\n')).join('\n\n');
+    return variants.map(v => v.name + ':\n' + (v.exercises || []).map(ex => {
+      const p = [(ex.sets && ex.reps ? ex.sets + ' x ' + ex.reps : ex.reps || (ex.sets ? ex.sets + ' sets' : '')) + (ex.load ? ' @ ' + ex.load : ''),
+                 ex.rest ? 'rest ' + ex.rest : ''].filter(Boolean).join(', ');
+      return p ? ex.name + ': ' + p : ex.name;
+    }).join('\n')).join('\n\n');
+  }
+
+  // A version as a Freeform list: blank sets to match, the plan under each
+  // name, and its own Alternates in the ⇄ dropdown.
+  function workoutFreeformList(variant){
+    return (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim()).map(ex => ({
+      name: ex.name, seed: ex.name, base: ex.name, baseAlts: ex.alternates || '', from: 'workout', presc: planString(ex),
+      sets: Array.from({ length: setsCount(ex) }, () => ({ wt:'', reps:'', done:false }))
+    }));
   }
 
   // Loads one variant into the Live Session's current slot + day.
@@ -2890,10 +2965,7 @@
     const dayLabel = DAY_META[csDay].title.split('—')[0].trim();
     if (freeformHasRealData(csSlot, csDay) &&
         !confirm('Replace ' + who + "'s freeform log for " + dayLabel + ' with "' + title + ' — ' + variant.name + '"?')) return;
-    saveFreeformExercises(csSlot, csDay, variant.exercises.map(ex => ({
-      name: ex.name, seed: ex.name, base: ex.name, baseAlts: '', from: 'workout', presc: ex.presc,
-      sets: Array.from({ length: ex.sets || 3 }, () => ({ wt:'', reps:'', done:false }))
-    })));
+    saveFreeformExercises(csSlot, csDay, workoutFreeformList(variant));
     setCsMode(csSlot, csDay, 'freeform');
     renderSessionDay();
     const btn = document.querySelector('#coach-section-switch [data-coach-section="session"]');
@@ -2908,10 +2980,7 @@
     const dayLabel = DAY_META[day].title.split('—')[0].trim();
     if (getMlsMode(day) === 'freeform' && freeformListHasRealData(getMlsFreeformExercises(day)) &&
         !confirm('Replace your own freeform log for ' + dayLabel + ' with "' + title + ' — ' + variant.name + '"?')) return false;
-    saveMlsFreeformExercises(day, variant.exercises.map(ex => ({
-      name: ex.name, seed: ex.name, base: ex.name, baseAlts: '', from: 'workout', presc: ex.presc,
-      sets: Array.from({ length: ex.sets || 3 }, () => ({ wt:'', reps:'', done:false }))
-    })));
+    saveMlsFreeformExercises(day, workoutFreeformList(variant));
     setMlsMode(day, 'freeform');
     mlsDay = day;
     renderMlsDayTabs();
@@ -2921,46 +2990,44 @@
     return true;
   }
 
-  /* Card stats for one variant, worked out from its text ("3 x 8",
-     "4 x 6-8 @ 80kg", "3 x 30s", "3 x 24m, rest 60s"):
-       sets   — every exercise's sets ("3 x 8", "3 × 8" or "3 * 8").
-       reps   — sets × reps (a range counts as its middle). Timed and
-                distance work has no reps, so it's left out and counted
-                in `other`.
-       kg     — sets × reps × weight, only for lines with a weight
-                written in (lb converted); null when there are none.
-       minutes — estimated: per set, ~3 s a rep (or the time written in;
-                45 s for distance work) plus rest — the rest written in,
-                else 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+. */
+  /* Card stats for one version, from its rows:
+       sets    — every exercise's sets.
+       reps    — sets × reps (a range like 8-12 counts as 10). Timed and
+                 distance work ("30s", "24m") has no reps, so it's left out
+                 and counted in `other`.
+       kg      — sets × reps × load, for rows with a load in kg or lb
+                 (lb converted; % and bodyweight can't be counted); null
+                 when no row has one.
+       minutes — estimated: per set, each rep takes the tempo's seconds
+                 (3-1-1 = 5 s) or ~3 s, timed work takes its time and
+                 distance work ~45 s, plus the Rest — or, with none set,
+                 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+. */
   function workoutStats(variant){
     let sets = 0, reps = 0, kg = 0, hasKg = false, other = 0, seconds = 0;
-    (variant.exercises || []).forEach(ex => {
-      // Saved before "3 * 15" was understood, the whole line is the name.
-      const inName = !ex.presc && String(ex.name || '').match(/(\d+)\s*[x×*]\s*\d.*$/);
-      const n = inName ? Math.min(parseInt(inName[1], 10), 10) : (ex.sets || 3);
-      const p = String(ex.presc || (inName ? inName[0] : '')).toLowerCase();
+    const secs = (num, unit) => num * (/^m/i.test(unit) ? 60 : 1);
+    (variant.exercises || []).map(structuredExercise).forEach(ex => {
+      if (!String(ex.name).trim()) return;
+      const n = setsCount(ex);
       sets += n;
-      const restM = p.match(/rest\s*:?\s*(\d+(?:\.\d+)?)\s*(s|sec|secs|seconds?|m|min|mins|minutes?)\b/) ||
-                    p.match(/(\d+(?:\.\d+)?)\s*(s|sec|secs|seconds?|m|min|mins|minutes?)\s*rest/);
-      const restWritten = restM ? parseFloat(restM[1]) * (/^m/.test(restM[2]) ? 60 : 1) : null;
-      const body = restM ? p.replace(restM[0], ' ') : p;
-      const after = (body.match(/\d+\s*[x×*]\s*(.+)/) || body.match(/sets?\s*(?:of)?\s*(.+)/) || [])[1] || '';
-      const timeM = after.match(/^(\d+(?:\.\d+)?)\s*(?:-\s*\d+\s*)?(s|sec|secs|seconds?|min|mins|minutes?)\b/);
-      const distM = after.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|metres?|yd|yards?|km)\b/);
-      const repM = after.match(/^(\d+)(?:\s*[-–]\s*(\d+))?/);
+      const r = String(ex.reps || '').toLowerCase().trim();
+      const timeM = r.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(s|secs?|seconds?|mins?|minutes?)\b/);
+      const distM = r.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|metres?|yd|yards?|km)\b/);
+      const repM = r.match(/^(\d+)(?:\s*[-–]\s*(\d+))?/);
+      const tempoSec = String(ex.tempo || '').split(/[-–\/]/).map(t => /^x$/i.test(t.trim()) ? 1 : parseFloat(t)).filter(x => x >= 0).reduce((a, b) => a + b, 0);
       let repsPerSet = null, workSec;
-      if (timeM){ workSec = parseFloat(timeM[1]) * (/^m/.test(timeM[2]) ? 60 : 1); other++; }
+      if (timeM){ workSec = secs(timeM[2] ? (parseFloat(timeM[1]) + parseFloat(timeM[2])) / 2 : parseFloat(timeM[1]), timeM[3]); other++; }
       else if (distM){ workSec = 45; other++; }
       else if (repM){
         repsPerSet = repM[2] ? (parseInt(repM[1], 10) + parseInt(repM[2], 10)) / 2 : parseInt(repM[1], 10);
-        workSec = repsPerSet * 3;
+        workSec = repsPerSet * (tempoSec || 3);
       } else { workSec = 30; other++; }
       if (repsPerSet !== null){
         reps += n * repsPerSet;
-        const wM = body.match(/(?:@\s*)?(\d+(?:\.\d+)?)\s*(kg|kgs|lb|lbs)\b/);
-        if (wM){ hasKg = true; kg += n * repsPerSet * parseFloat(wM[1]) * (/^lb/.test(wM[2]) ? 0.4536 : 1); }
+        const lM = String(ex.load || '').toLowerCase().match(/^\s*(\d+(?:\.\d+)?)\s*(kg|kgs|lbs?)?\s*$/);
+        if (lM){ hasKg = true; kg += n * repsPerSet * parseFloat(lM[1]) * (/^lb/.test(lM[2] || '') ? 0.4536 : 1); }
       }
-      const rest = restWritten !== null ? restWritten
+      const restM = String(ex.rest || '').toLowerCase().match(/(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(s|secs?|seconds?|m|mins?|minutes?|'|")?/);
+      const rest = restM ? secs(restM[2] ? (parseFloat(restM[1]) + parseFloat(restM[2])) / 2 : parseFloat(restM[1]), restM[3] === "'" ? 'm' : (restM[3] || (parseFloat(restM[1]) <= 5 ? 'm' : 's')))
         : repsPerSet === null ? 60 : repsPerSet <= 5 ? 150 : repsPerSet <= 12 ? 90 : 60;
       seconds += n * (workSec + rest);
     });
@@ -2970,27 +3037,23 @@
     const s = workoutStats(variant);
     const fmt = n => n.toLocaleString('en-US');
     const volume = (s.reps ? fmt(s.reps) + ' reps' : '—') + (s.kg !== null ? ' · ' + fmt(s.kg) + ' kg' : '');
-    const volTitle = 'Sets × reps' + (s.kg !== null ? '; kg counts only lines with a weight written in' : '') +
+    const volTitle = 'Sets × reps' + (s.kg !== null ? '; kg counts only rows with a load in kg or lb' : '') +
       (s.other ? '. ' + s.other + ' timed/distance exercise' + (s.other === 1 ? '' : 's') + ' not counted' : '');
     return '<div class="cw-stats">' +
       '<div class="cw-stat"><span class="cw-stat-label">Total sets</span><span class="cw-stat-val">' + s.sets + '</span></div>' +
       '<div class="cw-stat" title="' + esc(volTitle) + '"><span class="cw-stat-label">Total volume</span><span class="cw-stat-val">' + volume + '</span></div>' +
-      '<div class="cw-stat" title="Estimate: about 3 s per rep plus rest (the rest written in, else 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+)"><span class="cw-stat-label">Total time</span><span class="cw-stat-val">≈ ' + s.minutes + ' min</span></div>' +
+      '<div class="cw-stat" title="Estimate: each rep takes the tempo (or about 3 s), plus Rest — or, with none set, 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+"><span class="cw-stat-label">Total time</span><span class="cw-stat-val">≈ ' + s.minutes + ' min</span></div>' +
       '</div>';
   }
 
   /* Send to Program Builder: opens Program Builder with a bar on top —
-     pick the client (the usual picker) and the day, then add the variant
-     as a new block or replace that day with it. "8 x 3 (Heavy)" splits
-     into Sets 8 / Reps "3 (Heavy)"; anything else goes into Reps as is. */
+     pick the client (the usual picker) and the day, then add the version
+     as a new block or replace that day with it — the rows copy across
+     as they are, Load and Alternates included. */
   function workoutVariantToBlock(variant, title){
     return {
       name: variant.name && variant.name !== 'Workout' ? title + ' — ' + variant.name : title,
-      exercises: (variant.exercises || []).map(ex => {
-        const m = String(ex.presc || '').match(/^\s*(\d+)\s*[x×]\s*(.+)$/i);
-        return { name: ex.name, sets: m ? m[1] : '', reps: m ? m[2].trim() : (ex.presc || ''),
-                 rest:'', tempo:'', equipment:'', alternates:'' };
-      })
+      exercises: (variant.exercises || []).map(structuredExercise).filter(ex => ex.name.trim())
     };
   }
   function sendWorkoutToProgramBuilder(variants, title, vIdx){
@@ -3092,16 +3155,43 @@
     coachWorkoutsError = '';
   }
 
+  // The form's working copy — kept between renders so adding a row or a
+  // version doesn't lose what's typed. forId is the workout being edited
+  // (null for a new one); a different forId starts a fresh draft.
+  let cwDraft = null;
+  function cwDraftFor(editing){
+    const forId = editing ? editing.id : null;
+    if (!cwDraft || cwDraft.forId !== forId){
+      cwDraft = editing
+        ? { forId, title: editing.title || '', versions: JSON.parse(JSON.stringify(structuredVariants(editing.variants))) }
+        : { forId, title: '', versions: [{ name: 'Workout', exercises: [Object.assign(blankExercise(), { name: '' })] }] };
+    }
+    return cwDraft;
+  }
+  function cwDraftHasContent(d){
+    return !!(d.title.trim() || d.versions.some(v => v.exercises.some(ex => String(ex.name || '').trim())));
+  }
+  // The draft as rows to save: unnamed exercises and empty versions
+  // dropped, each exercise carrying its plan line for the card.
+  function cwDraftVariants(d){
+    return d.versions.map(v => ({
+      name: String(v.name || '').trim() || 'Workout',
+      exercises: v.exercises.filter(ex => String(ex.name || '').trim())
+        .map(ex => Object.assign(structuredExercise(ex), { name: String(ex.name).trim(), presc: planString(ex) }))
+    })).filter(v => v.exercises.length);
+  }
+
   function renderCoachWorkouts(){
     const body = document.getElementById('coach-workouts-body');
     if (!body) return;
     const editing = coachWorkoutEditing && (coachWorkouts || []).find(w => w.id === coachWorkoutEditing);
     const list = coachWorkouts || [];
+    const draft = cwDraftFor(editing);
     body.innerHTML = `
       ${coachWorkoutsError ? `<div class="admin-notice">${esc(coachWorkoutsError)}</div>` : ''}
       <div class="cw-list">
         ${coachWorkouts === null ? '<div class="field-hint">Loading…</div>'
-          : !list.length ? '<div class="field-hint">No saved workouts yet — paste one below.</div>'
+          : !list.length ? '<div class="field-hint">No saved workouts yet — build one below.</div>'
           : list.map(w => `
           <div class="cw-card" data-id="${esc(w.id)}">
             <div class="cw-card-head">
@@ -3111,48 +3201,73 @@
                 <button class="crud-remove" data-cw="delete" type="button" title="Delete workout">✕</button>
               </div>
             </div>
-            ${(w.variants || []).map((v, vIdx) => `
+            ${structuredVariants(w.variants).map((v, vIdx) => `
               <div class="cw-variant">
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
-                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="btn2 cw-try" data-cw="mine" data-v="${vIdx}" type="button" title="Loads into your own MEMBER > Live Session as Freeform, on the day you pick">Send to My Freeform</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
-                <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
+                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="btn2 cw-try" data-cw="mine" data-v="${vIdx}" type="button" title="Loads into your own MEMBER > Live Session as Freeform, on the day you pick">Send to My Freeform</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this version">✕</button></span></div>
+                <ul class="cw-ex">${v.exercises.map(ex => { const plan = planString(ex); return `<li><b>${esc(ex.name)}</b>${plan ? ` <span>${esc(plan)}</span>` : ''}</li>`; }).join('')}</ul>
                 ${workoutStatsHtml(v)}
               </div>`).join('')}
           </div>`).join('')}
       </div>
       <div class="cw-form">
-        <div class="cw-form-head">${editing ? 'Edit workout' : 'Save a workout to try'}</div>
-        <div class="field"><label>Title</label><input type="text" id="cw-title" maxlength="120" placeholder="e.g. Zercher leg day" value="${esc(editing ? editing.title : '')}"></div>
-        <div class="field"><label>Workout</label><textarea id="cw-text" rows="9" placeholder="Paste it in — one exercise per line, like&#10;Strength:&#10;Back Squats: 3 x 8&#10;Walking Lunges: 3 x 24m">${esc(editing ? editing.source : '')}</textarea></div>
-        <div class="cw-preview" id="cw-preview"></div>
+        <div class="cw-form-head">${editing ? 'Edit workout' : 'Build a workout to try'}</div>
+        <div class="field"><label for="cw-title">Title</label><input type="text" id="cw-title" maxlength="120" placeholder="e.g. Zercher leg day" value="${esc(draft.title)}"></div>
+        <details class="cw-paste">
+          <summary>Paste a workout as text</summary>
+          <textarea id="cw-text" rows="7" placeholder="One exercise per line, like&#10;Strength:&#10;Back Squats: 3 x 8 @ 80kg, rest 2 min&#10;Walking Lunges: 3 x 24m"></textarea>
+          <div class="cw-paste-row"><button class="btn2" id="cw-fill" type="button">Fill Rows from Text</button><span class="field-hint" id="cw-paste-hint">Lines ending in ":" start a new version. Check the rows after.</span></div>
+        </details>
+        <div id="cw-editor"></div>
+        <div class="crud-actions" style="padding-left:0;">
+          <button class="btn2" id="cw-add-version" type="button">+ Add Version</button>
+        </div>
+        <div id="cw-draft-stats"></div>
         <div class="crud-actions" style="padding-left:0;">
           <button class="btn2 primary" id="cw-save" type="button">${editing ? 'Save Changes' : 'Save Workout'}</button>
           <button class="btn2" id="cw-save-load" type="button">Save &amp; Load to Program Builder</button>
-          <button class="btn2" id="cw-copy" type="button" title="Copy the title and workout text to paste elsewhere">Copy Text</button>
+          <button class="btn2" id="cw-copy" type="button" title="Copy the title and workout as text to paste elsewhere">Copy Text</button>
           <button class="btn2" id="cw-cancel" type="button">${editing ? 'Cancel' : 'Clear'}</button>
         </div>
       </div>`;
 
     const titleEl = body.querySelector('#cw-title');
-    const textEl = body.querySelector('#cw-text');
-    const preview = body.querySelector('#cw-preview');
-    const drawPreview = ()=>{
-      const vs = parseWorkoutText(textEl.value);
-      preview.innerHTML = !textEl.value.trim() ? ''
-        : !vs.length ? '<div class="field-hint">No exercises found yet — one per line, like "Back Squats: 3 x 8".</div>'
-        : '<div class="field-hint">Reads as: ' + vs.map(v => '<b>' + esc(v.name) + '</b> (' + v.exercises.length + ' exercise' + (v.exercises.length === 1 ? '' : 's') + ')').join(', ') + '</div>';
+    titleEl.oninput = ()=>{ draft.title = titleEl.value; };
+    const statsEl = body.querySelector('#cw-draft-stats');
+    const drawStats = ()=>{
+      const vs = cwDraftVariants(draft);
+      statsEl.innerHTML = vs.map(v => '<div class="cw-draft-stat">' + (vs.length > 1 ? '<div class="cw-draft-stat-name">' + esc(v.name) + '</div>' : '') + workoutStatsHtml(v) + '</div>').join('');
     };
-    textEl.oninput = drawPreview;
-    drawPreview();
+    const editorEl = body.querySelector('#cw-editor');
+    const drawEditor = ()=>{ renderBlockEditor(editorEl, draft.versions, drawStats, drawEditor, { noun: 'Version' }); drawStats(); };
+    drawEditor();
+    body.querySelector('#cw-add-version').onclick = ()=>{
+      draft.versions.push({ name: 'Version ' + (draft.versions.length + 1), exercises: [Object.assign(blankExercise(), { name: '' })] });
+      drawEditor();
+    };
+
+    // Paste: text into rows, through the same reader as before.
+    body.querySelector('#cw-fill').onclick = ()=>{
+      const text = body.querySelector('#cw-text').value;
+      const vs = parseWorkoutText(text);
+      if (!vs.length){ showToast('No exercises found — one per line, like "Back Squats: 3 x 8".'); return; }
+      if (draft.versions.some(v => v.exercises.some(ex => String(ex.name || '').trim())) &&
+          !confirm('Replace the rows below with what’s in the text?')) return;
+      draft.versions = vs.map(v => ({ name: v.name, exercises: v.exercises.map(structuredExercise) }));
+      body.querySelector('#cw-text').value = '';
+      body.querySelector('.cw-paste').open = false;
+      drawEditor();
+      showToast('Filled ' + vs.reduce((n, v) => n + v.exercises.length, 0) + ' rows — check them, then save');
+    };
 
     const saveWorkout = async (btn, thenLoad)=>{
       const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
       if (!me){ showToast('Sign in to save workouts.'); return; }
-      const title = titleEl.value.trim();
-      const variants = parseWorkoutText(textEl.value);
+      const title = draft.title.trim();
+      const variants = cwDraftVariants(draft);
       if (!title){ showToast('Give it a title first.'); titleEl.focus(); return; }
-      if (!variants.length){ showToast('No exercises found — one per line, like "Back Squats: 3 x 8".'); textEl.focus(); return; }
-      const row = { title, source: textEl.value.trim(), variants, updated_at: new Date().toISOString() };
+      if (!variants.length){ showToast('Add at least one exercise with a name.'); return; }
+      const row = { title, source: workoutVariantsToText(variants), variants, updated_at: new Date().toISOString() };
       btn.disabled = true;
       const { error } = editing
         ? await bnbClient.from('coach_workouts').update(row).eq('id', editing.id)
@@ -3160,6 +3275,7 @@
       btn.disabled = false;
       if (error){ console.error('Supabase save coach_workouts failed:', error); showToast('Couldn’t save — ' + (error.message || 'try again')); return; }
       coachWorkoutEditing = null;
+      cwDraft = null;
       await refreshCoachWorkouts();
       renderCoachWorkouts();
       if (thenLoad) sendWorkoutToProgramBuilder(variants, title, 0);
@@ -3169,13 +3285,15 @@
     body.querySelector('#cw-save-load').onclick = e => saveWorkout(e.currentTarget, true);
     // Editing: leave without saving. New workout: clear the form.
     body.querySelector('#cw-cancel').onclick = ()=>{
-      if (!editing && (titleEl.value.trim() || textEl.value.trim()) && !confirm('Clear this workout without saving?')) return;
+      if (!editing && cwDraftHasContent(draft) && !confirm('Clear this workout without saving?')) return;
       coachWorkoutEditing = null;
+      cwDraft = null;
       renderCoachWorkouts();
     };
-    // Title + workout text as typed, e.g. to paste into WhatsApp or a note.
+    // Title + workout as text, e.g. to paste into WhatsApp or a note.
     body.querySelector('#cw-copy').onclick = async ()=>{
-      const text = [titleEl.value.trim(), textEl.value.trim()].filter(Boolean).join('\n\n');
+      const vs = cwDraftVariants(draft);
+      const text = [draft.title.trim(), vs.length ? workoutVariantsToText(vs) : ''].filter(Boolean).join('\n\n');
       if (!text){ showToast('Nothing to copy yet.'); return; }
       try {
         await navigator.clipboard.writeText(text);
@@ -3194,13 +3312,14 @@
     body.querySelectorAll('.cw-card').forEach(card => {
       const w = list.find(x => x.id === card.dataset.id);
       if (!w) return;
+      const variants = structuredVariants(w.variants);
       card.querySelectorAll('[data-cw]').forEach(btn => {
         btn.onclick = async ()=>{
           const act = btn.dataset.cw;
-          if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
-          if (act === 'send') return sendWorkoutToProgramBuilder(w.variants, w.title, +btn.dataset.v);
+          if (act === 'try') return tryWorkoutInSession(variants[+btn.dataset.v], w.title);
+          if (act === 'send') return sendWorkoutToProgramBuilder(variants, w.title, +btn.dataset.v);
           if (act === 'mine'){
-            // Pick the day first, in a small row under the variant's buttons.
+            // Pick the day first, in a small row under the version's buttons.
             const variantEl = btn.closest('.cw-variant');
             const open = variantEl.querySelector('.cw-send-day');
             if (open){ open.remove(); return; }
@@ -3212,23 +3331,31 @@
             variantEl.querySelector('.cw-variant-head').after(row);
             row.querySelector('[data-cancel]').onclick = ()=> row.remove();
             row.querySelector('[data-go]').onclick = ()=>{
-              if (sendWorkoutToMyFreeform(w.variants[+btn.dataset.v], w.title, row.querySelector('select').value)) row.remove();
+              if (sendWorkoutToMyFreeform(variants[+btn.dataset.v], w.title, row.querySelector('select').value)) row.remove();
             };
             return;
           }
-          if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' }); body.querySelector('#cw-title').focus({ preventScroll:true }); return; }
+          if (act === 'edit'){
+            if (coachWorkoutEditing !== w.id && cwDraft && cwDraftHasContent(cwDraft) &&
+                !confirm('Drop the workout you’re building and edit "' + w.title + '" instead?')) return;
+            coachWorkoutEditing = w.id; renderCoachWorkouts();
+            body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' });
+            body.querySelector('#cw-title').focus({ preventScroll:true });
+            return;
+          }
           if (act === 'delvar'){
-            const v = w.variants[+btn.dataset.v];
+            const v = variants[+btn.dataset.v];
             if (!v) return;
-            if ((w.variants || []).length <= 1){
-              if (!confirm('"' + v.name + '" is the only variant left — delete the whole "' + w.title + '" workout?')) return;
+            if (variants.length <= 1){
+              if (!confirm('"' + v.name + '" is the only version left — delete the whole "' + w.title + '" workout?')) return;
             } else if (!confirm('Delete "' + v.name + '" from "' + w.title + '"?')) return;
-            const rest = w.variants.filter((_, i) => i !== +btn.dataset.v);
+            const rest = variants.filter((_, i) => i !== +btn.dataset.v)
+              .map(x => ({ name: x.name, exercises: x.exercises.map(ex => Object.assign({}, ex, { presc: planString(ex) })) }));
             const { error } = rest.length
               ? await bnbClient.from('coach_workouts').update({ variants: rest, source: workoutVariantsToText(rest), updated_at: new Date().toISOString() }).eq('id', w.id)
               : await bnbClient.from('coach_workouts').delete().eq('id', w.id);
-            if (error){ console.error('Supabase update coach_workouts failed:', error); showToast('Couldn\u2019t delete — try again'); return; }
-            if (coachWorkoutEditing === w.id) coachWorkoutEditing = null;
+            if (error){ console.error('Supabase update coach_workouts failed:', error); showToast('Couldn’t delete — try again'); return; }
+            if (coachWorkoutEditing === w.id){ coachWorkoutEditing = null; cwDraft = null; }
             showToast('Deleted "' + v.name + '"');
             await refreshCoachWorkouts();
             renderCoachWorkouts();
@@ -3238,7 +3365,7 @@
             if (!confirm('Delete "' + w.title + '"?')) return;
             const { error } = await bnbClient.from('coach_workouts').delete().eq('id', w.id);
             if (error){ console.error('Supabase delete coach_workouts failed:', error); showToast('Couldn’t delete — try again'); return; }
-            if (coachWorkoutEditing === w.id) coachWorkoutEditing = null;
+            if (coachWorkoutEditing === w.id){ coachWorkoutEditing = null; cwDraft = null; }
             await refreshCoachWorkouts();
             renderCoachWorkouts();
           }
