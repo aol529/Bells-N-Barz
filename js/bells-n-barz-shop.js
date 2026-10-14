@@ -5,6 +5,11 @@
   const SEED_PRODUCTS = [
     { id:'prod1', type:'package', name:'10-Session Pack', desc:"10 one-on-one session credits · never expires", price:480, credits:10, active:true },
     { id:'prod2', type:'package', name:'5-Session Pack', desc:"5 one-on-one session credits · never expires", price:260, credits:5, active:true },
+    { id:'prod9', type:'package', name:'Intro Session', desc:'1 one-on-one taster session with a coach · new members', price:35, credits:1, active:true },
+    { id:'prod10', type:'package', name:'Starter 3-Pack', desc:'3 sessions: assessment, program walkthrough and technique check · never expires', price:150, credits:3, active:true },
+    { id:'prod11', type:'package', name:'20-Session Pack', desc:'20 one-on-one session credits · best per-session price · never expires', price:880, credits:20, active:true },
+    { id:'prod12', type:'package', name:'Partner Pack', desc:'10 sessions for two people training together · booked by the buyer · never expires', price:720, credits:10, active:true },
+    { id:'prod13', type:'package', name:'Transformation 12-Week', desc:'24 sessions (2 a week for 12 weeks) with body-fat and measurement checks at start and finish', price:1080, credits:24, active:true },
     { id:'prod3', type:'merch', name:"Bell(e)s N' Barz Tee", desc:'Heavyweight cotton, gold logo print', price:32, stock:14, checkoutUrl:'', active:true },
     { id:'prod4', type:'merch', name:'Gym Tote Bag', desc:'Canvas, reinforced straps', price:24, stock:3, checkoutUrl:'', active:true },
     { id:'prod5', type:'merch', name:'Lifting Straps', desc:'Cotton, gold-stitched', price:18, stock:22, checkoutUrl:'', active:true },
