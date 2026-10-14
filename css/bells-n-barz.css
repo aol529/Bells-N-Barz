@@ -1435,6 +1435,20 @@ body{margin:0;}
 .outer-link:hover{color:var(--text);}
 .outer-link.active{color:var(--on-accent); background:var(--accent);}
 .outer-nav-toggle{display:none; background:transparent; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; font-size:16px;}
+/* Member profile details: read-only until Edit Details (js/bells-n-barz-users.js).
+   Prefixed with .users-scope .field to outrank the scope's own input styles. */
+.users-scope .profile-locked .tab-pane .field input,
+.users-scope .profile-locked .tab-pane .field textarea,
+.users-scope .profile-locked .tab-pane .field select{
+  background:transparent; border-color:transparent; padding-left:0; padding-right:0;
+  color:var(--text); resize:none; cursor:default; opacity:1; box-shadow:none;
+}
+.users-scope .profile-locked .tab-pane .field select{appearance:none; -webkit-appearance:none;}
+.users-scope .profile-locked .tab-pane .field input::placeholder,
+.users-scope .profile-locked .tab-pane .field textarea::placeholder{color:var(--muted);}
+.users-scope .profile-locked .tab-pane .field input[type="date"]::-webkit-calendar-picker-indicator{display:none;}
+.users-scope .profile-locked .tab-pane .field{border-bottom:1px solid var(--line-soft, var(--line));}
+
 /* Forgot password: the three ways back in (js/bells-n-barz-users.js) */
 .fp-options{display:flex; flex-direction:column; gap:8px;}
 .fp-option{

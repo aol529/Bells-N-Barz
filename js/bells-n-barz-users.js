@@ -1052,6 +1052,8 @@
 
 
   /* ================= MEMBER: MY PROFILE ================= */
+  // Tab to reopen the details on after Save/Cancel redraw the card.
+  let profileReopenTab = null;
   function renderProfile(){
     const u = users.find(x=>x.id===selfId);
     const card = document.getElementById('usr-profile-card');
@@ -1071,7 +1073,7 @@
         <span class="ro-pill coach-pill">Your Coach: <select id="usr-p-trainer-id"></select></span>
         <span class="ro-pill">Member since: <b>${fmtDate(u.createdAt)}</b></span>
       </div>
-      <div class="field-hint" style="margin-bottom:18px;">Plan, status, and billing are managed by staff and shown here read-only. Pick or change your own coach any time from the list above. Everything below is yours to edit.</div>
+      <div class="field-hint" style="margin-bottom:18px;">Plan, status, and billing are managed by staff and shown here read-only. Pick or change your own coach any time from the list above. Your details below are yours to change: tap Edit Details.</div>
 
       <div class="stat-block" id="usr-profile-stats"></div>
       <div class="checkin-btn-row">
@@ -1089,7 +1091,7 @@
 
       <details class="profile-accordion" id="usr-profile-accordion">
         <summary>Personal, Fitness &amp; Emergency Contact Details</summary>
-        <div class="accordion-body">
+        <div class="accordion-body profile-locked" id="usr-profile-details">
 
         <div class="tab-bar" id="usr-profile-tab-bar">
           <button class="active" data-ptab="personal" type="button">Personal</button>
@@ -1135,7 +1137,9 @@
         </div>
 
         <div class="save-row">
-          <button class="btn2 primary" id="usr-profile-save-btn">Save Profile</button>
+          <button class="btn2 primary" id="usr-profile-edit-btn" type="button">Edit Details</button>
+          <button class="btn2" id="usr-profile-cancel-btn" type="button" hidden>Cancel</button>
+          <button class="btn2 primary" id="usr-profile-save-btn" type="button" hidden>Save Changes</button>
         </div>
         </div>
       </details>
@@ -1235,8 +1239,41 @@
       u.ecPhone = document.getElementById('usr-p-ec-phone').value.trim();
       saveUsers();
       showToast('Profile saved');
-      renderProfile();
+      rerenderProfileKeepingTab();
     });
+
+    // Details read like a filled-in form until Edit Details is tapped.
+    function setProfileEditing(editing){
+      const box = document.getElementById('usr-profile-details');
+      box.classList.toggle('profile-locked', !editing);
+      box.querySelectorAll('.tab-pane input, .tab-pane textarea').forEach(el=>{
+        el.readOnly = !editing;
+        el.placeholder = editing ? '' : '—';
+      });
+      box.querySelectorAll('.tab-pane select').forEach(el=>{ el.disabled = !editing; });
+      document.getElementById('usr-profile-edit-btn').hidden = editing;
+      document.getElementById('usr-profile-cancel-btn').hidden = !editing;
+      document.getElementById('usr-profile-save-btn').hidden = !editing;
+      if (editing){
+        const first = box.querySelector('.tab-pane.active input, .tab-pane.active textarea');
+        if (first) first.focus();
+      }
+    }
+    // Save/Cancel redraw the card; keep the details open on the same tab.
+    function rerenderProfileKeepingTab(){
+      const active = document.querySelector('#usr-profile-tab-bar button.active');
+      profileReopenTab = active ? active.dataset.ptab : 'personal';
+      renderProfile();
+    }
+    document.getElementById('usr-profile-edit-btn').addEventListener('click', ()=> setProfileEditing(true));
+    document.getElementById('usr-profile-cancel-btn').addEventListener('click', rerenderProfileKeepingTab);
+    setProfileEditing(false);
+    if (profileReopenTab){
+      document.getElementById('usr-profile-accordion').open = true;
+      const tabBtn = document.querySelector('#usr-profile-tab-bar [data-ptab="' + profileReopenTab + '"]');
+      if (tabBtn) tabBtn.click();
+      profileReopenTab = null;
+    }
   }
 
   /* ================= ADMIN: USERS TABLE ================= */
