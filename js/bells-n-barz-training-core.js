@@ -855,7 +855,7 @@
   function renderPerform(day){
     const container = document.querySelector('.perform-render[data-day="' + day + '"]');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = dayStatsLine(programData[day]);
     const blocks = (programData[day] || []);
     blocks.forEach(block => {
       const table = document.createElement('table');
@@ -909,7 +909,7 @@
     if (viewFullEl) viewFullEl.onclick = (e) => { e.preventDefault(); if (typeof switchTab === 'function') switchTab(todayKey); };
 
     const blocks = programData[todayKey] || [];
-    blocksEl.innerHTML = '';
+    blocksEl.innerHTML = dayStatsLine(blocks);
     if (!blocks.length){
       const p = document.createElement('p');
       p.style.cssText = 'color:var(--muted);font-size:14px;';
@@ -970,7 +970,18 @@
 
   function renderAdminBlocks(){
     renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks,
-      { blockExtras: blockWorkoutLink });
+      { blockExtras: blockWorkoutLink, stats: true, onChange: renderAdminDayStats });
+    renderAdminDayStats();
+  }
+  // The whole day's summary, under the blocks.
+  function renderAdminDayStats(){
+    const el = document.getElementById('admin-day-stats');
+    if (!el) return;
+    const blocks = adminProgramData[adminDay] || [];
+    const all = { exercises: blocks.flatMap(b => b.exercises || []) };
+    el.innerHTML = blocks.length > 0 && all.exercises.length
+      ? '<div class="admin-day-stats-head">' + esc(DAY_META[adminDay].title.split('—')[0].trim()) + ' total</div>' + workoutStatsHtml(all)
+      : '';
   }
 
   /* Block/exercise editor shared by Program Builder (blocks of one day)
@@ -1012,6 +1023,10 @@
       head.appendChild(nameInput); head.appendChild(headBtns);
       bDiv.appendChild(head);
       if (opts && opts.blockExtras) opts.blockExtras(block, bDiv);
+      // Per-block summary, redrawn as rows are typed into (opts.stats).
+      const statsEl = document.createElement('div');
+      const drawBlockStats = ()=>{ statsEl.innerHTML = workoutStatsHtml(block); };
+      const changed = ()=>{ save(); if (opts && opts.stats){ drawBlockStats(); if (opts.onChange) opts.onChange(); } };
 
       block.exercises.forEach((ex, eIdx)=>{
         const row = document.createElement('div');
@@ -1028,7 +1043,7 @@
           <div class="crud-col crud-col-del"><label>&nbsp;</label><button class="crud-remove" type="button" title="Remove exercise">✕</button></div>
         `;
         row.querySelectorAll('input').forEach(inp=>{
-          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; save(); };
+          inp.oninput = ()=>{ ex[inp.dataset.f] = inp.value; changed(); };
         });
         row.querySelector('.crud-remove').onclick = ()=>{
           block.exercises.splice(eIdx,1); save(); rerender();
@@ -1043,7 +1058,7 @@
         let picker = null;
         const placePicker = ()=>{
           const next = buildAltPicker({ name: ex.name, baseAlts: ex.alternates }, val => {
-            ex.name = val; nameInp.value = val; save(); placePicker();
+            ex.name = val; nameInp.value = val; changed(); placePicker();
           });
           if (picker) picker.remove();
           picker = next;
@@ -1055,6 +1070,11 @@
         bDiv.appendChild(row);
       });
 
+      if (opts && opts.stats && block.exercises.length){
+        statsEl.className = 'crud-block-stats';
+        drawBlockStats();
+        bDiv.appendChild(statsEl);
+      }
       wrap.appendChild(bDiv);
     });
   }
@@ -2263,6 +2283,7 @@
 
   function renderMlsProgramBlocks(wrap, day){
     const blocks = programData[day] || [];
+    wrap.insertAdjacentHTML('beforeend', dayStatsLine(blocks));
     blocks.forEach((block, bIdx)=>{
       const bDiv = document.createElement('div');
       bDiv.className = 'ls-block';
@@ -2995,7 +3016,7 @@
   }
 
   /* Card stats for one version, from its rows:
-       sets    — every exercise's sets.
+       sets    — every exercise's sets (blank counts as 1).
        reps    — sets × reps (a range like 8-12 counts as 10). Timed and
                  distance work ("30s", "24m") has no reps, so it's left out
                  and counted in `other`.
@@ -3011,7 +3032,8 @@
     const secs = (num, unit) => num * (/^m/i.test(unit) ? 60 : 1);
     (variant.exercises || []).map(structuredExercise).forEach(ex => {
       if (!String(ex.name).trim()) return;
-      const n = setsCount(ex);
+      // Blank sets (a hold, "90 sec") is one effort here, not Freeform's 3.
+      const n = Math.min(parseInt(ex.sets, 10) || 1, 10);
       sets += n;
       const r = String(ex.reps || '').toLowerCase().trim();
       const timeM = r.match(/^(\d+(?:\.\d+)?)(?:\s*[-–]\s*(\d+(?:\.\d+)?))?\s*(s|secs?|seconds?|mins?|minutes?)\b/);
@@ -3036,6 +3058,13 @@
       seconds += n * (workSec + rest);
     });
     return { sets, reps: Math.round(reps), kg: hasKg ? Math.round(kg) : null, other, minutes: Math.round(seconds / 60) };
+  }
+  // The same numbers as one short line, for client-facing day views.
+  function dayStatsLine(blocks){
+    const st = workoutStats({ exercises: (blocks || []).flatMap(b => b.exercises || []) });
+    if (!st.sets) return '';
+    return '<div class="day-stats-line">' + st.sets + ' sets' + (st.reps ? ' · ' + st.reps.toLocaleString('en-US') + ' reps' : '') +
+      (st.kg !== null ? ' · ' + st.kg.toLocaleString('en-US') + ' kg' : '') + ' · ≈ ' + st.minutes + ' min</div>';
   }
   function workoutStatsHtml(variant){
     const s = workoutStats(variant);
