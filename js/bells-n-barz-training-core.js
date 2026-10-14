@@ -985,7 +985,7 @@
 
   function renderAdminBlocks(){
     renderBlockEditor(document.getElementById('admin-blocks'), adminProgramData[adminDay] || [], saveAdminProgram, renderAdminBlocks,
-      { blockExtras: blockWorkoutLink, stats: true, onChange: renderAdminDayStats });
+      { blockExtras: blockWorkoutLink, stats: true, onChange: renderAdminDayStats, splitBlocks: true });
     renderAdminDayStats();
   }
   // The whole day's summary, under the blocks.
@@ -1088,6 +1088,58 @@
     return line;
   }
 
+  // Program Builder: "✂ Split into a new block here" after row i (not the
+  // last) opens a name box. Rows below move into a new block after this
+  // one. Names follow the block's own: "Leg day" splits into "Leg day —
+  // Block A" and "Leg day — Block B"; a further split takes the next free
+  // letter or number. A split block loses its Workouts to Try link (the
+  // saved workout no longer matches either half).
+  function splitBase(name){
+    return String(name || '').replace(/\s*[—–-]?\s*(?:block|superset|circuit|part|section|round)\s+(?:[a-z]|\d{1,2})$/i, '').trim();
+  }
+  function splitBlockLine(blocks, bIdx, i, save, rerender){
+    const block = blocks[bIdx];
+    const line = document.createElement('div');
+    line.className = 'crud-insert-block';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '\u2702 Split into a new block here';
+    btn.onclick = ()=>{
+      const base = splitBase(block.name);
+      const named = !!blockToken(block.name);
+      const siblings = blocks.filter(b => splitBase(b.name) === base && blockToken(b.name)).map(b => ({ block: b.name }));
+      const tok = nextBlockName(siblings);
+      const join = n => base ? base + ' \u2014 ' + n : n;
+      line.innerHTML = '';
+      line.classList.add('open');
+      const label = document.createElement('span');
+      label.textContent = 'Name the new block' + (block.src ? ' (this unlinks it from Workouts to Try)' : '');
+      const input = document.createElement('input');
+      input.value = join(tok);
+      input.setAttribute('aria-label', 'New block name');
+      const ok = document.createElement('button');
+      ok.type = 'button'; ok.className = 'btn2 primary'; ok.textContent = 'Split';
+      const cancel = document.createElement('button');
+      cancel.type = 'button'; cancel.className = 'btn2'; cancel.textContent = 'Cancel';
+      line.appendChild(label); line.appendChild(input); line.appendChild(ok); line.appendChild(cancel);
+      input.focus(); input.select();
+      const go = ()=>{
+        const name = input.value.trim();
+        if (!name){ input.focus(); return; }
+        if (!named) block.name = join(/\d/.test(blockToken(name)) ? 'Block 1' : 'Block A');
+        const rest = block.exercises.splice(i + 1);
+        delete block.src;
+        blocks.splice(bIdx + 1, 0, { name, exercises: rest });
+        save(); rerender();
+      };
+      ok.onclick = go;
+      input.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); go(); } if (e.key === 'Escape') rerender(); };
+      cancel.onclick = rerender;
+    };
+    line.appendChild(btn);
+    return line;
+  }
+
   function renderBlockEditor(wrap, blocks, save, rerender, opts){
     const noun = (opts && opts.noun) || 'Block';
     wrap.innerHTML = '';
@@ -1116,7 +1168,21 @@
         if(!confirm('Delete "' + block.name + '" and all its exercises?')) return;
         blocks.splice(bIdx,1); save(); rerender();
       };
-      headBtns.appendChild(addExBtn); headBtns.appendChild(delBlockBtn);
+      headBtns.appendChild(addExBtn);
+      // Program Builder: undo a split — this block's rows join the one above.
+      if (opts && opts.splitBlocks && bIdx > 0){
+        const mergeBtn = document.createElement('button');
+        mergeBtn.className = 'btn2'; mergeBtn.type = 'button'; mergeBtn.textContent = '\u2191 Merge';
+        mergeBtn.title = 'Move these exercises into "' + blocks[bIdx - 1].name + '" above';
+        mergeBtn.onclick = ()=>{
+          const above = blocks[bIdx - 1];
+          above.exercises.push(...block.exercises);
+          if (above.src || block.src) delete above.src;
+          blocks.splice(bIdx, 1); save(); rerender();
+        };
+        headBtns.appendChild(mergeBtn);
+      }
+      headBtns.appendChild(delBlockBtn);
       head.appendChild(nameInput); head.appendChild(headBtns);
       bDiv.appendChild(head);
       if (opts && opts.blockExtras) opts.blockExtras(block, bDiv);
@@ -1180,6 +1246,7 @@
         row.querySelector('input[data-f="alternates"]').onchange = placePicker;
         bDiv.appendChild(row);
         if (sub) bDiv.appendChild(insertBlockLine(block.exercises, eIdx, save, rerender));
+        if (opts && opts.splitBlocks && eIdx < block.exercises.length - 1) bDiv.appendChild(splitBlockLine(blocks, bIdx, eIdx, save, rerender));
       });
 
       if (opts && opts.stats && block.exercises.length){
