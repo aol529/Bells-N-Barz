@@ -2866,10 +2866,10 @@
       if (/:\s*$/.test(line)){ cur = { name: tidyHeading(line), exercises: [] }; variants.push(cur); return; }
       let name = line, presc = '';
       const colon = line.match(/^(.+?)\s*(?::|\s[–—-]\s)\s*(.+)$/);
-      const inline = line.match(/^(.*?[a-z)])\s+(\d+\s*[x×]\s*\S.*)$/i);
+      const inline = line.match(/^(.*?[a-z)])\s+(\d+\s*[x×*]\s*\S.*)$/i);
       if (colon){ name = colon[1]; presc = colon[2]; }
       else if (inline){ name = inline[1]; presc = inline[2]; }
-      const m = presc.match(/(\d+)\s*[x×]\s*\d/) || presc.match(/(\d+)\s*sets?\b/i);
+      const m = presc.match(/(\d+)\s*[x×*]\s*\d/) || presc.match(/(\d+)\s*sets?\b/i);
       const sets = Math.min(Math.max(m ? parseInt(m[1], 10) : 3, 1), 10);
       if (!cur){ cur = { name: 'Workout', exercises: [] }; variants.push(cur); }
       cur.exercises.push({ name: name.trim().slice(0, 120), presc: presc.trim().slice(0, 200), sets });
@@ -2899,6 +2899,84 @@
     const btn = document.querySelector('#coach-section-switch [data-coach-section="session"]');
     if (btn) btn.click();
     showToast('Loaded into ' + who + ' — ' + dayLabel);
+  }
+
+  // Loads one variant into the coach's own MEMBER > Live Session as
+  // Freeform on the chosen day, so they can do it themselves and it lands
+  // in their own history and progress graph.
+  function sendWorkoutToMyFreeform(variant, title, day){
+    const dayLabel = DAY_META[day].title.split('—')[0].trim();
+    if (getMlsMode(day) === 'freeform' && freeformListHasRealData(getMlsFreeformExercises(day)) &&
+        !confirm('Replace your own freeform log for ' + dayLabel + ' with "' + title + ' — ' + variant.name + '"?')) return false;
+    saveMlsFreeformExercises(day, variant.exercises.map(ex => ({
+      name: ex.name, seed: ex.name, base: ex.name, baseAlts: '', from: 'workout', presc: ex.presc,
+      sets: Array.from({ length: ex.sets || 3 }, () => ({ wt:'', reps:'', done:false }))
+    })));
+    setMlsMode(day, 'freeform');
+    mlsDay = day;
+    renderMlsDayTabs();
+    renderMlsDay();
+    if (typeof window.switchTab === 'function') window.switchTab('session');
+    showToast('Loaded into your Live Session — ' + dayLabel);
+    return true;
+  }
+
+  /* Card stats for one variant, worked out from its text ("3 x 8",
+     "4 x 6-8 @ 80kg", "3 x 30s", "3 x 24m, rest 60s"):
+       sets   — every exercise's sets ("3 x 8", "3 × 8" or "3 * 8").
+       reps   — sets × reps (a range counts as its middle). Timed and
+                distance work has no reps, so it's left out and counted
+                in `other`.
+       kg     — sets × reps × weight, only for lines with a weight
+                written in (lb converted); null when there are none.
+       minutes — estimated: per set, ~3 s a rep (or the time written in;
+                45 s for distance work) plus rest — the rest written in,
+                else 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+. */
+  function workoutStats(variant){
+    let sets = 0, reps = 0, kg = 0, hasKg = false, other = 0, seconds = 0;
+    (variant.exercises || []).forEach(ex => {
+      // Saved before "3 * 15" was understood, the whole line is the name.
+      const inName = !ex.presc && String(ex.name || '').match(/(\d+)\s*[x×*]\s*\d.*$/);
+      const n = inName ? Math.min(parseInt(inName[1], 10), 10) : (ex.sets || 3);
+      const p = String(ex.presc || (inName ? inName[0] : '')).toLowerCase();
+      sets += n;
+      const restM = p.match(/rest\s*:?\s*(\d+(?:\.\d+)?)\s*(s|sec|secs|seconds?|m|min|mins|minutes?)\b/) ||
+                    p.match(/(\d+(?:\.\d+)?)\s*(s|sec|secs|seconds?|m|min|mins|minutes?)\s*rest/);
+      const restWritten = restM ? parseFloat(restM[1]) * (/^m/.test(restM[2]) ? 60 : 1) : null;
+      const body = restM ? p.replace(restM[0], ' ') : p;
+      const after = (body.match(/\d+\s*[x×*]\s*(.+)/) || body.match(/sets?\s*(?:of)?\s*(.+)/) || [])[1] || '';
+      const timeM = after.match(/^(\d+(?:\.\d+)?)\s*(?:-\s*\d+\s*)?(s|sec|secs|seconds?|min|mins|minutes?)\b/);
+      const distM = after.match(/^(\d+(?:\.\d+)?)\s*(m|meters?|metres?|yd|yards?|km)\b/);
+      const repM = after.match(/^(\d+)(?:\s*[-–]\s*(\d+))?/);
+      let repsPerSet = null, workSec;
+      if (timeM){ workSec = parseFloat(timeM[1]) * (/^m/.test(timeM[2]) ? 60 : 1); other++; }
+      else if (distM){ workSec = 45; other++; }
+      else if (repM){
+        repsPerSet = repM[2] ? (parseInt(repM[1], 10) + parseInt(repM[2], 10)) / 2 : parseInt(repM[1], 10);
+        workSec = repsPerSet * 3;
+      } else { workSec = 30; other++; }
+      if (repsPerSet !== null){
+        reps += n * repsPerSet;
+        const wM = body.match(/(?:@\s*)?(\d+(?:\.\d+)?)\s*(kg|kgs|lb|lbs)\b/);
+        if (wM){ hasKg = true; kg += n * repsPerSet * parseFloat(wM[1]) * (/^lb/.test(wM[2]) ? 0.4536 : 1); }
+      }
+      const rest = restWritten !== null ? restWritten
+        : repsPerSet === null ? 60 : repsPerSet <= 5 ? 150 : repsPerSet <= 12 ? 90 : 60;
+      seconds += n * (workSec + rest);
+    });
+    return { sets, reps: Math.round(reps), kg: hasKg ? Math.round(kg) : null, other, minutes: Math.round(seconds / 60) };
+  }
+  function workoutStatsHtml(variant){
+    const s = workoutStats(variant);
+    const fmt = n => n.toLocaleString('en-US');
+    const volume = (s.reps ? fmt(s.reps) + ' reps' : '—') + (s.kg !== null ? ' · ' + fmt(s.kg) + ' kg' : '');
+    const volTitle = 'Sets × reps' + (s.kg !== null ? '; kg counts only lines with a weight written in' : '') +
+      (s.other ? '. ' + s.other + ' timed/distance exercise' + (s.other === 1 ? '' : 's') + ' not counted' : '');
+    return '<div class="cw-stats">' +
+      '<div class="cw-stat"><span class="cw-stat-label">Total sets</span><span class="cw-stat-val">' + s.sets + '</span></div>' +
+      '<div class="cw-stat" title="' + esc(volTitle) + '"><span class="cw-stat-label">Total volume</span><span class="cw-stat-val">' + volume + '</span></div>' +
+      '<div class="cw-stat" title="Estimate: about 3 s per rep plus rest (the rest written in, else 2½ min for 1–5 reps, 90 s for 6–12, 60 s for 13+)"><span class="cw-stat-label">Total time</span><span class="cw-stat-val">≈ ' + s.minutes + ' min</span></div>' +
+      '</div>';
   }
 
   /* Send to Program Builder: opens Program Builder with a bar on top —
@@ -3036,8 +3114,9 @@
             ${(w.variants || []).map((v, vIdx) => `
               <div class="cw-variant">
                 <div class="cw-variant-head"><span>${esc(v.name)}</span>
-                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
+                  <span class="cw-variant-btns"><button class="btn2 primary cw-try" data-cw="try" data-v="${vIdx}" type="button" title="Loads into the Live Session's current slot and day as Freeform">Try in Live Session</button><button class="btn2 cw-try" data-cw="send" data-v="${vIdx}" type="button" title="Add to a client's program in Program Builder">Send to Program Builder</button><button class="btn2 cw-try" data-cw="mine" data-v="${vIdx}" type="button" title="Loads into your own MEMBER > Live Session as Freeform, on the day you pick">Send to My Freeform</button><button class="crud-remove" data-cw="delvar" data-v="${vIdx}" type="button" title="Delete this variant">✕</button></span></div>
                 <ul class="cw-ex">${(v.exercises || []).map(ex => `<li><b>${esc(ex.name)}</b>${ex.presc ? ` <span>${esc(ex.presc)}</span>` : ''}</li>`).join('')}</ul>
+                ${workoutStatsHtml(v)}
               </div>`).join('')}
           </div>`).join('')}
       </div>
@@ -3120,6 +3199,23 @@
           const act = btn.dataset.cw;
           if (act === 'try') return tryWorkoutInSession(w.variants[+btn.dataset.v], w.title);
           if (act === 'send') return sendWorkoutToProgramBuilder(w.variants, w.title, +btn.dataset.v);
+          if (act === 'mine'){
+            // Pick the day first, in a small row under the variant's buttons.
+            const variantEl = btn.closest('.cw-variant');
+            const open = variantEl.querySelector('.cw-send-day');
+            if (open){ open.remove(); return; }
+            const row = document.createElement('div');
+            row.className = 'cw-send-day';
+            row.innerHTML = '<span>Load into your own Live Session (Freeform) on</span>' +
+              '<select aria-label="Day">' + DAY_ORDER.map(d => '<option value="' + d + '"' + (d === mlsDay ? ' selected' : '') + '>' + esc(DAY_META[d].title.split('—')[0].trim()) + '</option>').join('') + '</select>' +
+              '<button class="btn2 primary cw-try" type="button" data-go>Send</button><button class="btn2 cw-try" type="button" data-cancel>Cancel</button>';
+            variantEl.querySelector('.cw-variant-head').after(row);
+            row.querySelector('[data-cancel]').onclick = ()=> row.remove();
+            row.querySelector('[data-go]').onclick = ()=>{
+              if (sendWorkoutToMyFreeform(w.variants[+btn.dataset.v], w.title, row.querySelector('select').value)) row.remove();
+            };
+            return;
+          }
           if (act === 'edit'){ coachWorkoutEditing = w.id; renderCoachWorkouts(); body.querySelector('.cw-form').scrollIntoView({ behavior:'smooth', block:'start' }); body.querySelector('#cw-title').focus({ preventScroll:true }); return; }
           if (act === 'delvar'){
             const v = w.variants[+btn.dataset.v];
