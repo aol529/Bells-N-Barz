@@ -1277,7 +1277,7 @@
         <td class="mono">${rolePillsHtml(u.roles)}</td>
         <td><span class="status-pill ${esc(u.status)}">${esc(u.status)}</span></td>
         <td>${esc(u.plan||'—')}</td>
-        <td class="mono ${balanceCls}">${u.balance ? '$' + u.balance : '$0'}</td>
+        <td class="mono ${balanceCls}">${BNB_CURRENCY.html(u.balance || 0)}</td>
         <td><div class="visit-cell"><span class="mono">${lastVisitDate}</span><span class="days-since ${dslCls}">${dslLabel}</span></div></td>
         <td class="mono">${currentStreak(u.id)}d</td>
         <td><div class="row-actions">

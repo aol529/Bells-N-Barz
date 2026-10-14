@@ -1435,7 +1435,17 @@ body{margin:0;}
 .outer-link:hover{color:var(--text);}
 .outer-link.active{color:var(--on-accent); background:var(--accent);}
 .outer-nav-toggle{display:none; background:transparent; border:1px solid var(--line); color:var(--text); border-radius:6px; padding:6px 10px; font-size:16px;}
+/* USD/KES price switch (js/bells-n-barz-currency.js) */
+.cur-switch{display:flex; border:1px solid var(--line); border-radius:20px; padding:2px; flex-shrink:0;}
+.cur-switch button{
+  background:transparent; border:none; color:var(--muted); cursor:pointer;
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.04em;
+  padding:5px 10px; border-radius:16px;
+}
+.cur-switch button:hover{color:var(--text);}
+.cur-switch button.active{color:var(--on-accent); background:var(--accent);}
 @media (max-width:760px){
+  .cur-switch{margin-left:auto;}
   .outer-nav{
     display:none; position:absolute; top:100%; left:0; right:0;
     flex-direction:column; background:var(--surface-2,#171512);

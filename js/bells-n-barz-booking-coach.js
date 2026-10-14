@@ -2512,8 +2512,8 @@
       }
       if (unpaid.length){
         const total = unpaid.reduce((sum,i)=> sum + i.amount, 0);
-        html += '<div class="admin-notice">' + unpaid.length + ' unpaid invoice' + (unpaid.length===1?'':'s') + ' among your clients, totaling $' + total.toFixed(2) + ': ' +
-          unpaid.map(i=> esc(memberName(i.userId)) + ' ($' + i.amount.toFixed(2) + ', ' + esc(i.status) + ')').join(', ') + '</div>';
+        html += '<div class="admin-notice">' + unpaid.length + ' unpaid invoice' + (unpaid.length===1?'':'s') + ' among your clients, totaling ' + BNB_CURRENCY.html(total) + ': ' +
+          unpaid.map(i=> esc(memberName(i.userId)) + ' (' + BNB_CURRENCY.html(i.amount) + ', ' + esc(i.status) + ')').join(', ') + '</div>';
       }
     }
 

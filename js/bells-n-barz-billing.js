@@ -124,7 +124,7 @@
   let payments = loadPayments();
   refreshPaymentsFromSupabase(); // async — replaces seed data once Supabase responds
 
-  const TYPE_LABELS = { membership:'Membership', 'pt-session':'1-on-1 Session', comp:'Comp / Adjustment (credit)', adjustment:'Adjustment / Fee', package:'Session Package' };
+  const TYPE_LABELS = { membership:'Membership', 'pt-session':'1-on-1 Session', comp:'Comp / Adjustment (credit)', adjustment:'Adjustment / Fee', package:'Session Package', registration:'Registration' };
   const METHOD_LABELS = { cash:'Cash', card:'Card', transfer:'Bank Transfer', comp:'Comp / Waived' };
 
   /* ---------------- MEMBER ROSTER (reads the real Users CRUD store, same pattern as Schedule) ---------------- */
@@ -136,11 +136,10 @@
     if (window.BNB_USERS){ const n = window.BNB_USERS.getName(id); if (n) return n; }
     return 'Unknown Member';
   }
-  function money(n){
-    const v = Math.round((n||0) * 100) / 100;
-    const sign = v < 0 ? '-' : '';
-    return sign + '$' + Math.abs(v).toFixed(2);
-  }
+  // USD amounts, shown in the visitor's chosen currency (js/bells-n-barz-currency.js).
+  function money(n){ return BNB_CURRENCY.html(Math.round((n||0) * 100) / 100); }
+  // moneyText() is for textContent in staff forms, where amounts are typed in USD.
+  function moneyText(n){ return BNB_CURRENCY.formatUsd(Math.round((n||0) * 100) / 100); }
 
   /* ---------------- DERIVED CALCULATIONS ---------------- */
   function paidTowardInvoice(invId){
@@ -417,7 +416,7 @@
     if (!inv) return;
     const remaining = inv.amount - paidTowardInvoice(inv.id);
     document.getElementById('bill-pay-invoice-summary').textContent =
-      memberName(inv.userId) + ' — ' + (TYPE_LABELS[inv.type]||inv.type) + ' — ' + money(inv.amount) + ' invoice, ' + money(remaining) + ' remaining';
+      memberName(inv.userId) + ' — ' + (TYPE_LABELS[inv.type]||inv.type) + ' — ' + moneyText(inv.amount) + ' invoice, ' + moneyText(remaining) + ' remaining';
     document.getElementById('bill-pay-amount').value = remaining > 0 ? remaining : '';
     document.getElementById('bill-pay-date').value = TODAY;
     document.getElementById('bill-pay-method').value = 'cash';

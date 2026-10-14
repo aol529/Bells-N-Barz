@@ -227,6 +227,10 @@
       <button class="outer-link" data-site="about">About</button>
       <button class="outer-link" data-site="contacts">Contacts</button>
     </nav>
+    <div class="cur-switch" id="cur-switch" role="group" aria-label="Show prices in">
+      <button type="button" data-cur="USD">USD</button>
+      <button type="button" data-cur="KES">KES</button>
+    </div>
     <button class="outer-nav-toggle" id="outer-nav-toggle" aria-label="Menu" type="button">☰</button>
   </div>
 </header>
@@ -749,7 +753,7 @@
     </div>
     <div class="field-row2">
       <div class="field" id="shop-f-price-wrap">
-        <label>Price</label>
+        <label>Price (USD)</label>
         <input type="number" min="0" step="0.01" id="shop-f-price" placeholder="0.00">
       </div>
       <div class="field" id="shop-f-stock-wrap">
@@ -929,6 +933,7 @@
           </div>
         </div>
       </div>
+      <div class="field-hint" style="margin-bottom:10px;">Joining has a one-time registration fee of <b><span data-usd="0.5">$0.50</span></b>. It's added to your account as an invoice; pay at the front desk.</div>
       <div class="field-hint" id="usr-su-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
       <div class="save-row">
         <button class="btn2 primary" id="usr-signup-btn">Create Account</button>
@@ -2985,8 +2990,9 @@
             <option value="pt-session">1-on-1 Session</option>
             <option value="comp">Comp / Adjustment (credit)</option>
             <option value="adjustment">Adjustment / Fee</option>
+            <option value="registration">Registration</option>
           </select></div>
-          <div class="field"><label>Amount</label><input type="number" min="0" step="0.01" id="bill-inv-amount" placeholder="0.00"></div>
+          <div class="field"><label>Amount (USD)</label><input type="number" min="0" step="0.01" id="bill-inv-amount" placeholder="0.00"></div>
         </div>
         <div class="field-row2">
           <div class="field"><label>Issued date</label><input type="date" id="bill-inv-issued"></div>
@@ -3005,7 +3011,7 @@
         <h2>Log Payment</h2>
         <div id="bill-pay-invoice-summary" class="field-hint" style="margin-bottom:14px;"></div>
         <div class="field-row2">
-          <div class="field"><label>Amount</label><input type="number" min="0" step="0.01" id="bill-pay-amount" placeholder="0.00"></div>
+          <div class="field"><label>Amount (USD)</label><input type="number" min="0" step="0.01" id="bill-pay-amount" placeholder="0.00"></div>
           <div class="field"><label>Date</label><input type="date" id="bill-pay-date"></div>
         </div>
         <div class="field"><label>Method</label><select id="bill-pay-method">
@@ -3761,6 +3767,7 @@
 </footer>
 </section>
 <!-- ============= end #site-gym ============= -->
+<script src="js/bells-n-barz-currency.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-users.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-shell.js?v=__BUILD__"></script>
 <script>

@@ -85,7 +85,10 @@
     getById: function(id){ return products.find(function(p){ return p.id===id; }); }
   };
 
-  function money(n){ return '$' + Number(n||0).toFixed(2).replace(/\.00$/, ''); }
+  // USD prices, shown in the visitor's chosen currency (js/bells-n-barz-currency.js).
+  // money() is HTML; moneyText() is for textContent.
+  function money(n){ return BNB_CURRENCY.html(n, { short:true }); }
+  function moneyText(n){ return BNB_CURRENCY.format(n, { short:true }); }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   let shopToastTimer = null;
@@ -294,9 +297,13 @@
 
   let orderPanelProduct = null;
 
+  function renderOrderSummary(){
+    const p = orderPanelProduct;
+    document.getElementById('shop-order-product-summary').textContent = p.name + ' — ' + moneyText(p.price) + ' each';
+  }
   function openOrderPanel(p){
     orderPanelProduct = p;
-    document.getElementById('shop-order-product-summary').textContent = p.name + ' — ' + money(p.price) + ' each';
+    renderOrderSummary();
     document.getElementById('shop-order-name').value = '';
     document.getElementById('shop-order-email').value = '';
     document.getElementById('shop-order-address').value = '';
@@ -311,9 +318,14 @@
   function updateOrderTotal(){
     if (!orderPanelProduct) return;
     const qty = Math.max(1, Number(document.getElementById('shop-order-qty').value) || 1);
-    document.getElementById('shop-order-total').textContent = money(orderPanelProduct.price * qty);
+    document.getElementById('shop-order-total').textContent = moneyText(orderPanelProduct.price * qty);
   }
   document.getElementById('shop-order-qty').addEventListener('input', updateOrderTotal);
+  // USD/KES switch flipped while a checkout panel is open.
+  document.addEventListener('bnb-currency-change', ()=>{
+    if (orderPanelProduct){ renderOrderSummary(); updateOrderTotal(); }
+    if (pkgPanelProduct) renderPackageSummary();
+  });
   document.getElementById('shop-order-cancel').addEventListener('click', closeOrderPanel);
   document.getElementById('shop-order-panel-backdrop').addEventListener('click', function(e){ if (e.target.id==='shop-order-panel-backdrop') closeOrderPanel(); });
 
@@ -360,9 +372,13 @@
   /* ---------------- PACKAGE CHECKOUT (session credits) ---------------- */
   let pkgPanelProduct = null;
 
+  function renderPackageSummary(){
+    const p = pkgPanelProduct;
+    document.getElementById('shop-pkg-summary').textContent = p.name + ' — ' + moneyText(p.price) + ' (' + p.credits + ' credits)';
+  }
   function openPackagePanel(p){
     pkgPanelProduct = p;
-    document.getElementById('shop-pkg-summary').textContent = p.name + ' — ' + money(p.price) + ' (' + p.credits + ' credits)';
+    renderPackageSummary();
     document.getElementById('shop-pkg-name').value = '';
     document.getElementById('shop-pkg-email').value = '';
     document.getElementById('shop-pkg-phone').value = '';

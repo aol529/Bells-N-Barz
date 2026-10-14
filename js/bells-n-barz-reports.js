@@ -11,11 +11,8 @@
   })();
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function money(n){
-    const v = Math.round((n||0) * 100) / 100;
-    const sign = v < 0 ? '-' : '';
-    return sign + '$' + Math.abs(v).toFixed(2);
-  }
+  // USD amounts, shown in the visitor's chosen currency (js/bells-n-barz-currency.js).
+  function money(n){ return BNB_CURRENCY.html(Math.round((n||0) * 100) / 100); }
   function daysBetween(d1, d2){
     const a = new Date(d1 + 'T00:00:00'), b = new Date(d2 + 'T00:00:00');
     return Math.round((a - b) / 86400000);
@@ -114,7 +111,7 @@
     const [y,m] = key.split('-');
     return new Date(Number(y), Number(m)-1, 1).toLocaleDateString(undefined, {month:'short'});
   }
-  const TYPE_LABELS = { membership:'Membership', 'pt-session':'1-on-1 Session', comp:'Comp / Adjustment', adjustment:'Adjustment / Fee', package:'Session Package' };
+  const TYPE_LABELS = { membership:'Membership', 'pt-session':'1-on-1 Session', comp:'Comp / Adjustment', adjustment:'Adjustment / Fee', package:'Session Package', registration:'Registration' };
 
   function revenueSectionHtml(invoices, payments){
     const monthKeys = last6MonthKeys();
