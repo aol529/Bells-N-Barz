@@ -2136,7 +2136,9 @@
 
   async function refreshMlsStoreFromSupabase(){
     const owner = mlsSignedInMember();
-    if (!owner) return; // nothing to load until someone is signed in
+    // Nothing to load until someone is signed in — and not for a seed
+    // placeholder ('u1') still standing in before the real users load.
+    if (!owner || String(owner.id).length !== 36) return;
     const { data, error } = await bnbClient.from('mls_live_store').select('*').eq('owner_id', owner.id);
     if (error) { console.error('Supabase load mls_live_store failed:', error); return; }
     if (isMlsPending()){
@@ -2180,6 +2182,10 @@
   }
   let mlsStore = loadMlsStore();
   refreshMlsStoreFromSupabase(); // async — reconciles with the server once it responds
+  // That first call usually runs before the Supabase session is restored
+  // and fails; try again once sign-in has finished (and on every later
+  // sign-in), same as the program (refreshProgramFromSupabase).
+  document.addEventListener('bnb-auth-changed', e => { if (e.detail && e.detail.signedIn) refreshMlsStoreFromSupabase(); });
   function mlsKey(...rest){ return rest.join(':'); }
 
   /* One-time migration: LOGSHEET used to be a separate tab/store with the
