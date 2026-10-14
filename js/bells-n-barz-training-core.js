@@ -3121,6 +3121,34 @@
     renderCoachWorkouts();
     showToast('Updated "' + label + '"');
   }
+  // The whole day as one new workout: every block's exercises in order,
+  // as a single version (a version is one complete workout; blocks are
+  // parts of it). Named for the day and whose program it is.
+  async function saveDayAsWorkout(btn){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me){ showToast('Sign in to save workouts.'); return; }
+    const blocks = adminProgramData[adminDay] || [];
+    const exercises = blocks.flatMap(blockAsVariantExercises);
+    const dayName = DAY_META[adminDay].title.split('—')[0].trim();
+    if (!exercises.length){ showToast('Nothing on ' + dayName + ' to save yet.'); return; }
+    const picker = document.getElementById('admin-client-picker');
+    const who = adminOwnerId === me.id ? 'My program' : (picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent : 'Client');
+    const title = dayName + ' — ' + who;
+    if (!confirm('Save ' + dayName + '\u2019s ' + blocks.length + ' block' + (blocks.length === 1 ? '' : 's') + ' (' + exercises.length + ' exercise' + (exercises.length === 1 ? '' : 's') + ') to Workouts to Try as "' + title + '"?')) return;
+    const variants = [{ name: 'Workout', exercises }];
+    btn.disabled = true;
+    const { error } = await bnbClient.from('coach_workouts').insert([{
+      owner_id: me.id, title, variants, source: workoutVariantsToText(variants), updated_at: new Date().toISOString()
+    }]);
+    btn.disabled = false;
+    if (error){ console.error('Supabase insert coach_workouts failed:', error); showToast('Couldn\u2019t save — ' + (error.message || 'try again')); return; }
+    await refreshCoachWorkouts();
+    fillAdminLoadWorkout();
+    renderCoachWorkouts();
+    showToast('Saved "' + title + '" to Workouts to Try');
+  }
+  { const b = document.getElementById('admin-save-day-workout'); if (b) b.onclick = ()=> saveDayAsWorkout(b); }
+
   async function saveBlockAsWorkout(block, btn){
     const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
     if (!me) return;
