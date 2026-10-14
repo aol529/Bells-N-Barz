@@ -8,16 +8,20 @@
   // To make a feature switchable:
   //   1. Add it to FEATURES below.
   //   2. Mark its markup with data-feature="<key>" — those elements are
-  //      hidden while it's off, including ones rendered later.
+  //      hidden while it's off, including ones rendered later. Markup with
+  //      data-feature-off="<key>" is the reverse: shown only while it's off.
   //   3. Where behaviour (not just markup) changes, check
   //      BNB_FEATURES.on('<key>') and listen for 'bnb-features-change'.
   //   4. If SQL does something for it, check feature_on('<key>') there.
-  // A feature with no row in the table counts as on.
+  // A feature with no row in the table counts as on, unless it says
+  // defaultOn: false (for features whose SQL may not have been run yet).
   const FEATURES = [
     { key: 'currency-switch', name: 'USD / KES price switch',
       desc: 'The USD | KES switch in the header. Off: the switch disappears and every price shows in US dollars.' },
     { key: 'registration-fee', name: 'Registration fee',
-      desc: 'New sign-ups get a one-time $0.50 Registration invoice, and the sign-up form mentions it. Off: no invoice, no mention.' }
+      desc: 'New sign-ups get a one-time $0.50 Registration invoice, and the sign-up form mentions it. Off: no invoice, no mention.' },
+    { key: 'forgot-password', name: 'Forgot password', defaultOn: false,
+      desc: 'Log In > "Forgot your password?": checks the email has an account, then offers a reset link, a one-time code, or asking an admin. Off: the link is replaced by "Ask at the front desk". Staff reset emails and admin temporary passwords work either way.' }
   ];
 
   const CACHE_KEY = 'bnb-features-v1';
@@ -31,15 +35,20 @@
   let loadError = '';
   const saving = {};
 
-  function on(key){ return state[key] !== false; }
+  function on(key){
+    if (key in state) return state[key] !== false;
+    const f = FEATURES.find(x => x.key === key);
+    return !(f && f.defaultOn === false);
+  }
 
   const styleEl = document.createElement('style');
   styleEl.id = 'bnb-feature-switches';
   document.head.appendChild(styleEl);
 
   function apply(){
-    styleEl.textContent = FEATURES.filter(f => !on(f.key))
-      .map(f => '[data-feature="' + f.key + '"]{display:none !important;}').join('\n');
+    styleEl.textContent = FEATURES.map(f => on(f.key)
+      ? '[data-feature-off="' + f.key + '"]{display:none !important;}'
+      : '[data-feature="' + f.key + '"]{display:none !important;}').join('\n');
     document.dispatchEvent(new CustomEvent('bnb-features-change'));
     render();
   }

@@ -835,25 +835,46 @@
         <button class="btn2 primary" id="usr-login-btn">Log In</button>
       </div>
       <div class="field-hint" style="margin-top:14px;">
-        <a href="#" id="usr-li-goto-forgot" style="color:var(--accent);">Forgot your password?</a>
+        <a href="#" id="usr-li-goto-forgot" data-feature="forgot-password" style="color:var(--accent);">Forgot your password?</a>
+        <span data-feature-off="forgot-password">Forgot your password? Ask at the front desk and staff will reset it.</span>
       </div>
       <div class="field-hint" style="margin-top:6px;">Don't have an account? <a href="#" id="usr-li-goto-signup" style="color:var(--accent);">Sign up</a> instead.</div>
     </div>
   </div>
 </section>
 
-<!-- ================= MEMBER: FORGOT PASSWORD (request reset link) ================= -->
+<!-- ================= MEMBER: FORGOT PASSWORD (behind the forgot-password switch) ================= -->
 <section class="view" id="usr-view-forgot">
   <div class="wrap">
-    <div class="admin-notice">Enter your account email — we'll send a link to reset your password.</div>
     <div class="profile-card" id="usr-forgot-card">
-      <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Reset Password</div>
-      <div class="field"><label>Email</label><input type="email" id="usr-fp-email" placeholder="you@example.com"></div>
-      <div class="field-hint" id="usr-fp-error" style="display:none;color:#e0736a;margin-bottom:10px;"></div>
-      <div class="field-hint" id="usr-fp-success" style="display:none;color:var(--accent);margin-bottom:10px;"></div>
-      <div class="save-row">
-        <button class="btn2 primary" id="usr-fp-send-btn">Send Reset Link</button>
+      <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Forgot Password</div>
+      <!-- Step 1: which account? -->
+      <div id="usr-fp-step-email">
+        <div class="field-hint" style="margin-bottom:12px;">Enter the email you signed up with.</div>
+        <div class="field"><label>Email</label><input type="email" id="usr-fp-email" placeholder="you@example.com" autocomplete="email"></div>
+        <div class="save-row">
+          <button class="btn2 primary" id="usr-fp-continue-btn">Continue</button>
+        </div>
       </div>
+      <!-- Step 2: how to get back in -->
+      <div id="usr-fp-step-options" style="display:none;">
+        <div class="field-hint" style="margin-bottom:12px;">Found your account, <b id="usr-fp-found-email"></b>. How would you like to get back in?</div>
+        <div class="fp-options">
+          <button type="button" class="fp-option" data-fp="link"><span class="fp-option-title">Email me a reset link</span><span class="fp-option-desc">Open the link and choose a new password.</span></button>
+          <button type="button" class="fp-option" data-fp="code"><span class="fp-option-title">Email me a one-time code</span><span class="fp-option-desc">Type the 6-digit code here to get in, then choose a new password.</span></button>
+          <button type="button" class="fp-option" data-fp="admin"><span class="fp-option-title">Ask an admin to reset it</span><span class="fp-option-desc">No email needed. An admin sets a temporary password and tells you.</span></button>
+        </div>
+        <!-- One-time code entry -->
+        <div id="usr-fp-code-wrap" style="display:none;margin-top:14px;">
+          <div class="field"><label>6-digit code</label><input type="text" id="usr-fp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div>
+          <div class="save-row">
+            <button class="btn2 primary" id="usr-fp-code-btn">Sign In With Code</button>
+          </div>
+        </div>
+        <div class="field-hint" style="margin-top:12px;"><a href="#" id="usr-fp-change-email" style="color:var(--accent);">Use a different email</a></div>
+      </div>
+      <div class="field-hint" id="usr-fp-error" style="display:none;color:#e0736a;margin:10px 0;"></div>
+      <div class="field-hint" id="usr-fp-success" style="display:none;color:var(--accent);margin:10px 0;"></div>
       <div class="field-hint" style="margin-top:14px;"><a href="#" id="usr-fp-goto-login" style="color:var(--accent);">Back to Log In</a></div>
     </div>
   </div>
@@ -862,7 +883,7 @@
 <!-- ================= MEMBER: SET NEW PASSWORD (landed on via emailed reset link) ================= -->
 <section class="view" id="usr-view-reset">
   <div class="wrap">
-    <div class="admin-notice">You followed a password reset link — choose a new password below.</div>
+    <div class="admin-notice" id="usr-rs-notice">You followed a password reset link — choose a new password below.</div>
     <div class="profile-card" id="usr-reset-card">
       <div class="fieldset-label" style="margin-top:0;padding-top:0;border-top:none;">Set New Password</div>
       <div class="field"><label>New Password</label>
@@ -3539,7 +3560,15 @@
         </div>
         <div class="field"><label>Avatar URL</label><input type="text" id="usr-f-avatar" placeholder="https://…"></div>
       </div>
-      <div class="field-hint">Account fields control login and permissions — separate from the member's own profile data. Passwords can't be set directly here — this sends the member a real reset link via Supabase Auth, the same flow they'd use themselves from the Log In screen.</div>
+      <div class="field" id="usr-f-temp-pw-wrap">
+        <label>Set temporary password (admins)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="usr-f-temp-pw" placeholder="At least 6 characters" autocomplete="off" style="flex:1;">
+          <button class="btn2" type="button" id="usr-f-temp-pw-btn">Set</button>
+        </div>
+        <div class="field-hint" id="usr-f-temp-pw-status" style="margin-top:6px;">For members who can't get emails. Tell them the password in person; they'll be asked to choose their own the next time they log in.</div>
+      </div>
+      <div class="field-hint">Account fields control login and permissions — separate from the member's own profile data. Send Password Reset Email sends the member a real reset link via Supabase Auth. Admins can instead set a temporary password, which the member must change at their next log-in.</div>
     </div>
 
     <!-- PROFILE TAB (mirrors what the member sees/edits) -->

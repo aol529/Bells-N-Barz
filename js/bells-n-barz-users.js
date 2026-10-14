@@ -227,7 +227,8 @@
       contractEnd: r.contract_end||'', balance: r.balance||0, comp: r.comp,
       lastCheckin: r.last_checkin||'', autoRenew: r.auto_renew, flag: r.flag,
       leadSource: r.lead_source, internalNotes: r.internal_notes, credits: r.credits||0,
-      archivedAt: ('archived_at' in r) ? r.archived_at : undefined
+      archivedAt: ('archived_at' in r) ? r.archived_at : undefined,
+      tempPassword: !!r.temp_password
     };
   }
 
@@ -654,6 +655,8 @@
   function routeAfterAuth(matched){
     const staff = ['admin','trainer','staff'];
     onAuthStateChanged();
+    // An admin set a temporary password (sql/76): choose a real one first.
+    if (matched.tempPassword){ openReset('temp'); return; }
     if (typeof window.switchSite === 'function') window.switchSite('gym');
     if (typeof window.switchTab === 'function'){
       const isStaff = matched.roles && matched.roles.some(r => staff.includes(r));
@@ -775,41 +778,123 @@
   });
 
   /* ================= MEMBER: FORGOT / RESET PASSWORD ================= */
+  // Behind the 'forgot-password' switch (Admin > Switchboard). Step 1
+  // checks the email has an account (password_help_lookup, sql/76); step 2
+  // offers an emailed reset link, an emailed one-time code, or asking the
+  // admins (who answer with Set temporary password in Admin > Users).
+  const RESET_NOTICES = {
+    link: 'You followed a password reset link — choose a new password below.',
+    code: "You're signed in with your one-time code — choose a new password below.",
+    temp: 'Your password was reset by staff — choose your own new password below.'
+  };
+  // switchSite lives in shell.js, which loads after this file — a reset
+  // link is detected at startup, before it exists.
+  function showUsersSite(){
+    if (typeof window.switchSite === 'function'){ window.switchSite('users'); return; }
+    document.addEventListener('DOMContentLoaded', () => { if (window.switchSite) window.switchSite('users'); }, { once: true });
+  }
+  function openReset(reason){
+    document.getElementById('usr-rs-notice').textContent = RESET_NOTICES[reason] || RESET_NOTICES.link;
+    showUsersSite();
+    switchView('reset');
+  }
+
+  let fpEmail = '';
+  function fpMessage(kind, msg){
+    const errEl = document.getElementById('usr-fp-error');
+    const okEl = document.getElementById('usr-fp-success');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+    const el = kind === 'error' ? errEl : kind === 'ok' ? okEl : null;
+    if (el){ el.textContent = msg; el.style.display = 'block'; }
+  }
+  function fpShowStep(step){
+    document.getElementById('usr-fp-step-email').style.display = step === 'email' ? '' : 'none';
+    document.getElementById('usr-fp-step-options').style.display = step === 'options' ? '' : 'none';
+    document.getElementById('usr-fp-code-wrap').style.display = 'none';
+    document.getElementById('usr-fp-code').value = '';
+    fpMessage();
+  }
+  function openForgot(email, errorMsg){
+    document.getElementById('usr-fp-email').value = email || '';
+    fpShowStep('email');
+    if (errorMsg) fpMessage('error', errorMsg);
+    showUsersSite();
+    switchView('forgot');
+  }
+  async function fpBusy(btn, label, fn, labelEl){
+    const el = labelEl || btn;
+    const was = el.textContent;
+    btn.disabled = true; el.textContent = label;
+    try { return await fn(); } finally { btn.disabled = false; el.textContent = was; }
+  }
+
   document.getElementById('usr-li-goto-forgot').addEventListener('click', (e)=>{
     e.preventDefault();
-    switchView('forgot');
+    if (window.BNB_FEATURES && !window.BNB_FEATURES.on('forgot-password')) return;
+    openForgot(document.getElementById('usr-li-email') ? document.getElementById('usr-li-email').value.trim() : '');
   });
   document.getElementById('usr-fp-goto-login').addEventListener('click', (e)=>{
     e.preventDefault();
     switchView('login');
   });
-  document.getElementById('usr-fp-send-btn').addEventListener('click', async ()=>{
+  document.getElementById('usr-fp-change-email').addEventListener('click', (e)=>{
+    e.preventDefault();
+    fpShowStep('email');
+  });
+
+  document.getElementById('usr-fp-continue-btn').addEventListener('click', async (e)=>{
     const email = document.getElementById('usr-fp-email').value.trim();
-    const errEl = document.getElementById('usr-fp-error');
-    const okEl = document.getElementById('usr-fp-success');
-    errEl.style.display = 'none'; okEl.style.display = 'none';
+    if (!email){ fpMessage('error', 'Enter your email.'); return; }
+    fpMessage();
+    const { data, error } = await fpBusy(e.currentTarget, 'Checking…',
+      () => bnbClient.rpc('password_help_lookup', { p_email: email }));
+    if (error){ fpMessage('error', error.message || 'Could not check that email — try again.'); return; }
+    if (data === 'none'){ fpMessage('error', 'No account uses that email. Check the spelling, or sign up instead.'); return; }
+    if (data === 'archived'){ fpMessage('error', 'That account has been archived. Ask at the front desk to have it restored.'); return; }
+    fpEmail = email;
+    document.getElementById('usr-fp-found-email').textContent = email;
+    fpShowStep('options');
+  });
 
-    if (!email){ errEl.textContent = 'Enter your email.'; errEl.style.display = 'block'; return; }
-
-    const btn = document.getElementById('usr-fp-send-btn');
-    btn.disabled = true; btn.textContent = 'Sending…';
-
-    // redirectTo points back at this same page — Supabase appends a
-    // #access_token=...&type=recovery fragment, which we detect on load
-    // (see checkForPasswordRecovery below) to show the "set new password" view.
-    const { error } = await bnbClient.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname
+  document.querySelectorAll('#usr-fp-step-options .fp-option').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const how = btn.dataset.fp;
+      const redirectTo = window.location.origin + window.location.pathname;
+      fpMessage();
+      document.getElementById('usr-fp-code-wrap').style.display = 'none';
+      if (how === 'link'){
+        // Supabase appends #...type=recovery to redirectTo; see
+        // checkForPasswordRecovery below.
+        const { error } = await fpBusy(btn, 'Sending…',
+          () => bnbClient.auth.resetPasswordForEmail(fpEmail, { redirectTo }), btn.querySelector('.fp-option-title'));
+        if (error){ fpMessage('error', error.message || 'Could not send the email — try again, or ask an admin.'); return; }
+        fpMessage('ok', 'Reset link sent to ' + fpEmail + '. It can take a few minutes; check your spam folder too.');
+      } else if (how === 'code'){
+        // The code is in the email only if Supabase's Magic Link template
+        // includes {{ .Token }}; if it only has the link, following it lands
+        // on the reset view too (type=magiclink below).
+        const { error } = await fpBusy(btn, 'Sending…',
+          () => bnbClient.auth.signInWithOtp({ email: fpEmail, options: { shouldCreateUser: false, emailRedirectTo: redirectTo } }), btn.querySelector('.fp-option-title'));
+        if (error){ fpMessage('error', error.message || 'Could not send the code — try again, or ask an admin.'); return; }
+        document.getElementById('usr-fp-code-wrap').style.display = '';
+        document.getElementById('usr-fp-code').focus();
+        fpMessage('ok', 'Code sent to ' + fpEmail + '. It can take a few minutes; check your spam folder too.');
+      } else if (how === 'admin'){
+        const { error } = await fpBusy(btn, 'Sending…',
+          () => bnbClient.rpc('request_password_help', { p_email: fpEmail }), btn.querySelector('.fp-option-title'));
+        if (error){ fpMessage('error', error.message || 'Could not reach the admins — ask at the front desk.'); return; }
+        fpMessage('ok', "The admins have been told. One of them will set a temporary password and let you know — you'll choose your own when you log in with it.");
+      }
     });
+  });
 
-    btn.disabled = false; btn.textContent = 'Send Reset Link';
-
-    if (error){
-      errEl.textContent = error.message || 'Could not send reset email — try again.';
-      errEl.style.display = 'block';
-      return;
-    }
-    okEl.textContent = 'Check your email for a reset link.';
-    okEl.style.display = 'block';
+  document.getElementById('usr-fp-code-btn').addEventListener('click', async (e)=>{
+    const token = document.getElementById('usr-fp-code').value.replace(/\s/g, '');
+    if (!/^\d{6}$/.test(token)){ fpMessage('error', 'Enter the 6-digit code from the email.'); return; }
+    const { error } = await fpBusy(e.currentTarget, 'Checking…',
+      () => bnbClient.auth.verifyOtp({ email: fpEmail, token, type: 'email' }));
+    if (error){ fpMessage('error', error.message || 'That code didn\'t work — it may have expired. Send a new one.'); return; }
+    openReset('code');
   });
 
   /* ---- Admin: send a real password reset email for whichever member is
@@ -839,6 +924,29 @@
     statusEl.style.color = 'var(--accent)';
   });
 
+  /* ---- Admin: set a temporary password (sql/76 admin_set_temp_password)
+     for a member who can't get emails, e.g. after they asked for help
+     from the Forgot Password screen. They must change it at next log-in. ---- */
+  document.getElementById('usr-f-temp-pw-btn').addEventListener('click', async ()=>{
+    const pw = document.getElementById('usr-f-temp-pw').value;
+    const statusEl = document.getElementById('usr-f-temp-pw-status');
+    const u = users.find(x => x.id === editingId);
+    const fail = msg => { statusEl.textContent = msg; statusEl.style.color = '#e0736a'; };
+    if (!u){ fail('Save this member first.'); return; }
+    if (pw.length < 6){ fail('Password must be at least 6 characters.'); return; }
+
+    const btn = document.getElementById('usr-f-temp-pw-btn');
+    btn.disabled = true; btn.textContent = 'Setting…';
+    const { error } = await bnbClient.rpc('admin_set_temp_password', { p_user_id: u.id, p_password: pw });
+    btn.disabled = false; btn.textContent = 'Set';
+
+    if (error){ fail(error.message || 'Could not set the password — try again.'); return; }
+    u.tempPassword = true;
+    document.getElementById('usr-f-temp-pw').value = '';
+    statusEl.textContent = 'Temporary password set for ' + (u.fullName || u.email) + '. Tell them in person; they\'ll choose their own at next log-in.';
+    statusEl.style.color = 'var(--accent)';
+  });
+
   document.getElementById('usr-rs-save-btn').addEventListener('click', async ()=>{
     const p1 = document.getElementById('usr-rs-password').value;
     const p2 = document.getElementById('usr-rs-password2').value;
@@ -865,6 +973,10 @@
     document.getElementById('usr-rs-password2').value = '';
     showToast('Password updated.');
 
+    // No longer on an admin-set temporary password (sql/76).
+    await bnbClient.rpc('clear_temp_password');
+    users.filter(u => u.authId === data.user.id).forEach(u => { u.tempPassword = false; });
+
     // The recovery link already leaves us signed in — go straight to the
     // right landing view instead of asking for the new password again.
     const matched = await signInLocallyAs(data.user);
@@ -876,9 +988,21 @@
      #access_token=...&type=recovery to the URL after the emailed link is
      clicked) and land the user straight on the "set new password" view. */
   function checkForPasswordRecovery(){
-    if (window.location.hash.includes('type=recovery')){
-      switchSite('users');
-      switchView('reset');
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')){ openReset('link'); return true; }
+    // One-time code email followed as a link instead of typing the code.
+    if (hash.includes('type=magiclink')){ openReset('code'); return true; }
+    // Expired or already-used link: say so instead of silently landing home.
+    if (hash.includes('error_code=otp_expired') || (hash.includes('error=') && hash.includes('error_description='))){
+      history.replaceState(null, '', window.location.pathname);
+      const msg = 'That link has expired or was already used.';
+      if (window.BNB_FEATURES && window.BNB_FEATURES.on('forgot-password')){
+        openForgot('', msg + ' Enter your email to get a new one.');
+      } else {
+        showUsersSite();
+        switchView('login');
+        showLoginError(msg + ' Ask at the front desk for help.');
+      }
       return true;
     }
     return false;
@@ -1323,6 +1447,11 @@
     });
     document.getElementById('usr-f-status').value = u ? u.status : 'pending';
     document.getElementById('usr-f-password-reset-status').textContent = '';
+    const me = users.find(x => x.id === selfId);
+    document.getElementById('usr-f-temp-pw-wrap').style.display =
+      (u && u.authId && me && (me.roles || []).includes('admin')) ? '' : 'none';
+    document.getElementById('usr-f-temp-pw').value = '';
+    document.getElementById('usr-f-temp-pw-status').style.color = '';
     document.getElementById('usr-f-avatar').value = u ? u.avatar : '';
 
     document.getElementById('usr-f-dob').value = u ? u.dob : '';
