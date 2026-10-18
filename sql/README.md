@@ -434,7 +434,15 @@
     re-run. Until it's run, those two buttons say the upload failed;
     pasting an image link still works.
 
-73. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+73. **80-shop-admin-only.sql** — only admins can add, edit, hide or
+    delete Shop products (prices and stock are the owner's call).
+    Coaches and other staff still see every product and handle orders;
+    marking an order paid takes it out of stock through
+    `shop_take_stock()`, the one product change staff can still make.
+    Run after shop.sql and 41-coach-ratings.sql (needs `is_admin()`).
+    Safe to re-run.
+
+74. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

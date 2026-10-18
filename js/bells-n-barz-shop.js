@@ -426,8 +426,18 @@
     return active ? '<span class="status-pill active">Active</span>' : '<span class="status-pill hidden">Hidden</span>';
   }
 
+  // Products are admin-only (sql/80-shop-admin-only.sql); other staff see
+  // them and handle orders.
+  function isAdmin(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    return !!(me && me.roles && me.roles.includes('admin'));
+  }
+
   function renderAdminTable(){
     updateAdminCounts();
+    const admin = isAdmin();
+    document.getElementById('shop-admin-only-note').style.display = admin ? 'none' : '';
+    document.getElementById('shop-new-product-btn').style.display = admin ? '' : 'none';
     const tbody = document.getElementById('shop-admin-tbody');
     if (!products.length){
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px 0; color:var(--muted);">No products yet — add your first one above.</td></tr>';
@@ -443,9 +453,9 @@
         '<td class="mono">' + money(p.price) + '</td>' +
         '<td>' + secondary + '</td>' +
         '<td>' + statusPillHtml(p.active) + '</td>' +
-        '<td><div class="row-actions">' +
+        '<td><div class="row-actions">' + (admin ?
           '<button data-edit="' + p.id + '">Edit</button>' +
-          '<button data-del="' + p.id + '">Delete</button>' +
+          '<button data-del="' + p.id + '">Delete</button>' : '') +
         '</div></td>' +
       '</tr>';
     }).join('');
@@ -465,6 +475,7 @@
   document.getElementById('shop-f-type').addEventListener('change', syncFieldsForType);
 
   function openProductPanel(id){
+    if (!isAdmin()){ shopToast('Only admins can add or change products.'); return; }
     editingProductId = id || null;
     const p = id ? products.find(function(x){ return x.id===id; }) : null;
     document.getElementById('shop-panel-title').textContent = p ? 'Edit Product' : 'Add Product';
@@ -516,7 +527,7 @@
 
   function deleteProduct(id){
     const p = products.find(function(x){ return x.id===id; });
-    if (!p) return;
+    if (!p || !isAdmin()) return;
     if (!confirm('Delete "' + p.name + '"? This cannot be undone.')) return;
     products = products.filter(function(x){ return x.id !== id; });
     saveProducts();
@@ -573,11 +584,27 @@
   // Stock only decrements here — the moment payment is actually confirmed —
   // not when the order is first placed. Keeps an unpaid "reservation" from
   // blocking someone else from buying the last unit.
-  function markOrderPaid(id){
+  // Goes through shop_take_stock() so coaches (who can't edit products)
+  // can still mark orders paid.
+  async function takeStock(p, qty){
+    if (!(p.id && p.id.length === 36)){ p.stock = Math.max(0, Number(p.stock||0) - qty); return; }
+    const { data, error } = await bnbClient.rpc('shop_take_stock', { p_product: p.id, p_qty: qty });
+    if (error){
+      console.error('shop_take_stock failed:', error);
+      // Before sql/80-shop-admin-only.sql runs there's no function yet:
+      // an admin can still save the stock directly, as before.
+      if (isAdmin()){ p.stock = Math.max(0, Number(p.stock||0) - qty); saveProducts(); }
+      else shopToast('Order marked paid, but the stock could not be updated. Ask an admin to check it.');
+      return;
+    }
+    p.stock = data;
+    productsSync.reset(products.filter(x => x.id && x.id.length === 36).map(productToRow));
+  }
+  async function markOrderPaid(id){
     const o = orders.find(function(x){ return x.id===id; });
     if (!o) return;
     const p = products.find(function(x){ return x.id===o.productId; });
-    if (p){ p.stock = Math.max(0, Number(p.stock||0) - o.qty); saveProducts(); }
+    if (p && p.type !== 'package' && p.type !== 'digital') await takeStock(p, o.qty);
     o.status = 'paid';
     saveOrders();
     renderOrdersTable();

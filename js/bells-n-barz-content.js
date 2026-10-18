@@ -107,6 +107,9 @@
     const onSale = d.products.filter(p => p.active !== false);
     const lowStock = onSale.filter(p => p.type === 'merch' && p.stock != null && p.stock <= 3).length;
     const libraryOff = window.BNB_FEATURES && !window.BNB_FEATURES.on('library');
+    // Shop products are admin-only (sql/80-shop-admin-only.sql).
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const admin = !!(me && me.roles && me.roles.includes('admin'));
     const stat = (n, label, warn) => '<span class="ct-stat' + (warn ? ' warn' : '') + '"><b>' + n + '</b> ' + esc(label) + '</span>';
 
     let html = '';
@@ -132,8 +135,9 @@
       card('shop', '🛍️', 'Shop',
         stat(onSale.length, 'on sale') + (d.products.length - onSale.length ? stat(d.products.length - onSale.length, 'hidden') : '') +
           (lowStock ? stat(lowStock, 'low on stock', true) : ''),
-        'Session packages, merch, supplements and downloads, with prices and stock.',
-        [['+ Add product', 'add', true], ['All products', 'manage']]) +
+        admin ? 'Session packages, merch, supplements and downloads, with prices and stock.'
+          : 'Session packages, merch, supplements and downloads. Only admins can change products; you can see them and handle orders.',
+        admin ? [['+ Add product', 'add', true], ['All products', 'manage']] : [['Products and orders', 'manage']]) +
       '</div>';
 
     html += '<h3 class="ct-subhead">Drafts waiting</h3>';
