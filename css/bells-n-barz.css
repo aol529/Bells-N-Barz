@@ -3370,3 +3370,40 @@ body > *{flex-shrink:0;}
   .library-scope .field-row2{grid-template-columns:1fr;}
   .library-scope .admin-grid-table{display:block; overflow-x:auto;}
 }
+
+/* ---------- Meal Plan: upload a filled questionnaire PDF (from the sandbox) ---------- */
+.sched-scope .mp-import{background:var(--surface-2); border:1px dashed var(--line); padding:14px; margin-bottom:20px; border-radius:var(--radius); display:grid; gap:10px;}
+.sched-scope .mp-import-text{font-size:12.5px; color:var(--muted);}
+.sched-scope .mp-import-text b{color:var(--text);}
+.sched-scope .mp-import-btn{justify-self:start;}
+.sched-scope .mp-import-status{font-size:12.5px; color:var(--muted);}
+.sched-scope .mp-import-status:empty{display:none;}
+.sched-scope .mp-import-status b{color:var(--text);}
+.sched-scope .mp-import-status.ok{color:var(--text); border-left:3px solid var(--accent-3); padding-left:10px;}
+.sched-scope .mp-import-status.warn{color:#e0736a;}
+.sched-scope .mp-q.mp-imported{border-left:3px solid var(--accent-3); padding-left:10px;}
+.sched-scope .mp-day-grid .mp-input.mp-imported{box-shadow:inset 3px 0 0 var(--accent-3);}
+
+/* ---------- Download as PDF: a clean, light copy of a plan for printing ---------- */
+#mp-print{display:none;}
+@media print{
+  @page{margin:14mm;}
+  body.mp-printing{background:#fff !important; color:#111;}
+  body.mp-printing > :not(#mp-print){display:none !important;}
+  body.mp-printing #mp-print{display:block; font:10.5pt/1.45 'IBM Plex Sans',Arial,sans-serif; color:#111;}
+  #mp-print .pp-head{border-bottom:2px solid #111; padding-bottom:8px; margin-bottom:12px;}
+  #mp-print .pp-brand{font:600 9pt 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.08em; color:#8a6d1c;}
+  #mp-print h1{font:600 20pt 'Oswald',Arial,sans-serif; margin:2px 0; text-transform:uppercase; letter-spacing:.02em;}
+  #mp-print .pp-sub{color:#555;}
+  #mp-print .pp-note{border:1px solid #c9a227; background:#fdf6dd; padding:8px 10px; margin-bottom:12px;}
+  #mp-print .pp-targets{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px;}
+  #mp-print .pp-targets div{border:1px solid #bbb; padding:6px; text-align:center;}
+  #mp-print .pp-targets b{display:block; font:600 15pt 'Oswald',Arial,sans-serif;}
+  #mp-print .pp-targets span{font-size:8.5pt; text-transform:uppercase; color:#555;}
+  #mp-print .pp-block{break-inside:avoid; margin-bottom:12px;}
+  #mp-print h2{font:600 11.5pt 'Oswald',Arial,sans-serif; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #ccc; padding-bottom:2px; margin:0 0 5px;}
+  #mp-print ul{margin:0; padding-left:18px;}
+  #mp-print li{margin:2px 0;}
+  #mp-print p{margin:3px 0;}
+  #mp-print .pp-foot{margin-top:16px; font-size:8.5pt; color:#777;}
+}

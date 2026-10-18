@@ -43,11 +43,32 @@
     return { calories, protein_g: protein, carbs_g: carbs, fat_g: fat, maintenance: r50(maintenance), note };
   }
 
-  // Activity from Meal Plan questionnaire answers: workouts per week
-  // ("Gym 4x/week", "3 times a week"), bumped up for a physical job.
+  // Workouts a week from the questionnaire's exercise answer: "Monday
+  // Tuesday and Wednesday", "gym 4x a week", "twice a week", "Mon-Fri",
+  // "weekdays", "every day"; "twice a month" is under one. Same parser
+  // as the Meal Plan Sandbox's plan program.
+  const WORD_NUM = { once: 1, twice: 2, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
+  const DAY_NAME = /^(mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(r(s(day)?)?)?|fri(day)?|sat(urday)?|sun(day)?)s?$/;
+  function exerciseDays(ex){
+    ex = String(ex || '').trim().toLowerCase();
+    if (!ex || /^\s*(none|no|nothing|n\/a|not sure)\b/.test(ex)) return 0;
+    if (/every ?day|daily/.test(ex)) return 7;
+    const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const range = ex.match(/\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\s*(?:-|–|to|through|till)\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*/);
+    if (range) return (DAYS.indexOf(range[2]) - DAYS.indexOf(range[1]) + 7) % 7 + 1;
+    const named = new Set((ex.match(/\b[a-z]+\b/g) || []).filter(w => DAY_NAME.test(w)).map(w => w.slice(0, 3)));
+    if (/weekends?/.test(ex)) named.add('sat').add('sun');
+    if (named.size) return named.size;
+    const m = ex.match(/\b(\d+|one|two|three|four|five|six|seven)\s*(x|×|times?|days?|sessions?)|\b(once|twice)\b/);
+    const n = m ? WORD_NUM[m[3] || m[1]] || Number(m[1]) : 0;
+    if (n && /month/.test(ex)) return Math.round(n / 4.3);
+    return Math.min(7, n || (/weekdays/.test(ex) ? 5 : 2));
+  }
+
+  // Activity from Meal Plan questionnaire answers: workouts per week,
+  // bumped up for a physical job.
   function activityFromAnswers(a){
-    const exercise = String((a && a.exercise) || '');
-    const perWeek = Number((exercise.match(/(\d+)\s*(x|×|times|days|sessions)/i) || [])[1]) || (exercise.trim() ? 2 : 0);
+    const perWeek = exerciseDays(a && a.exercise);
     let factor = perWeek >= 6 ? 1.725 : perWeek >= 3 ? 1.55 : perWeek >= 1 ? 1.375 : 1.2;
     if (a && a.job_activity === 'Physically demanding') factor = Math.min(1.9, factor + 0.175);
     else if (a && a.job_activity === 'On my feet some of the day') factor = Math.max(factor, 1.375);
@@ -71,5 +92,5 @@
       { activity: act, goal: goalFromAnswers(a) });
   }
 
-  window.BNB_TARGETS = { bmr, calc, activityFromAnswers, goalFromAnswers, fromAnswers };
+  window.BNB_TARGETS = { bmr, calc, exerciseDays, activityFromAnswers, goalFromAnswers, fromAnswers };
 })();

@@ -11,7 +11,8 @@
      coach sees the member's last two weeks of Food Log in Check-ins.
 
      Also brought over from the Meal Plan Sandbox: the How it works page,
-     Try a diet (+ Coach > My diets). (AI suggestions were left out for
+     Try a diet (+ Coach > My diets), uploading the filled-in questionnaire
+     PDF and Download PDF. (AI suggestions were left out for
      now — the sandbox still has them.) Data goes through MP_STORE
      (js/bells-n-barz-mealplan-store.js); who sees what is enforced by
      RLS: the member, their assigned coach, and admins only.
@@ -161,6 +162,126 @@
     return a;
   }
 
+  /* ---------------- UPLOAD A FILLED QUESTIONNAIRE ----------------
+     Brought over from the Meal Plan Sandbox. The printable PDF
+     (docs/Meal_Plan_Questionnaire.pdf) is a fillable form: a copy filled
+     in on a phone or computer is read right here in the browser (pdf.js)
+     and its field names map to the questions. The sandbox can also read
+     handwriting with AI; that needs its server, so it's left out here.
+     The answers only go into the form — nothing is saved until the
+     member checks them and presses Send. */
+  const PDF_FIELDS = { age:'basics_1', height_cm:'basics_2', weight_kg:'basics_3', sex:'q2', job:'q3', goals:'q4', target:'q5',
+    job_activity:'q6', exercise:'q7', conditions:'q8', medications:'q9', pregnant:'q10', allergies:'q11', digestion:'q12',
+    eating_disorder:'q13', diet:'q14', loves:'q15', dislikes:'q16', drinks:'q17', meals_per_day:'q18', cooking_skill:'q19',
+    cook_time:'q20', meal_prep:'q21', budget:'q22', household:'q23', eat_out:'q24', anything_else:'q25' };
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  let pdfjsLoading = null;
+  function loadPdfJs(){
+    if (!pdfjsLoading) pdfjsLoading = new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = PDFJS + 'pdf.min.js';
+      s.onload = ()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js'; resolve(window.pdfjsLib); };
+      s.onerror = ()=>{ pdfjsLoading = null; reject(new Error('Couldn’t load the PDF reader — check your internet connection.')); };
+      document.head.appendChild(s);
+    });
+    return pdfjsLoading;
+  }
+  const fieldOrder = (a, b)=> parseInt(a.split('_')[1], 10) - parseInt(b.split('_')[1], 10);
+
+  // The answers typed into the fillable PDF. found = how many questions had one.
+  async function pdfFormAnswers(file){
+    const lib = await loadPdfJs();
+    const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const fields = (await doc.getFieldObjects()) || {};
+    const names = Object.keys(fields);
+    const val = name => { const f = name && fields[name]; return f && f[0] && f[0].value != null ? String(f[0].value).trim() : ''; };
+    const ticked = name => { const v = val(name); return v !== '' && v !== 'Off' && v !== 'false'; };
+    const a = {};
+    let found = 0;
+    QUESTIONS.forEach(q=>{
+      const key = q.id && PDF_FIELDS[q.id];
+      if (!key) return;
+      if (q.type === 'checks' || q.type === 'radio'){
+        // One tick box per option (q4_6, q4_7…), in the same order as q.options.
+        const boxes = names.filter(n=> n.indexOf(key + '_') === 0).sort(fieldOrder);
+        const chosen = q.options.filter((opt, i)=> ticked(boxes[i]));
+        if (chosen.length){ a[q.id] = q.type === 'checks' ? chosen : chosen[0]; found++; }
+      } else {
+        let v = val(key);
+        if (q.type === 'number') v = parseFloat(v.replace(',', '.')) || '';
+        if (v !== ''){ a[q.id] = v; found++; }
+      }
+    });
+    // A typical day: time_46 + food_47, time_48 + food_49… one pair per meal, in order.
+    const times = names.filter(n=> /^time_\d+$/.test(n)).sort(fieldOrder);
+    const foods = names.filter(n=> /^food_\d+$/.test(n)).sort(fieldOrder);
+    const day = {};
+    TYPICAL_DAY_ROWS.forEach((row, i)=>{
+      const time = val(times[i]), what = val(foods[i]);
+      if (time || what) day[row] = { time, what };
+    });
+    if (Object.keys(day).length){ a.typical_day = day; found++; }
+    return { answers: a, found, isForm: names.length > 0 };
+  }
+
+  // Replaces the form with the uploaded questionnaire and marks what it
+  // filled in. A question left blank in the file is cleared, so nothing
+  // from earlier answers (or someone else's) is mixed in.
+  function fillQuestionnaire(form, a){
+    form.querySelectorAll('.mp-imported').forEach(el=> el.classList.remove('mp-imported'));
+    QUESTIONS.forEach(q=>{
+      if (!q.id) return;
+      if (q.type === 'day'){
+        const day = a.typical_day || {};
+        TYPICAL_DAY_ROWS.forEach((row, i)=>{
+          const v = day[row] || {};
+          ['time', 'what'].forEach(part=>{
+            const el = form.querySelector('[data-day-row="' + i + '"][data-day-part="' + part + '"]');
+            el.value = v[part] || '';
+            if (v[part]) el.classList.add('mp-imported');
+          });
+        });
+        return;
+      }
+      const field = form.querySelector('[name="' + q.id + '"]');
+      const has = q.id in a;
+      if (q.type === 'checks' || q.type === 'radio'){
+        const chosen = !has ? [] : q.type === 'checks' ? a[q.id] : [a[q.id]];
+        form.querySelectorAll('input[name="' + q.id + '"]').forEach(el=>{ el.checked = chosen.indexOf(el.value) !== -1; });
+      } else field.value = has ? a[q.id] : '';
+      if (has) field.closest('.mp-q').classList.add('mp-imported');
+    });
+  }
+
+  function importBoxHtml(){
+    return '<div class="mp-import">' +
+      '<div class="mp-import-text"><b>Filled in the questionnaire PDF already?</b> Upload it and your answers drop into the form below.</div>' +
+      '<label class="btn2 mp-import-btn">Upload the PDF<input type="file" id="mp-import-file" accept="application/pdf" hidden></label>' +
+      '<div class="mp-import-status" id="mp-import-status" aria-live="polite"></div></div>';
+  }
+
+  function wireImport(form){
+    const input = document.getElementById('mp-import-file'), status = document.getElementById('mp-import-status');
+    const say = (html, tone)=>{ status.className = 'mp-import-status' + (tone ? ' ' + tone : ''); status.innerHTML = html; };
+    input.addEventListener('change', async ()=>{
+      const file = input.files && input.files[0];
+      input.value = '';
+      if (!file) return;
+      if (file.type !== 'application/pdf'){ say('That isn\u2019t a PDF — upload the filled-in questionnaire PDF.', 'warn'); return; }
+      say('Reading ' + esc(file.name) + '…');
+      try {
+        const r = await pdfFormAnswers(file);
+        if (!r.found){
+          say(r.isForm ? 'This PDF has no typed answers in it. Filled in by hand? Type the answers in below.'
+            : 'This PDF is a scan, not the fillable questionnaire — type the answers in below.', 'warn');
+          return;
+        }
+        fillQuestionnaire(form, r.answers);
+        say('Filled in <b>' + r.found + '</b> answer' + (r.found === 1 ? '' : 's') + ' from ' + esc(file.name) + '. Check them — they\u2019re marked in the form — then press <b>Send to my coach</b>.', 'ok');
+      } catch (err){ say(esc(err.message || 'Couldn\u2019t open that PDF.'), 'warn'); }
+    });
+  }
+
   // Read-only answers, for the coach (and the member's own "your answers").
   function answersHtml(a){
     let n = 0, html = '<div class="mp-answers">';
@@ -201,6 +322,45 @@
   ];
 
   function lines(s){ return String(s || '').split('\n').map(x=>x.trim()).filter(Boolean); }
+
+  /* ---------------- DOWNLOAD AS PDF ----------------
+     A clean, light copy of a plan for the browser's print box, where
+     "Save as PDF" downloads it (phones too). Only #mp-print shows while
+     printing (see "Download as PDF" in css/bells-n-barz.css); the page
+     title becomes the PDF's file name. Brought over from the sandbox;
+     targets here are { calories, protein_g, carbs_g, fat_g }. */
+  function printPlan(o){
+    let box = document.getElementById('mp-print');
+    if (!box){ box = document.createElement('div'); box.id = 'mp-print'; document.body.appendChild(box); }
+    const t = o.targets;
+    let html = '<div class="pp-head"><div class="pp-brand">Meal Plan</div><h1>' + esc(o.who) + '</h1>' +
+      '<div class="pp-sub">' + esc(o.kind) + ' · ' + esc(o.date) + '</div></div>';
+    if (o.referral) html += '<div class="pp-note">' + esc(o.referral) + '</div>';
+    const g = v => v != null && v !== '' ? v + ' g' : '—';
+    if (t && t.calories) html += '<div class="pp-targets">' +
+      [[t.calories, 'kcal a day'], [g(t.protein_g), 'protein'], [g(t.carbs_g), 'carbs'], [g(t.fat_g), 'fat']]
+        .map(x=> '<div><b>' + esc(x[0]) + '</b><span>' + x[1] + '</span></div>').join('') + '</div>';
+    PLAN_FIELDS.forEach(f=>{
+      const v = (o.content || {})[f.id];
+      if (!v || !String(v).trim()) return;
+      html += '<section class="pp-block"><h2>' + esc(f.label) + '</h2>';
+      if (f.list) html += '<ul>' + lines(v).map(x=> '<li>' + esc(x) + '</li>').join('') + '</ul>';
+      else if (f.grocery) html += lines(v).map(line=>{
+        const i = line.indexOf(':');
+        return '<p>' + (i > 0 ? '<b>' + esc(line.slice(0, i)) + ':</b> ' + esc(line.slice(i + 1).trim()) : esc(line)) + '</p>';
+      }).join('');
+      else html += '<p>' + esc(v).replace(/\n/g, '<br>') + '</p>';
+      html += '</section>';
+    });
+    html += '<div class="pp-foot">Printed ' + fmtDate(new Date().toISOString()) + '</div>';
+    box.innerHTML = html;
+    const title = document.title;
+    document.title = 'Meal plan - ' + o.who + ' - ' + o.date;
+    document.body.classList.add('mp-printing');
+    const done = ()=>{ document.body.classList.remove('mp-printing'); document.title = title; window.removeEventListener('afterprint', done); };
+    window.addEventListener('afterprint', done);
+    window.print();
+  }
 
   // opts.collapsible: each block becomes a <details>, closed by default,
   // whose summary shows the title, item count and a one-line preview —
@@ -379,7 +539,7 @@
         '<p>Only your coach and the gym admin can see your answers. Prefer paper? <a href="docs/Meal_Plan_Questionnaire.pdf" target="_blank" rel="noopener">Download the printable questionnaire</a>.</p>') +
 
       step(2, 'We estimate how much energy you need',
-        '<p>Your coach starts from a standard formula (Mifflin-St Jeor) that uses your weight, height, age and sex to estimate what your body burns at rest, then multiplies it by how active you are — from 1.2 if you mostly sit, up to 1.725 if you\u2019re very active.</p>' +
+        '<p>Your coach starts from a standard formula (Mifflin-St Jeor) that uses your weight, height, age and sex to estimate what your body burns at rest, then multiplies it by how active you are — from 1.2 if you mostly sit, up to 1.9 if you train most days and have a physical job.</p>' +
         '<p>Then it\u2019s adjusted for your goal: about 300–500 kcal less a day for gradual fat loss, or 200–300 kcal more for building muscle. ' +
         'These are estimates. <b>How your body actually responds over 2–3 weeks matters more than the formula</b>, which is why step 7 exists.</p>' +
         yourNumbersHtml(answers)) +
@@ -523,8 +683,7 @@
     const showDiets = !!(window.MP_DIETS && window.MP_DIETS.visibleTo(me).length);
     if (memberPage === 'diets' && !showDiets) memberPage = 'coach';
     const pageTabs = '<div class="sched-sub mp-page-tabs">' +
-      (d.intake ? '<button type="button" data-mp-page="coach" class="' + (memberPage === 'coach' ? 'active' : '') + '">Coach\u2019s plan</button>' +
-        '' : '') +
+      '<button type="button" data-mp-page="coach" class="' + (memberPage === 'coach' ? 'active' : '') + '">' + (d.intake ? 'Coach\u2019s plan' : 'Questionnaire') + '</button>' +
       '<button type="button" data-mp-page="how" class="' + (memberPage === 'how' ? 'active' : '') + '">How it works</button>' +
       '<button type="button" data-mp-page="shop" class="' + (memberPage === 'shop' ? 'active' : '') + '">Shopping</button>' +
       (showDiets ? '<button type="button" data-mp-page="diets" class="' + (memberPage === 'diets' ? 'active' : '') + '">Try a diet</button>' : '') + '</div>';
@@ -649,14 +808,15 @@
         height_cm: (d.goals && d.goals.height_cm) || me.height || '',
         weight_kg: (d.goals && d.goals.weight_kg) || me.weight || ''
       };
-      memberBody.innerHTML = head + (d.intake ? '' : pageTabs) +
-        '<div class="day-focus">' + (d.intake ? 'Update your answers' : 'Step 1 — tell your coach about you') + '</div>' +
+      memberBody.innerHTML = head + pageTabs +
+        '<div class="day-focus">' + (d.intake ? (d.plan ? 'Update your answers' : 'Step 1 — change your answers') : 'Step 1 — tell your coach about you') + '</div>' +
         '<div class="admin-notice">Fill in as much as you can. Your answers help your coach build a plan that fits your goals, tastes and daily routine. Only your coach and the gym admin can see them.' +
         (me.trainerId ? ' Your coach: <b>' + esc(nameOf(me.trainerId)) + '</b>.' : ' <b>You don’t have a coach assigned yet</b> — until then it goes to the admin.') + '</div>' +
-        questionnaireFormHtml(prefill) +
+        importBoxHtml() + questionnaireFormHtml(prefill) +
         (d.intake ? '<div class="mp-actions"><button type="button" class="btn2" id="mp-cancel-edit">Cancel</button></div>' : '');
       wirePageTabs();
       const form = document.getElementById('mp-intake-form');
+      wireImport(form);
       form.addEventListener('submit', async (e)=>{
         e.preventDefault();
         const btn = form.querySelector('button[type=submit]');
@@ -681,9 +841,11 @@
 
     if (!d.plan){
       html += '<div class="day-focus">Step 2 — your coach is building your plan</div>' +
-        '<div class="empty-msg">Your answers are with your coach (sent ' + fmtDate(d.intake.submitted_at) + '). You’ll get a notification when your plan is ready.</div>';
+        '<div class="empty-msg">Your answers are with your coach (sent ' + fmtDate(d.intake.submitted_at) + '). You’ll get a notification when your plan is ready.' +
+        '<div class="mp-actions" style="justify-content:center;"><button type="button" class="btn2" id="mp-back-step1">← Back to step 1: change my answers</button></div></div>';
     } else {
       html += '<div class="day-focus">Your plan · updated ' + fmtDate(d.plan.updated_at) + (d.plan.coach_id ? ' by ' + esc(nameOf(d.plan.coach_id)) : '') + '</div>' +
+        '<div class="mp-actions mp-ai-top-actions"><button type="button" class="btn2" id="mp-plan-pdf">Download PDF</button></div>' +
         '<div class="mp-sub-head">Daily targets</div>' + targetsHtml(d, false) +
         planViewHtml(d.plan);
 
@@ -701,7 +863,14 @@
     memberBody.innerHTML = html;
 
     wirePageTabs();
-    document.getElementById('mp-edit-intake').addEventListener('click', ()=>{ memberMode = 'edit'; renderMember(); });
+    // Scoped lookups: Me and Coach are both on the page, each can have one.
+    const planPdf = memberBody.querySelector('#mp-plan-pdf');
+    if (planPdf) planPdf.addEventListener('click', ()=> printPlan({ who: nameOf(me.id),
+      kind: 'Coach\u2019s plan' + (d.plan.coach_id ? ' by ' + nameOf(d.plan.coach_id) : ''), date: fmtDate(d.plan.updated_at), targets: planTargets(d), content: d.plan.content }));
+    const toStep1 = ()=>{ memberMode = 'edit'; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    document.getElementById('mp-edit-intake').addEventListener('click', toStep1);
+    const back = document.getElementById('mp-back-step1');
+    if (back) back.addEventListener('click', toStep1);
     const ciForm = document.getElementById('mp-checkin-form');
     if (ciForm) ciForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
@@ -846,6 +1015,7 @@
           '<div class="field-hint mp-q-hint">' + esc(f.hint) + '</div>' +
           '<textarea class="mp-input" id="mp-p-' + f.id + '" name="' + f.id + '" rows="' + f.rows + '">' + esc(c[f.id]) + '</textarea></div>').join('') + '</div>' +
         '<div class="mp-actions"><button type="submit" class="btn2 primary">' + (d.plan ? 'Save & notify member' : 'Send plan to member') + '</button>' +
+        '<button type="button" class="btn2" id="mp-plan-pdf">Download PDF</button>' +
         (d.plan ? '<span class="field-hint">Last saved ' + fmtDate(d.plan.updated_at) + '</span>' : '') + '</div></form>';
     }
     el.innerHTML = html;
@@ -859,6 +1029,18 @@
         : { calories: d.goals.target_calories, protein_g: d.goals.target_protein_g, carbs_g: d.goals.target_carbs_g, fat_g: d.goals.target_fat_g };
       TARGET_FIELDS.forEach(f=>{ form.querySelector('[name="t-' + f.id + '"]').value = src[f.id]; });
     }));
+    // Prints the boxes as they are; "draft" when they differ from what was sent.
+    const planPdf = el.querySelector('#mp-plan-pdf');
+    if (planPdf) planPdf.addEventListener('click', ()=>{
+      const content = {}, targets = {};
+      PLAN_FIELDS.forEach(f=>{ content[f.id] = form.querySelector('[name="' + f.id + '"]').value.trim(); });
+      TARGET_FIELDS.forEach(f=>{ const v = form.querySelector('[name="t-' + f.id + '"]').value; targets[f.id] = v === '' ? null : Math.round(Number(v)); });
+      const sent = (d.plan && d.plan.content) || {}, sentT = sent.targets || {};
+      const saved = !!d.plan && PLAN_FIELDS.every(f=> (sent[f.id] || '').trim() === content[f.id]) && TARGET_FIELDS.every(f=> (sentT[f.id] == null ? null : sentT[f.id]) === targets[f.id]);
+      const t = targets.calories ? targets : planTargets({ goals: d.goals });
+      printPlan({ who: nameOf(memberId), kind: 'Coach\u2019s plan by ' + nameOf(S.me().id) + (saved ? '' : ' (draft, not sent yet)'),
+        date: fmtDate(saved ? d.plan.updated_at : new Date().toISOString()), targets: t, content });
+    });
     if (form) form.addEventListener('submit', async (e)=>{
       e.preventDefault();
       const content = {};
