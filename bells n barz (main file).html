@@ -168,7 +168,8 @@
     mealplanStore: { file: 'js/bells-n-barz-mealplan-store.js', deps: ['targets'] },
     diets:        { file: 'js/bells-n-barz-diets.js', deps: ['mealplanStore'] },
     dietCoachKa:  { file: 'js/bells-n-barz-diet-coach-ka.js', deps: ['diets'] },
-    mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa'] },
+    planProgram:  { file: 'js/bells-n-barz-plan-program.js', deps: ['targets'] },
+    mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa', 'planProgram'] },
     reports:      { file: 'js/bells-n-barz-reports.js' }
   };
   const BNB_MODULE_PROMISES = {};

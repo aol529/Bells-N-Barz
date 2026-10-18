@@ -12,8 +12,8 @@
 
      Also brought over from the Meal Plan Sandbox: the How it works page,
      Try a diet (+ Coach > My diets), uploading the filled-in questionnaire
-     PDF and Download PDF. (AI suggestions were left out for
-     now — the sandbox still has them.) Data goes through MP_STORE
+     PDF, Download PDF, and the Suggested plan (worked out by
+     js/bells-n-barz-plan-program.js, no AI). Data goes through MP_STORE
      (js/bells-n-barz-mealplan-store.js); who sees what is enforced by
      RLS: the member, their assigned coach, and admins only.
      ============================================================ */
@@ -332,7 +332,7 @@
   function printPlan(o){
     let box = document.getElementById('mp-print');
     if (!box){ box = document.createElement('div'); box.id = 'mp-print'; document.body.appendChild(box); }
-    const t = o.targets;
+    const t = o.targets, labels = o.labels || {};
     let html = '<div class="pp-head"><div class="pp-brand">Meal Plan</div><h1>' + esc(o.who) + '</h1>' +
       '<div class="pp-sub">' + esc(o.kind) + ' · ' + esc(o.date) + '</div></div>';
     if (o.referral) html += '<div class="pp-note">' + esc(o.referral) + '</div>';
@@ -343,7 +343,7 @@
     PLAN_FIELDS.forEach(f=>{
       const v = (o.content || {})[f.id];
       if (!v || !String(v).trim()) return;
-      html += '<section class="pp-block"><h2>' + esc(f.label) + '</h2>';
+      html += '<section class="pp-block"><h2>' + esc(labels[f.id] || f.label) + '</h2>';
       if (f.list) html += '<ul>' + lines(v).map(x=> '<li>' + esc(x) + '</li>').join('') + '</ul>';
       else if (f.grocery) html += lines(v).map(line=>{
         const i = line.indexOf(':');
@@ -352,6 +352,7 @@
       else html += '<p>' + esc(v).replace(/\n/g, '<br>') + '</p>';
       html += '</section>';
     });
+    if (o.rationale) html += '<section class="pp-block"><h2>How it was worked out</h2><p>' + esc(o.rationale) + '</p></section>';
     html += '<div class="pp-foot">Printed ' + fmtDate(new Date().toISOString()) + '</div>';
     box.innerHTML = html;
     const title = document.title;
@@ -367,6 +368,7 @@
   // used on the AI page, where the plan is long and is mostly skimmed.
   function planViewHtml(plan, opts){
     const collapsible = !!(opts && opts.collapsible);
+    const labels = (opts && opts.labels) || {};
     const c = plan.content || {};
     let html = '';
     PLAN_FIELDS.forEach(f=>{
@@ -375,10 +377,10 @@
       if (collapsible){
         const items = lines(v);
         const count = (f.list || f.grocery) ? ' <span class="mp-count">' + items.length + '</span>' : '';
-        html += '<details class="mp-plan-block mp-fold"><summary><span class="mp-fold-title">' + esc(f.label) + count + '</span>' +
+        html += '<details class="mp-plan-block mp-fold"><summary><span class="mp-fold-title">' + esc(labels[f.id] || f.label) + count + '</span>' +
           '<span class="mp-fold-preview">' + esc(items[0] || '') + '</span></summary>';
       } else {
-        html += '<div class="mp-plan-block"><h4>' + esc(f.label) + '</h4>';
+        html += '<div class="mp-plan-block"><h4>' + esc(labels[f.id] || f.label) + '</h4>';
       }
       if (f.list){
         html += '<ul>' + lines(v).map(x=> '<li>' + esc(x) + '</li>').join('') + '</ul>';
@@ -509,6 +511,77 @@
   }
 
   /* ============================================================
+     SUGGESTED PLAN
+     A second page next to the coach's plan, worked out in the browser by
+     js/bells-n-barz-plan-program.js from the questionnaire and check-in
+     weights (no AI, nothing saved — it's worked out again each time, so
+     new answers and check-ins show at once). The coach's plan stays the
+     one the member follows; the coach can copy this into the editor as a
+     starting point. From the Meal Plan Sandbox.
+     ============================================================ */
+  function suggestedPlan(d){
+    const strong = referralFlags(d.intake.answers).some(f=> f.strong);
+    return window.MP_PROGRAM.plan(d.intake.answers, d.checkins, { refer: strong ? REFER_NOTE : '' }).plan;
+  }
+  // The program's lists -> the plan editor's plain-text content shape.
+  function suggestedContent(p){
+    const join = a => (a || []).join('\n');
+    return {
+      pattern: p.pattern || '',
+      breakfasts: join(p.breakfasts), lunches: join(p.lunches), dinners: join(p.dinners),
+      snacks: join(p.snacks), swaps: join(p.swaps),
+      eating_out: p.eating_out || '',
+      grocery: (p.grocery || []).map(g=> g.category + ': ' + (g.items || []).join(', ')).join('\n'),
+      notes: p.notes || ''
+    };
+  }
+
+  function suggestedPageHtml(d, forCoach){
+    let p;
+    try { p = suggestedPlan(d); }
+    catch (err){ console.error(err); return '<div class="empty-msg">Couldn’t work out a suggested plan from these answers.</div>'; }
+    let html = '<div class="admin-notice mp-ai-note">' + (forCoach
+      ? 'Worked out by the app from this member’s questionnaire' + (d.checkins.length ? ' and check-ins' : '') + ', following the gym’s meal-plan guide (no AI). A starting point — <b>Copy into my plan</b> loads it into your editor so you can change anything before sending.'
+      : 'A suggested plan the app works out from your answers with the gym’s guide. <b>Your coach’s plan is the one to follow</b> — if something here looks useful, mention it to your coach.') + '</div>';
+    html += '<div class="day-focus">Suggested plan · from ' + (forCoach ? 'their' : 'your') + ' answers of ' + fmtDate(d.intake.updated_at) + '</div>';
+    html += '<div class="mp-actions mp-ai-top-actions">' + (forCoach ? '<button type="button" class="btn2 primary" data-sug-copy>Copy into my plan</button>' : '') +
+      '<button type="button" class="btn2" data-sug-pdf>Download PDF</button></div>';
+    if (p.referral_note) html += '<div class="admin-notice mp-refer">' + esc(p.referral_note) + '</div>';
+    const t = p.targets;
+    const cell = (v, unit, lbl) => '<div><span class="mp-t-num">' + esc(v) + unit + '</span><span class="mp-t-lbl">' + lbl + '</span></div>';
+    html += '<div class="mp-sub-head">Daily targets</div><div class="mp-targets">' + cell(t.calories, '', 'kcal / day') + cell(t.protein_g, 'g', 'protein') +
+      cell(t.carbs_g, 'g', 'carbs') + cell(t.fat_g, 'g', 'fat') + '</div>' +
+      '<div class="mp-fold-bar"><button type="button" class="btn2" data-fold-all>Expand all</button></div>' +
+      planViewHtml({ content: suggestedContent(p) }, { collapsible: true, labels: { notes: 'Notes' } });
+    if (p.rationale) html += '<details class="mp-plan-block mp-fold mp-rationale"><summary><span class="mp-fold-title">How it was worked out</span>' +
+      '<span class="mp-fold-preview">' + esc(p.rationale) + '</span></summary><p>' + esc(p.rationale) + '</p></details>';
+    return html;
+  }
+
+  // Wires Expand all / Download PDF / Copy inside a rendered suggested page.
+  function wireSuggested(container, memberId, d, onCopy){
+    const foldAll = container.querySelector('[data-fold-all]');
+    if (foldAll){
+      const folds = () => container.querySelectorAll('details.mp-fold');
+      const sync = () => { foldAll.textContent = [...folds()].every(x=> x.open) ? 'Collapse all' : 'Expand all'; };
+      foldAll.addEventListener('click', ()=>{
+        const open = foldAll.textContent === 'Expand all';
+        folds().forEach(x=> x.open = open);
+        sync();
+      });
+      folds().forEach(x=> x.addEventListener('toggle', sync));
+    }
+    const pdf = container.querySelector('[data-sug-pdf]');
+    if (pdf) pdf.addEventListener('click', ()=>{
+      const p = suggestedPlan(d);
+      printPlan({ who: nameOf(memberId), kind: 'Suggested plan', date: fmtDate(new Date().toISOString()), targets: p.targets,
+        content: suggestedContent(p), labels: { notes: 'Notes' }, referral: p.referral_note, rationale: onCopy ? p.rationale : '' });
+    });
+    const copy = container.querySelector('[data-sug-copy]');
+    if (copy && onCopy) copy.addEventListener('click', ()=> onCopy(suggestedPlan(d)));
+  }
+
+  /* ============================================================
      HOW IT WORKS (member-facing explanation)
      The gym's meal-plan guide (lappy/prof-meal-plan-Ndombii/
      Meal_Plan_Guide(1).docx) is written for coaches; this is the same
@@ -577,7 +650,8 @@
       '<div class="admin-notice mp-refer"><b>When a dietitian helps too.</b> If you have diabetes or kidney disease, are pregnant or breastfeeding, have had a difficult relationship with food, or take medication that diet can affect, your coach will suggest also working with a registered dietitian. ' +
       'You can still get help with general healthy-eating structure here — it\u2019s about getting you the right support, not turning you away.</div>' +
 
-''
+      '<div class="mp-plan-block"><h4>Your two pages</h4><p><b>Coach\u2019s plan</b> is the one to follow — written by your coach from these steps. ' +
+      '<b>Suggested plan</b> is a second opinion the app works out from the same answers with the same guide. If something there looks useful, mention it to your coach.</p></div>';
   }
 
   /* ============================================================
@@ -658,7 +732,7 @@
   /* ============================================================
      MEMBER VIEW
      ============================================================ */
-  let memberPage = 'coach'; // 'coach' | 'how' | 'shop' | 'diets' — which page
+  let memberPage = 'coach'; // 'coach' | 'ai' | 'how' | 'shop' | 'diets' — which page ('ai' = Suggested plan)
   let dietOpenId = null, dietVariantId = null; // Try a diet: which diet / option is open
   let memberViewerId = null;
   let memberMode = null; // null = auto, 'edit' = editing the questionnaire
@@ -682,8 +756,10 @@
     await S.loadDiets();
     const showDiets = !!(window.MP_DIETS && window.MP_DIETS.visibleTo(me).length);
     if (memberPage === 'diets' && !showDiets) memberPage = 'coach';
+    if (memberPage === 'ai' && !d.intake) memberPage = 'coach';
     const pageTabs = '<div class="sched-sub mp-page-tabs">' +
       '<button type="button" data-mp-page="coach" class="' + (memberPage === 'coach' ? 'active' : '') + '">' + (d.intake ? 'Coach\u2019s plan' : 'Questionnaire') + '</button>' +
+      (d.intake ? '<button type="button" data-mp-page="ai" class="' + (memberPage === 'ai' ? 'active' : '') + '">Suggested plan</button>' : '') +
       '<button type="button" data-mp-page="how" class="' + (memberPage === 'how' ? 'active' : '') + '">How it works</button>' +
       '<button type="button" data-mp-page="shop" class="' + (memberPage === 'shop' ? 'active' : '') + '">Shopping</button>' +
       (showDiets ? '<button type="button" data-mp-page="diets" class="' + (memberPage === 'diets' ? 'active' : '') + '">Try a diet</button>' : '') + '</div>';
@@ -839,7 +915,9 @@
     if (referralFlags(d.intake.answers).some(f=> f.strong)) html += '<div class="admin-notice mp-refer">' + REFER_NOTE + '</div>';
     html += pageTabs;
 
-    if (!d.plan){
+    if (memberPage === 'ai'){
+      html += suggestedPageHtml(d, false);
+    } else if (!d.plan){
       html += '<div class="day-focus">Step 2 — your coach is building your plan</div>' +
         '<div class="empty-msg">Your answers are with your coach (sent ' + fmtDate(d.intake.submitted_at) + '). You’ll get a notification when your plan is ready.' +
         '<div class="mp-actions" style="justify-content:center;"><button type="button" class="btn2" id="mp-back-step1">← Back to step 1: change my answers</button></div></div>';
@@ -863,9 +941,10 @@
     memberBody.innerHTML = html;
 
     wirePageTabs();
+    wireSuggested(memberBody, me.id, d);
     // Scoped lookups: Me and Coach are both on the page, each can have one.
     const planPdf = memberBody.querySelector('#mp-plan-pdf');
-    if (planPdf) planPdf.addEventListener('click', ()=> printPlan({ who: nameOf(me.id),
+    if (planPdf && d.plan) planPdf.addEventListener('click', ()=> printPlan({ who: nameOf(me.id),
       kind: 'Coach\u2019s plan' + (d.plan.coach_id ? ' by ' + nameOf(d.plan.coach_id) : ''), date: fmtDate(d.plan.updated_at), targets: planTargets(d), content: d.plan.content }));
     const toStep1 = ()=>{ memberMode = 'edit'; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     document.getElementById('mp-edit-intake').addEventListener('click', toStep1);
@@ -898,7 +977,8 @@
      ============================================================ */
   let coachSelected = null;
   let coachSection = 'clients'; // 'clients' | 'diets' (My diets — only for coaches who wrote one)
-  let coachTab = 'answers'; // 'answers' | 'plan' | 'checkins'
+  let coachTab = 'answers'; // 'answers' | 'ai' | 'plan' | 'checkins' ('ai' = Suggested plan)
+  let pendingDraft = {};    // memberId -> { content, targets } copied from the suggested plan, not saved yet
 
   async function renderCoach(){
     if (!coachBody) return;
@@ -986,17 +1066,21 @@
         '</ul>' + (strong ? 'You can still help with general healthy-eating structure.' : '') + '</div>';
     }
     html += '<div class="sched-sub mp-coach-tabs">' +
-      ['answers','plan','checkins'].map(t=> '<button type="button" data-mp-tab="' + t + '" class="' + (t === coachTab ? 'active' : '') + '">' +
-        (t === 'answers' ? 'Questionnaire' : t === 'plan' ? (d.plan ? 'Edit Plan' : 'Write Plan') : 'Check-ins (' + d.checkins.length + ')') + '</button>').join('') + '</div>';
+      ['answers','ai','plan','checkins'].map(t=> '<button type="button" data-mp-tab="' + t + '" class="' + (t === coachTab ? 'active' : '') + '">' +
+        (t === 'answers' ? 'Questionnaire' : t === 'ai' ? 'Suggested Plan' : t === 'plan' ? (d.plan ? 'Edit Plan' : 'Write Plan') : 'Check-ins (' + d.checkins.length + ')') + '</button>').join('') + '</div>';
 
     if (coachTab === 'answers'){
       html += answersHtml(d.intake.answers);
+    } else if (coachTab === 'ai'){
+      html += suggestedPageHtml(d, true);
     } else if (coachTab === 'checkins'){
       html += foodLogHtml(S.getFoodLog(memberId), planTargets(d)) +
         '<div class="mp-sub-head">Check-ins</div>' + checkinListHtml(d.checkins);
     } else {
-      const c = (d.plan && d.plan.content) || {};
-      const t = c.targets || {};
+      const draft = pendingDraft[memberId];
+      const c = draft ? draft.content : ((d.plan && d.plan.content) || {});
+      const t = (draft ? draft.targets : c.targets) || {};
+      if (draft) html += '<div class="admin-notice mp-ai-note">Pre-filled from the suggested plan — <b>not saved yet</b>. Edit anything, then send it. <button type="button" class="btn2" id="mp-discard-draft">Discard draft</button></div>';
       // Two starting points the coach can copy in: the formula applied to
       // the questionnaire, and the member's own Food Log calculator.
       const sug = suggestTargets(d.intake.answers);
@@ -1023,6 +1107,14 @@
     el.querySelectorAll('[data-mp-tab]').forEach(b=> b.addEventListener('click', ()=>{
       coachTab = b.getAttribute('data-mp-tab'); renderCoachDetail();
     }));
+    wireSuggested(el, memberId, d, p=>{
+      pendingDraft[memberId] = { content: suggestedContent(p), targets: p.targets };
+      coachTab = 'plan';
+      renderCoachDetail();
+      toast('Suggested plan loaded into your editor — review it, then send.');
+    });
+    const discard = el.querySelector('#mp-discard-draft');
+    if (discard) discard.addEventListener('click', ()=>{ delete pendingDraft[memberId]; renderCoachDetail(); });
     const form = document.getElementById('mp-plan-form');
     if (form) form.querySelectorAll('[data-mp-fill]').forEach(b=> b.addEventListener('click', ()=>{
       const src = b.getAttribute('data-mp-fill') === 'sug' ? suggestTargets(d.intake.answers)
@@ -1036,7 +1128,7 @@
       PLAN_FIELDS.forEach(f=>{ content[f.id] = form.querySelector('[name="' + f.id + '"]').value.trim(); });
       TARGET_FIELDS.forEach(f=>{ const v = form.querySelector('[name="t-' + f.id + '"]').value; targets[f.id] = v === '' ? null : Math.round(Number(v)); });
       const sent = (d.plan && d.plan.content) || {}, sentT = sent.targets || {};
-      const saved = !!d.plan && PLAN_FIELDS.every(f=> (sent[f.id] || '').trim() === content[f.id]) && TARGET_FIELDS.every(f=> (sentT[f.id] == null ? null : sentT[f.id]) === targets[f.id]);
+      const saved = !!d.plan && !pendingDraft[memberId] && PLAN_FIELDS.every(f=> (sent[f.id] || '').trim() === content[f.id]) && TARGET_FIELDS.every(f=> (sentT[f.id] == null ? null : sentT[f.id]) === targets[f.id]);
       const t = targets.calories ? targets : planTargets({ goals: d.goals });
       printPlan({ who: nameOf(memberId), kind: 'Coach\u2019s plan by ' + nameOf(S.me().id) + (saved ? '' : ' (draft, not sent yet)'),
         date: fmtDate(saved ? d.plan.updated_at : new Date().toISOString()), targets: t, content });
@@ -1058,6 +1150,7 @@
       btn.disabled = true;
       try { await S.savePlan(memberId, content); }
       catch (err){ btn.disabled = false; toast(err.message); return; }
+      delete pendingDraft[memberId];
       btn.disabled = false;
       toast('Plan saved — ' + nameOf(memberId) + ' has been notified.');
       renderCoach();
