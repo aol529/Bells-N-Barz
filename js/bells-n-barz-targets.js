@@ -4,7 +4,8 @@
      Used by the Food Log calculator (Me > Food Log), the Meal Plan's
      suggested targets for the coach and "How it works", and Coach KA's
      diet (its maintenance estimate), so one person never gets three
-     different answers.
+     different answers. The Meal Plan Sandbox has a copy (js/targets.js);
+     keep the two the same.
 
      Mifflin-St Jeor x activity factor = maintenance, then:
        lose      -500 kcal, never below 1500 (men) / 1200 (women), and
@@ -45,8 +46,7 @@
 
   // Workouts a week from the questionnaire's exercise answer: "Monday
   // Tuesday and Wednesday", "gym 4x a week", "twice a week", "Mon-Fri",
-  // "weekdays", "every day"; "twice a month" is under one. Same parser
-  // as the Meal Plan Sandbox's plan program.
+  // "weekdays", "every day"; "twice a month" is under one.
   const WORD_NUM = { once: 1, twice: 2, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
   const DAY_NAME = /^(mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(r(s(day)?)?)?|fri(day)?|sat(urday)?|sun(day)?)s?$/;
   function exerciseDays(ex){
@@ -61,8 +61,8 @@
     if (named.size) return named.size;
     const m = ex.match(/\b(\d+|one|two|three|four|five|six|seven)\s*(x|×|times?|days?|sessions?)|\b(once|twice)\b/);
     const n = m ? WORD_NUM[m[3] || m[1]] || Number(m[1]) : 0;
-    if (n && /month/.test(ex)) return Math.round(n / 4.3);
-    return Math.min(7, n || (/weekdays/.test(ex) ? 5 : 2));
+    if (m) return /month/.test(ex) ? Math.round(n / 4.3) : Math.min(7, n);
+    return /weekdays/.test(ex) ? 5 : 2;
   }
 
   // Activity from Meal Plan questionnaire answers: workouts per week,

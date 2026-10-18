@@ -258,7 +258,7 @@ window.MP_PROGRAM = (function(){
       ', vegetables ' + h.veg + ', fat ' + h.f + '.');
     parts.push('Weigh 2 mornings a week (same scale, after the toilet, before eating) and aim to ' + rule.aim + '. After 2 weeks:\n' + rule.rows.map(r => '- ' + r[0] + ': ' + r[1]).join('\n'));
     if (R.ranged) parts.push('No ' + [!v.height && 'height', !v.weight && 'weight'].filter(Boolean).join(' or ') + ' in the answers yet, so the targets are an estimate (range ' +
-      r50(R.lo.cal) + '–' + r50(R.hi.cal) + ' kcal). Adding them makes it exact; the weekly check corrects it either way.');
+      r50(Math.min(R.lo.cal, R.hi.cal)) + '–' + r50(Math.max(R.lo.cal, R.hi.cal)) + ' kcal). Adding them makes it exact; the weekly check corrects it either way.');
     if (v.goal === 'gain' && /glute|hip|bum|butt/i.test(v.target)) parts.push('For glutes and hips the food only works with the training: squats, hip thrusts and lunges, a little heavier over time. A flatter tummy comes mostly from less bloating and gaining slowly.');
     if (hasGutIssue(v.gut)) parts.push('For the digestion:\n' + GUT_TIPS.map(x => '- ' + x).join('\n'));
     if (/Yes|Maybe/.test(v.mealPrep)) parts.push('Cook once, eat twice: make a bigger dinner pot and take the leftovers for lunch.');
