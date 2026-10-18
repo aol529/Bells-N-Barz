@@ -518,7 +518,7 @@
 
   let posts = loadPosts();
   postsSnapshot = posts.slice();
-  refreshPostsFromSupabase(); // async — replaces seed data once Supabase responds
+  const postsReady = refreshPostsFromSupabase(); // async — replaces seed data once Supabase responds
   let activeCategory = 'all';
   let searchTerm = '';
   let currentPostId = null;
@@ -531,6 +531,12 @@
     let html = ''; let inList = false;
     function inline(t){
       t = t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      // Pictures: ![caption](url). Same URL rules as links below, before
+      // them so the link pattern doesn't swallow the [caption](url) part.
+      t = t.replace(/!\[(.*?)\]\((.+?)\)/g, (match, alt, url) => {
+        if (!/^(https?:|\/)/i.test(url)) return '';
+        return '<img src="' + url.replace(/"/g, '&quot;') + '" alt="' + alt.replace(/"/g, '&quot;') + '" loading="lazy">';
+      });
       t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
       // Markdown links: escape quotes in the URL (otherwise a crafted URL
@@ -552,6 +558,8 @@
       if (line.startsWith('### ')){ if(inList){html+='</ul>';inList=false;} html += '<h3>'+inline(line.slice(4))+'</h3>'; return; }
       if (line.startsWith('## ')){ if(inList){html+='</ul>';inList=false;} html += '<h2>'+inline(line.slice(3))+'</h2>'; return; }
       if (line.startsWith('# ')){ if(inList){html+='</ul>';inList=false;} html += '<h2>'+inline(line.slice(2))+'</h2>'; return; }
+      if (/^(-{3,}|\*{3,})$/.test(line)){ if(inList){html+='</ul>';inList=false;} html += '<hr>'; return; }
+      if (line.startsWith('> ')){ if(inList){html+='</ul>';inList=false;} html += '<blockquote>'+inline(line.slice(2))+'</blockquote>'; return; }
       if (line.startsWith('- ')){ if(!inList){html+='<ul>';inList=true;} html += '<li>'+inline(line.slice(2))+'</li>'; return; }
       if(inList){ html+='</ul>'; inList=false; }
       html += '<p>'+inline(line)+'</p>';
@@ -887,18 +895,144 @@
     fBody.value = p ? p.body : '';
     currentStatus = p ? p.status : 'draft';
     document.querySelectorAll('#status-toggle button').forEach(x=>x.classList.toggle('active', x.dataset.status===currentStatus));
+    showCover();
+    setBodyView('write');
+    updateCount();
+    openedWith = editorState();
     backdrop.classList.add('show');
   }
+  // Ask before throwing away typing (Cancel, or a click outside the panel).
+  let openedWith = '';
+  function editorState(){
+    return JSON.stringify([fTitle.value, fSlug.value, fCategory.value, fDate.value, fAuthor.value, fCover.value, fTags.value, fExcerpt.value, fBody.value, currentStatus]);
+  }
+  function closeEditor(){
+    if (editorState() !== openedWith && !confirm('Close without saving? Your changes to this post will be lost.')) return;
+    backdrop.classList.remove('show');
+  }
   document.getElementById('new-post-btn').addEventListener('click', ()=> openEditor(null));
-  document.getElementById('panel-cancel').addEventListener('click', ()=> backdrop.classList.remove('show'));
-  backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) backdrop.classList.remove('show'); });
+  document.getElementById('panel-cancel').addEventListener('click', closeEditor);
+  backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) closeEditor(); });
+
+  /* ---- Pictures: upload to the public 'blog-images' bucket (sql/79-blog-images.sql) ---- */
+  const BUCKET = 'blog-images';
+  async function uploadImage(file, btn){
+    if (!file) return null;
+    if (file.size > 5 * 1024 * 1024){ alert('That picture is over 5 MB. Pick a smaller one.'); return null; }
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = 'post-' + Date.now() + '-' + Math.random().toString(36).slice(2,8) + '.' + ext;
+    const { error } = await bnbClient.storage.from(BUCKET).upload(path, file);
+    btn.disabled = false; btn.textContent = label;
+    if (error){
+      console.error('Blog image upload failed:', error);
+      alert('Upload failed: ' + (error.message || 'try again.') + '\n\nIf this keeps happening, sql/79-blog-images.sql may not have been run yet.');
+      return null;
+    }
+    return bnbClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+  const coverPreview = document.getElementById('f-cover-preview');
+  const coverFile = document.getElementById('f-cover-file');
+  function showCover(){
+    const src = fCover.value.trim();
+    coverPreview.hidden = !/^(https?:|\/)/i.test(src);
+    if (!coverPreview.hidden) coverPreview.src = src;
+  }
+  coverPreview.addEventListener('error', ()=> coverPreview.hidden = true);
+  fCover.addEventListener('input', showCover);
+  document.getElementById('f-cover-upload').addEventListener('click', ()=> coverFile.click());
+  coverFile.addEventListener('change', async ()=>{
+    const url = await uploadImage(coverFile.files[0], document.getElementById('f-cover-upload'));
+    coverFile.value = '';
+    if (url){ fCover.value = url; showCover(); }
+  });
+
+  /* ---- Formatting buttons: write the Markdown for the owner ---- */
+  function wrapSelection(before, after, placeholder){
+    const a = fBody.selectionStart, b = fBody.selectionEnd;
+    const picked = fBody.value.slice(a, b) || placeholder;
+    fBody.setRangeText(before + picked + after, a, b, 'end');
+    fBody.setSelectionRange(a + before.length, a + before.length + picked.length);
+  }
+  // Puts a prefix on every line the selection touches (headings, lists, quotes).
+  function prefixLines(prefix, placeholder){
+    const v = fBody.value;
+    const a = v.lastIndexOf('\n', fBody.selectionStart - 1) + 1;
+    let b = v.indexOf('\n', fBody.selectionEnd); if (b < 0) b = v.length;
+    const block = v.slice(a, b) || placeholder;
+    const out = block.split('\n').map(l => prefix + l.replace(/^(#{1,3} |- |> )/, '')).join('\n');
+    fBody.setRangeText(out, a, b, 'end');
+  }
+  // Goes at the end of the current line (never over the selection or
+  // inside a link or bold), on lines of its own.
+  function insertBlock(text){
+    let a = fBody.value.indexOf('\n', fBody.selectionEnd);
+    if (a < 0) a = fBody.value.length;
+    const pre = a > 0 && fBody.value[a-1] !== '\n' ? '\n\n' : '';
+    fBody.setRangeText(pre + text + '\n\n', a, a, 'end');
+  }
+  const bodyFile = document.getElementById('f-body-file');
+  document.querySelectorAll('#f-body-bar [data-md]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      setBodyView('write');
+      fBody.focus();
+      const kind = btn.dataset.md;
+      if (kind === 'h2') prefixLines('## ', 'Heading');
+      else if (kind === 'h3') prefixLines('### ', 'Subheading');
+      else if (kind === 'bold') wrapSelection('**', '**', 'bold text');
+      else if (kind === 'italic') wrapSelection('*', '*', 'italic text');
+      else if (kind === 'list') prefixLines('- ', 'List item');
+      else if (kind === 'quote') prefixLines('> ', 'Quote');
+      else if (kind === 'hr') insertBlock('---');
+      else if (kind === 'link'){
+        const url = prompt('Link address (starts with https://):', 'https://');
+        if (!url || url === 'https://') return;
+        wrapSelection('[', '](' + url.trim() + ')', 'link text');
+      }
+      else if (kind === 'image') bodyFile.click();
+      updateCount();
+    });
+  });
+  bodyFile.addEventListener('change', async ()=>{
+    const url = await uploadImage(bodyFile.files[0], document.querySelector('#f-body-bar [data-md=image]'));
+    bodyFile.value = '';
+    if (!url) return;
+    const caption = (prompt('Caption for the picture (optional):', '') || '').replace(/[\[\]]/g, '');
+    setBodyView('write');
+    insertBlock('![' + caption + '](' + url + ')');
+    updateCount();
+  });
+
+  /* ---- Write / Preview ---- */
+  const bodyPreview = document.getElementById('f-body-preview');
+  function setBodyView(view){
+    document.querySelectorAll('#f-body-mode button').forEach(x=> x.classList.toggle('active', x.dataset.view === view));
+    fBody.hidden = view === 'preview';
+    bodyPreview.hidden = view !== 'preview';
+    if (view === 'preview') bodyPreview.innerHTML = mdToHtml(fBody.value) || '<p class="field-hint">Nothing written yet.</p>';
+  }
+  document.querySelectorAll('#f-body-mode button').forEach(b=> b.addEventListener('click', ()=> setBodyView(b.dataset.view)));
+  const bodyCount = document.getElementById('f-body-count');
+  function updateCount(){
+    const words = (fBody.value.match(/[A-Za-z0-9\u00C0-\u024F'’]+/g) || []).length;
+    bodyCount.textContent = words + ' word' + (words === 1 ? '' : 's') + (words ? ' · about ' + Math.max(1, Math.round(words / 200)) + ' min read' : '');
+  }
+  fBody.addEventListener('input', updateCount);
 
   document.getElementById('panel-save').addEventListener('click', ()=>{
     if (!fTitle.value.trim()){ alert('Give the post a title first.'); return; }
     const tags = fTags.value.split(',').map(t=>t.trim()).filter(Boolean);
+    const slug = slugify(fSlug.value) || slugify(fTitle.value);
+    // The slug is the post's link (#blog:slug) and must be unique in the database.
+    if (posts.some(x => x.slug === slug && x.id !== editingId)){
+      alert('Another post already uses the link "' + slug + '". Change the slug (or the title) a little.');
+      fSlug.focus(); return;
+    }
+    if (currentStatus === 'published' && !fBody.value.trim() && !confirm('This post has no body yet. Publish it anyway?')) return;
     const data = {
       title: fTitle.value.trim(),
-      slug: fSlug.value.trim() || slugify(fTitle.value),
+      slug: slug,
       category: fCategory.value.trim() || 'General',
       date: fDate.value || new Date().toISOString().slice(0,10),
       author: fAuthor.value.trim() || 'Coach KA',
@@ -910,7 +1044,8 @@
     };
     if (editingId){
       const idx = posts.findIndex(x=>x.id===editingId);
-      posts[idx] = Object.assign({id: editingId}, data);
+      // Keep the view count (it isn't on the form, so it would reset to 0).
+      posts[idx] = Object.assign({id: editingId, views: posts[idx].views || 0}, data);
     } else {
       data.id = window.BNB_UUID();
       posts.push(data);
@@ -936,15 +1071,35 @@
       try {
         const parsed = JSON.parse(reader.result);
         if (!Array.isArray(parsed)) throw new Error('not an array');
-        posts = parsed; savePosts(); renderAdmin();
-        alert('Posts imported.');
+        // Merge, don't replace: a post missing from the file stays (a
+        // straight replace would delete it from the database on save).
+        // A post matches by id, then by slug; anything new gets a fresh id.
+        let added = 0, updated = 0;
+        parsed.forEach(raw=>{
+          if (!raw || !raw.title) return;
+          const idx = posts.findIndex(x => (raw.id && x.id === raw.id) || (raw.slug && x.slug === raw.slug));
+          if (idx >= 0){ posts[idx] = Object.assign({}, posts[idx], raw, { id: posts[idx].id }); updated++; }
+          else { posts.push(Object.assign({ status: 'draft', tags: [] }, raw, { id: window.BNB_UUID(), slug: raw.slug || slugify(raw.title) })); added++; }
+        });
+        savePosts(); renderAdmin();
+        alert('Imported: ' + added + ' new, ' + updated + ' updated. Posts not in the file were left alone.');
       } catch(err){ alert('That file could not be read as a valid posts JSON export.'); }
     };
     reader.readAsText(file);
+    e.target.value = '';
   });
 
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
+
+  // Admin > Content opens the editor from outside the blog page.
+  window.BNB_BLOG = {
+    ready: postsReady,
+    list: () => posts.slice(),
+    showAdmin(){ switchView('admin'); renderAdmin(); renderMegatronAdmin(); },
+    newPost: () => openEditor(null),
+    edit: id => { if (posts.some(x => x.id === id)) openEditor(id); }
+  };
 
   /* ---------------- INIT ---------------- */
   document.addEventListener('bnb-gallery-updated', renderMegatron);

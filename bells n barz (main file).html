@@ -170,7 +170,9 @@
     dietCoachKa:  { file: 'js/bells-n-barz-diet-coach-ka.js', deps: ['diets'] },
     planProgram:  { file: 'js/bells-n-barz-plan-program.js', deps: ['targets'] },
     mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa', 'planProgram'] },
-    reports:      { file: 'js/bells-n-barz-reports.js' }
+    reports:      { file: 'js/bells-n-barz-reports.js' },
+    // Admin > Content: the owner's overview of the blog, library, gallery and shop.
+    content:      { file: 'js/bells-n-barz-content.js' }
   };
   const BNB_MODULE_PROMISES = {};
   function bnbLoadModule(key){
@@ -422,8 +424,13 @@
       </div>
     </div>
     <div class="field">
-      <label>Cover image URL (optional)</label>
-      <input type="text" id="f-cover" placeholder="https://…">
+      <label for="f-cover">Cover image (optional)</label>
+      <div class="blog-cover-row">
+        <input type="text" id="f-cover" placeholder="Paste an image link, or upload →">
+        <button type="button" class="btn2" id="f-cover-upload">Upload</button>
+        <input type="file" id="f-cover-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      </div>
+      <img class="blog-cover-preview" id="f-cover-preview" alt="" hidden>
     </div>
     <div class="field">
       <label>Tags (comma separated)</label>
@@ -434,8 +441,28 @@
       <textarea id="f-excerpt" rows="2" placeholder="One or two sentence summary shown on the blog card"></textarea>
     </div>
     <div class="field">
-      <label>Body (Markdown — # heading, ## subheading, **bold**, *italic*, - list item, [link](url))</label>
-      <textarea id="f-body" rows="10" placeholder="Write the post here…"></textarea>
+      <label for="f-body">Body</label>
+      <div class="blog-md-bar" id="f-body-bar">
+        <div class="blog-md-tools" role="toolbar" aria-label="Formatting">
+          <button type="button" data-md="h2" title="Heading">H2</button>
+          <button type="button" data-md="h3" title="Subheading">H3</button>
+          <button type="button" data-md="bold" title="Bold"><b>B</b></button>
+          <button type="button" data-md="italic" title="Italic"><i>I</i></button>
+          <button type="button" data-md="list" title="Bullet list">• List</button>
+          <button type="button" data-md="quote" title="Quote">❝ Quote</button>
+          <button type="button" data-md="link" title="Link">Link</button>
+          <button type="button" data-md="image" title="Upload a picture into the post">Picture</button>
+          <button type="button" data-md="hr" title="Divider line">―</button>
+        </div>
+        <div class="status-toggle blog-md-mode" id="f-body-mode">
+          <button type="button" data-view="write" class="active">Write</button>
+          <button type="button" data-view="preview">Preview</button>
+        </div>
+      </div>
+      <input type="file" id="f-body-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      <textarea id="f-body" rows="14" placeholder="Write the post here. Pick some text and press B to make it bold, or H2 to make it a heading."></textarea>
+      <div class="post-body blog-md-preview" id="f-body-preview" hidden></div>
+      <div class="field-hint" id="f-body-count"></div>
     </div>
     <div class="field">
       <label>Status</label>
@@ -3101,7 +3128,7 @@
 </section>
 
 <section class="tab-panel" id="tab-admin">
-  <div class="day-head"><h2>Admin — Billing, Users &amp; Reports</h2><span class="day-sub">Invoices &amp; payments, member and staff accounts, class sessions, and gym-wide reporting</span></div>
+  <div class="day-head"><h2>Admin — Billing, Users, Reports &amp; Content</h2><span class="day-sub">Invoices &amp; payments, member and staff accounts, class sessions, and gym-wide reporting</span></div>
   <div class="sched-scope">
   <button class="admin-back-btn" id="admin-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="admin-section-switch">
@@ -3109,6 +3136,7 @@
     <button class="plate" data-tab="users"><span class="plate-title">Users</span><span class="plate-desc">Member and staff accounts, roles and notes</span></button>
     <button class="plate" data-tab="sessions"><span class="plate-title">Sessions</span><span class="plate-desc">Classes, trainer availability and rosters</span></button>
     <button class="plate" data-tab="reports"><span class="plate-title">Reports</span><span class="plate-desc">Revenue, attendance and retention</span></button>
+    <button class="plate" data-tab="content"><span class="plate-title">Content</span><span class="plate-desc">Blog, library, gallery and shop</span></button>
     <button class="plate" data-tab="switchboard"><span class="plate-title">Switchboard</span><span class="plate-desc">Turn app features on or off</span></button>
   </div>
 
@@ -3240,6 +3268,11 @@
 <section class="admin-section" id="tab-reports">
   <div class="day-head"><h2>Reports — Revenue, Attendance &amp; Retention</h2><span class="day-sub">Gym-wide trends across invoices, payments, check-ins, and bookings</span><div class="cur-switch" data-feature="currency-switch" role="group" aria-label="Show prices in"><button type="button" data-cur="USD">USD</button><button type="button" data-cur="KES">KES</button></div></div>
   <div id="reports-body"></div>
+</section>
+
+<section class="admin-section" id="tab-content">
+  <div class="day-head"><h2>Content — What Visitors Read &amp; See</h2><span class="day-sub">Blog posts, the blog banner, the library, the gallery and the shop, all in one place</span></div>
+  <div id="content-body" class="content-portal"></div>
 </section>
 
 <section class="admin-section" id="tab-switchboard">
