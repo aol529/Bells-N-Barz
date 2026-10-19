@@ -545,7 +545,8 @@
       : 'A suggested plan the app works out from your answers with the gym’s guide. <b>Your coach’s plan is the one to follow</b> — if something here looks useful, mention it to your coach.') + '</div>';
     html += '<div class="day-focus">Suggested plan · from ' + (forCoach ? 'their' : 'your') + ' answers of ' + fmtDate(d.intake.updated_at) + '</div>';
     html += '<div class="mp-actions mp-ai-top-actions">' + (forCoach ? '<button type="button" class="btn2 primary" data-sug-copy>Copy into my plan</button>' : '') +
-      '<button type="button" class="btn2" data-sug-pdf>Download PDF</button></div>';
+      '<button type="button" class="btn2" data-sug-pdf>Download PDF</button>' +
+      (forCoach ? '' : '<button type="button" class="btn2" data-mp-retake>Take quiz again</button>') + '</div>';
     if (p.referral_note) html += '<div class="admin-notice mp-refer">' + esc(p.referral_note) + '</div>';
     const t = p.targets;
     const cell = (v, unit, lbl) => '<div><span class="mp-t-num">' + esc(v) + unit + '</span><span class="mp-t-lbl">' + lbl + '</span></div>';
@@ -877,7 +878,8 @@
       return;
     }
 
-    if (!d.intake || memberMode === 'edit'){
+    // 'edit' and 'retake' both reopen the form with the saved answers filled in.
+    if (!d.intake || memberMode === 'edit' || memberMode === 'retake'){
       const prefill = d.intake ? d.intake.answers : {
         sex: d.goals ? (d.goals.sex === 'female' ? 'Female' : 'Male') : '',
         age: d.goals ? d.goals.age : '',
@@ -885,7 +887,7 @@
         weight_kg: (d.goals && d.goals.weight_kg) || me.weight || ''
       };
       memberBody.innerHTML = head + pageTabs +
-        '<div class="day-focus">' + (d.intake ? (d.plan ? 'Update your answers' : 'Step 1 — change your answers') : 'Step 1 — tell your coach about you') + '</div>' +
+        '<div class="day-focus">' + (d.intake ? (memberMode === 'retake' ? 'Take the questionnaire again' : d.plan ? 'Update your answers' : 'Step 1 — change your answers') : 'Step 1 — tell your coach about you') + '</div>' +
         '<div class="admin-notice">Fill in as much as you can. Your answers help your coach build a plan that fits your goals, tastes and daily routine. Only your coach and the gym admin can see them.' +
         (me.trainerId ? ' Your coach: <b>' + esc(nameOf(me.trainerId)) + '</b>.' : ' <b>You don’t have a coach assigned yet</b> — until then it goes to the admin.') + '</div>' +
         importBoxHtml() + questionnaireFormHtml(prefill) +
@@ -920,10 +922,12 @@
     } else if (!d.plan){
       html += '<div class="day-focus">Step 2 — your coach is building your plan</div>' +
         '<div class="empty-msg">Your answers are with your coach (sent ' + fmtDate(d.intake.submitted_at) + '). You’ll get a notification when your plan is ready.' +
-        '<div class="mp-actions" style="justify-content:center;"><button type="button" class="btn2" id="mp-back-step1">← Back to step 1: change my answers</button></div></div>';
+        '<div class="mp-actions" style="justify-content:center;"><button type="button" class="btn2" id="mp-back-step1">← Back to step 1: change my answers</button>' +
+        '<button type="button" class="btn2" data-mp-retake>Take quiz again</button></div></div>';
     } else {
       html += '<div class="day-focus">Your plan · updated ' + fmtDate(d.plan.updated_at) + (d.plan.coach_id ? ' by ' + esc(nameOf(d.plan.coach_id)) : '') + '</div>' +
-        '<div class="mp-actions mp-ai-top-actions"><button type="button" class="btn2" id="mp-plan-pdf">Download PDF</button></div>' +
+        '<div class="mp-actions mp-ai-top-actions"><button type="button" class="btn2" id="mp-plan-pdf">Download PDF</button>' +
+        '<button type="button" class="btn2" data-mp-retake>Take quiz again</button></div>' +
         '<div class="mp-sub-head">Daily targets</div>' + targetsHtml(d, false) +
         planViewHtml(d.plan);
 
@@ -950,6 +954,9 @@
     document.getElementById('mp-edit-intake').addEventListener('click', toStep1);
     const back = document.getElementById('mp-back-step1');
     if (back) back.addEventListener('click', toStep1);
+    memberBody.querySelectorAll('[data-mp-retake]').forEach(b=> b.addEventListener('click', ()=>{
+      memberPage = 'coach'; memberMode = 'retake'; renderMember(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
     const ciForm = document.getElementById('mp-checkin-form');
     if (ciForm) ciForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
