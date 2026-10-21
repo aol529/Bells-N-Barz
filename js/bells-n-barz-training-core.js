@@ -1093,6 +1093,7 @@
   let adminOwnerId = null;
   let adminProgramData = clone(DEFAULT_PROGRAM); // never null — renderAdminBlocks() runs at init, before any real load
   let adminProgramRowId = null;
+  let adminLoading = Promise.resolve();  // the client load in flight (see loadAdminProgramFor)
   let adminNotifiedThisLoad = false; // saveAdminProgram() fires on every keystroke — only notify once per client selected, not once per edit
 
   function populateAdminClientPicker(){
@@ -1103,9 +1104,34 @@
     sel.innerHTML = '<option value="' + me.id + '">Myself</option>' +
       members.filter(u=>u.id!==me.id).map(u=>'<option value="'+u.id+'">'+esc(u.fullName)+'</option>').join('');
     sel.value = adminOwnerId || me.id;
-    sel.onchange = () => loadAdminProgramFor(sel.value);
+    sel.onchange = () => { syncProgramsPicker(); loadAdminProgramFor(sel.value); };
     if (!adminOwnerId) loadAdminProgramFor(me.id);
+    syncProgramsPicker();
   }
+  // Coach > Programs has its own "Program for" picker: the same list, kept
+  // in step with Program Builder's, so a program loads for the client
+  // chosen on either page.
+  function syncProgramsPicker(){
+    const from = document.getElementById('admin-client-picker');
+    const to = document.getElementById('programs-client-picker');
+    if (!from || !to) return;
+    to.innerHTML = from.innerHTML;
+    to.value = from.value;
+    to.onchange = () => { from.value = to.value; loadAdminProgramFor(to.value); };
+  }
+  window.bnbProgramsOnShown = populateAdminClientPicker;
+  // After a program is loaded on the Programs page: straight to Program Builder.
+  function openProgramBuilder(){
+    const btn = document.querySelector('#coach-section-switch [data-coach-section="program"]');
+    if (btn) btn.click();
+  }
+  window.bnbOpenProgramBuilder = openProgramBuilder;
+  const programsLink = document.getElementById('open-programs-link');
+  if (programsLink) programsLink.onclick = (e)=>{
+    e.preventDefault();
+    const btn = document.querySelector('#coach-section-switch [data-coach-section="programs"]');
+    if (btn) btn.click();
+  };
   // Exposed so the Coach sub-switcher (a separate <script> block/closure)
   // can refresh the picker's member list each time Program Builder is
   // opened — same cross-closure export pattern already used by
@@ -1117,7 +1143,14 @@
     fillAdminLoadWorkout().then(renderAdminBlocks);
   };
 
-  async function loadAdminProgramFor(ownerId){
+  // Picking a client loads their program; anything that saves over it
+  // (loading a preset or a built program) waits for that to finish, so it
+  // never saves onto the previous client's row.
+  function loadAdminProgramFor(ownerId){
+    adminLoading = fetchAdminProgramFor(ownerId);
+    return adminLoading;
+  }
+  async function fetchAdminProgramFor(ownerId){
     adminOwnerId = ownerId;
     const { data, error } = await bnbClient.from('programs').select('*').eq('owner_id', ownerId);
     if (error) { console.error('Supabase load programs failed:', error); return; }
@@ -1603,15 +1636,17 @@
       card.querySelector('.format-load-btn').onclick = ()=>{
         const preset = PROGRAM_PRESETS.find(p => p.id === card.dataset.presetId);
         if (!preset) return;
-        if (!confirm('Load "' + preset.name + '" for the client currently selected above? This replaces every day of their current program.')) return;
-        loadProgramForClient(preset.data);
-        alert('Preset loaded.');
+        const picker = document.getElementById('programs-client-picker');
+        const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent.trim() : 'the client chosen above';
+        if (!confirm('Load "' + preset.name + '" for ' + who + '? This replaces every day of their current program.')) return;
+        loadProgramForClient(preset.data).then(()=>{ alert('Preset loaded — opening it in Program Builder.'); openProgramBuilder(); });
       };
     });
   })();
   // Replace the selected client's whole program (a preset, or one made by
   // Build a Program in js/bells-n-barz-program-generator.js).
-  function loadProgramForClient(data){
+  async function loadProgramForClient(data){
+    await adminLoading;
     adminProgramData = clone(data);
     saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
   }

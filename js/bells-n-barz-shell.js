@@ -416,6 +416,7 @@ let previousLocation = null;
   const btns = switchEl.querySelectorAll('button');
   const sections = {
     dashboard: document.getElementById('coach-section-dashboard'),
+    programs: document.getElementById('coach-section-programs'),
     program: document.getElementById('coach-section-program'),
     roster: document.getElementById('coach-section-roster'),
     session: document.getElementById('coach-section-session'),
@@ -437,7 +438,8 @@ let previousLocation = null;
       // 'coach' tab, leaving every reload stuck back on Dashboard.
       history.replaceState(null, '', '#coach:' + key);
       if (key === 'program' && typeof window.bnbProgramBuilderOnShown === 'function') window.bnbProgramBuilderOnShown();
-      if (key === 'program' && typeof bnbLoadModule === 'function'){
+      if (key === 'programs' && typeof window.bnbProgramsOnShown === 'function') window.bnbProgramsOnShown();
+      if (key === 'programs' && typeof bnbLoadModule === 'function'){
         bnbLoadModule('programGenerator').then(() => {
           if (typeof window.bnbProgramGeneratorOnShown === 'function') window.bnbProgramGeneratorOnShown();
         }).catch(err => console.error(err));

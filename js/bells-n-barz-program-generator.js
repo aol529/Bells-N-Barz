@@ -1,5 +1,5 @@
 /* =========================================================================
-   BELL(E)S N' BARZ — BUILD A PROGRAM (Coach > Program Builder)
+   BELL(E)S N' BARZ — BUILD A PROGRAM (Coach > Programs)
    Makes a program in the Training Manual's own format from what a client
    has to train with: pick the equipment, days a week, goal and session
    length, and it lays out each day as
@@ -12,9 +12,10 @@
    (StrongLifts, Bill Starr or Reg Park 5×5, Gironda 8×8, German Volume 10×10, Hepburn A or B) and the
    progression rule. Rule-based, no AI: the same choices
    give the same program, and "Shuffle exercises" picks other options.
-   The coach previews it and loads it for the selected client, the same
-   way as a preset (window.bnbLoadProgramForClient in training-core).
-   Loaded on demand when Program Builder opens (bnbLoadModule).
+   The coach previews it and loads it for the client chosen on Coach >
+   Programs, the same way as a preset (window.bnbLoadProgramForClient in
+   training-core), then lands in Program Builder to fine-tune it.
+   Loaded on demand when Coach > Programs opens (bnbLoadModule).
    ========================================================================= */
 (function(){
 
@@ -417,11 +418,13 @@
     box.querySelector('#pg-shuffle').onclick = () => { read(); state.shuffle++; remember(); built = build(state); draw(); };
     box.querySelector('#pg-load').onclick = () => {
       if (!built || typeof window.bnbLoadProgramForClient !== 'function') return;
-      const picker = document.getElementById('admin-client-picker');
-      const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent.trim() : 'the client selected above';
+      const picker = document.getElementById('programs-client-picker') || document.getElementById('admin-client-picker');
+      const who = picker && picker.selectedOptions[0] ? picker.selectedOptions[0].textContent.trim() : 'the client chosen above';
       if (!confirm(`Load this program (${built.name}) for ${who}? This replaces every day of their current program.`)) return;
-      window.bnbLoadProgramForClient(built.data);
-      alert('Program loaded.');
+      Promise.resolve(window.bnbLoadProgramForClient(built.data)).then(() => {
+        alert('Program loaded — opening it in Program Builder.');
+        if (typeof window.bnbOpenProgramBuilder === 'function') window.bnbOpenProgramBuilder();
+      });
     };
   }
 

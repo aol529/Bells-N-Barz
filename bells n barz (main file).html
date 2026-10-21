@@ -3444,7 +3444,8 @@
   <button class="coach-back-btn" id="coach-back-btn" type="button">&larr; Back</button>
   <div class="sched-sub" id="coach-section-switch">
     <button class="active" data-coach-section="dashboard"><span class="plate-title">Dashboard</span><span class="plate-desc">Your clients' stats and today's schedule</span></button>
-    <button data-coach-section="program"><span class="plate-title">Program Builder</span><span class="plate-desc">Build and assign training programs</span></button>
+    <button data-coach-section="programs"><span class="plate-title">Programs</span><span class="plate-desc">Build a program or pick a preset for a client</span></button>
+    <button data-coach-section="program"><span class="plate-title">Program Builder</span><span class="plate-desc">Edit a client's program day by day</span></button>
     <button data-coach-section="roster"><span class="plate-title">Roster &amp; Availability</span><span class="plate-desc">Your clients, classes and 1-on-1 slots</span></button>
     <button data-coach-section="session"><span class="plate-title">Live Session</span><span class="plate-desc">Log up to 5 trainees' sets live</span></button>
     <button data-coach-section="workouts"><span class="plate-title">Workouts to Try</span><span class="plate-desc">Save workouts you find, try them in Live Session</span></button>
@@ -3478,19 +3479,7 @@
     </div>
 
     <div class="divider-block">
-      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
-        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Build a Program</span>
-      </div>
-      <p class="field-hint" style="margin:0 0 14px;">Tell it what the client has to train with, how many days and what for. It lays out every day the manual's way (Warm-up, lettered A1/A2 blocks, Signature Hold, Hepburn progression on each Block A1) to preview, shuffle and load onto the client selected above.</p>
-      <div id="program-generator"><p class="field-hint">Loading…</p></div>
-    </div>
-
-    <div class="divider-block">
-      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
-        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Preset Programs</span>
-      </div>
-      <p class="field-hint" style="margin:0 0 14px;">Pick a tile, then load it onto the client selected above.</p>
-      <div class="format-grid preset-tile-grid" id="admin-preset-grid"></div>
+      <p class="field-hint" style="margin:0;">Starting a client on a new program? Build one or pick a preset in <a href="#" id="open-programs-link">Programs</a>, then fine-tune it here.</p>
     </div>
 
     <div class="divider-block">
@@ -3504,6 +3493,29 @@
       </div>
     </div>
     </div>
+    </div>
+  </div>
+
+  <div class="coach-section" id="coach-section-programs">
+    <div class="admin-notice">Choose a program for a client: build one from their equipment, days and goal, or start from a preset. Loading replaces the client's whole program, then opens it in Program Builder to fine-tune.</div>
+    <div class="field" style="max-width:320px;margin-bottom:20px;">
+      <label>Program for</label>
+      <select id="programs-client-picker"></select>
+    </div>
+    <div class="divider-block">
+      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Build a Program</span>
+      </div>
+      <p class="field-hint" style="margin:0 0 14px;">Tell it what the client has to train with, how many days and what for. It lays out every day the manual's way (Warm-up, lettered A1/A2 blocks, Signature Hold, Hepburn progression on each Block A1) to preview, shuffle and load onto the client chosen above.</p>
+      <div id="program-generator"><p class="field-hint">Loading…</p></div>
+    </div>
+
+    <div class="divider-block">
+      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Preset Programs</span>
+      </div>
+      <p class="field-hint" style="margin:0 0 14px;">Pick a tile, then load it onto the client selected above.</p>
+      <div class="format-grid preset-tile-grid" id="admin-preset-grid"></div>
     </div>
   </div>
 
