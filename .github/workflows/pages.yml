@@ -37,7 +37,7 @@ jobs:
           # Fasting timer's alerts need, and the printable questionnaire
           # linked from Meal Plan. All referenced with relative paths, since
           # Pages serves this site under /Bells-N-Barz/, not the domain root.
-          cp manifest.json icon.svg favicon.svg favicon.ico sw.js _site/
+          cp manifest.json icon.svg icon-192.png icon-512.png apple-touch-icon.png favicon.svg favicon.ico sw.js _site/
           cp -r docs _site/docs
           # Cache-bust css/ and js/ links with this commit's id (the page
           # uses ?v=__BUILD__ as a placeholder).
