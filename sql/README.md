@@ -442,7 +442,14 @@
     Run after shop.sql and 41-coach-ratings.sql (needs `is_admin()`).
     Safe to re-run.
 
-74. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+74. **82-gallery-images.sql** — a public `gallery-images` storage
+    bucket for the Gallery's Add Image > Upload (the blog banner picks
+    its slides from the gallery). Anyone can see the pictures, only
+    staff can upload, replace or delete them; 10 MB per picture. Run
+    after gallery.sql. Safe to re-run. Until it's run, uploading says
+    "Bucket not found"; pasting an image link still works.
+
+75. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
