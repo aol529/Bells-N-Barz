@@ -172,7 +172,9 @@
     mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa', 'planProgram'] },
     reports:      { file: 'js/bells-n-barz-reports.js' },
     // Admin > Content: the owner's overview of the blog, library, gallery and shop.
-    content:      { file: 'js/bells-n-barz-content.js' }
+    content:      { file: 'js/bells-n-barz-content.js' },
+    // Coach > Program Builder > Build a Program.
+    programGenerator: { file: 'js/bells-n-barz-program-generator.js' }
   };
   const BNB_MODULE_PROMISES = {};
   function bnbLoadModule(key){
@@ -3464,6 +3466,14 @@
       <button class="btn2" id="admin-reset-day">Reset This Day to Manual Default</button>
       <button class="btn2" id="admin-save-day-workout" type="button" title="Save every block on this day as one new workout in Workouts to Try">Save Day to Workouts to Try</button>
       <select id="admin-load-workout" class="admin-load-workout" aria-label="Load one of your saved Workouts to Try"><option value="">Load a saved workout…</option></select>
+    </div>
+
+    <div class="divider-block">
+      <div class="crud-block-head" style="background:transparent;border:none;padding:0 0 8px;">
+        <span style="font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:13px;letter-spacing:.05em;color:var(--muted);">Build a Program</span>
+      </div>
+      <p class="field-hint" style="margin:0 0 14px;">Tell it what the client has to train with, how many days and what for. It lays out every day the manual's way (Warm-up, lettered A1/A2 blocks, Signature Hold, Hepburn progression on each Block A1) to preview, shuffle and load onto the client selected above.</p>
+      <div id="program-generator"><p class="field-hint">Loading…</p></div>
     </div>
 
     <div class="divider-block">

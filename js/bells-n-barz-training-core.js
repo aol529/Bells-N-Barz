@@ -627,7 +627,122 @@
       fri: clone(workoutA), sat: [], sun: []
     };
   })();
+  // Bell(e)s N' Barz's own way of training (Pulse → Mobilize → Core →
+  // Activate → Potentiate warm-up, lettered superset blocks, a Signature
+  // Hold, Hepburn progression on each day's A1) with only dumbbells, a
+  // bench and the floor. Same plan as the "Full-Body Dumbbell Workout"
+  // write-up: Day A Monday, Day B Wednesday, Day C Friday, Sunday recovery.
+  const FULL_BODY_DUMBBELL_DAYS = (function(){
+    const ex = (name, sets, reps, rest, alternates, equipment) =>
+      ({ name, rest: rest || '', tempo: '', equipment: equipment || 'Dumbbell', alternates: alternates || '', sets: sets || '', reps: reps || '' });
+    const A = '90–120 sec', BC = '60–90 sec', DE = '45–60 sec';
+    const dayA = [
+      {name:'Warm-up', exercises:[
+        ex('Jump Rope', '', '5 min', '', 'Jumping Jacks', 'Bodyweight'),
+        ex("World's Greatest Stretch", '1', '5 /side', '', 'Hip CARs, 90/90 Switches', 'Bodyweight'),
+        ex('Dead Bug', '2', '10', '30–45 sec', '', 'Bodyweight'),
+        ex('Suitcase Carry', '2', '20 m /side', '30–45 sec', ''),
+        ex('Glute Bridges', '1', '15', '', 'Scapular Push-ups, Tibialis Raises', 'Bodyweight'),
+        ex('Jump Squats', '3', '5', '2 min', '', 'Bodyweight')
+      ]},
+      {name:'Block A', exercises:[
+        ex('Heel-Elevated Goblet Squat', '4', '8–10', A, 'Goblet Squat'),
+        ex('Chest-Supported Dumbbell Row', '4', '8–10', A, 'Bent-Over Dumbbell Row', 'Dumbbell/Bench')
+      ]},
+      {name:'Block B', exercises:[
+        ex('Flat Dumbbell Bench Press', '3', '10', BC, 'Dumbbell Floor Press', 'Dumbbell/Bench'),
+        ex('Single-Arm Dumbbell Row', '3', '10 /side', BC, 'Kroc Row')
+      ]},
+      {name:'Block C', exercises:[
+        ex('Goblet Cossack Squat', '3', '8 /leg', BC, 'Lateral Lunge'),
+        ex('Dumbbell Lateral Raise', '3', '12–15', BC, 'Leaning Lateral Raise')
+      ]},
+      {name:'Block D', exercises:[
+        ex('Copenhagen Plank', '3', '20–30 sec /side', DE, 'Short-Lever Copenhagen Plank', 'Bench'),
+        ex('Standing Dumbbell Calf Raise', '3', '15–20', DE, 'Single-Leg Calf Raise')
+      ]},
+      {name:'★ Signature Hold', exercises:[ ex('Goblet Squat Bottom Hold', '', '45–60 sec', '', 'Horse Stance') ]}
+    ];
+    const dayB = [
+      {name:'Warm-up', exercises:[
+        ex('Shadow Boxing', '', '5 min (30 s on / 15 s off)', '', 'High Knees', 'Bodyweight'),
+        ex('Cat-Cow', '1', '8', '', 'Pelvic Tilts, Hip CARs, Pigeon Stretch', 'Bodyweight'),
+        ex('Leg Drops', '2', '10', '30–45 sec', '', 'Bodyweight'),
+        ex('Dumbbell Torso Rotations', '2', '10 /side', '30–45 sec', ''),
+        ex('Single-Leg Glute Bridges', '1', '10 /side', '', 'Hamstring Walkouts, Prone Y-T-W Raises', 'Bodyweight'),
+        ex('Broad Jumps', '3', '3', '2 min', 'Dumbbell Hang High Pull', 'Bodyweight')
+      ]},
+      {name:'Block A', exercises:[
+        ex('Dumbbell Romanian Deadlift', '4', '8–10', A, 'Single-Leg RDL'),
+        ex('Half-Kneeling Single-Arm Dumbbell Press', '4', '8 /side', A, 'Seated Arnold Press')
+      ]},
+      {name:'Block B', exercises:[
+        ex('Bulgarian Split Squat', '3', '10 /leg', BC, 'Dumbbell Reverse Lunge', 'Dumbbell/Bench'),
+        ex('Dumbbell Pullover', '3', '12–15', BC, 'Floor Pullover', 'Dumbbell/Bench')
+      ]},
+      {name:'Block C', exercises:[
+        ex('Dumbbell Hip Thrust', '3', '10–12', BC, 'Dumbbell Glute Bridge', 'Dumbbell/Bench'),
+        ex('Bent-Over Rear Delt Fly', '3', '15', BC, 'Chest-Supported Rear Delt Fly')
+      ]},
+      {name:'Block D', exercises:[
+        ex('Nordic Curls', '4', '3–5', BC, 'Slider Leg Curl', 'Bodyweight (feet anchored)'),
+        ex('Dumbbell Shrug', '3', '12–15', DE, "Farmer's Hold")
+      ]},
+      {name:'Block E', exercises:[
+        ex('Seated Knee Raise (dumbbell on thigh)', '3', '12 /side', DE, 'Standing Knee Drive'),
+        ex('Prone Superman', '3', '12–15', DE, 'Dumbbell Good Morning', 'Bodyweight')
+      ]},
+      {name:'★ Signature Hold', exercises:[ ex('Single-Leg Glute Bridge Hold', '', '30–45 sec /side', '', 'Hip Airplane Hold', 'Bodyweight') ]}
+    ];
+    const dayC = [
+      {name:'Warm-up', exercises:[
+        ex('Jump Rope', '', '5 min', '', 'Jumping Jacks', 'Bodyweight'),
+        ex('Thoracic Rotations', '1', '8 /side', '', 'Neck CARs, Shoulder CARs, Wall Slides, Wrist CARs', 'Bodyweight'),
+        ex('Dead Bug', '2', '10', '30–45 sec', '', 'Bodyweight'),
+        ex('Suitcase Carry', '2', '20 m /side', '30–45 sec', ''),
+        ex('Scapular Push-ups', '1', '10', '', 'Prone Y-T-W Raises, Serratus Punches, Bear Crawl Hold', 'Bodyweight'),
+        ex('Plyometric Push-ups', '3', '5', '2 min', 'Dumbbell Push Press', 'Bodyweight')
+      ]},
+      {name:'Block A', exercises:[
+        ex('Incline Dumbbell Press', '4', '8–10', A, 'Floor Press (feet up)', 'Dumbbell/Bench'),
+        ex('Bent-Over Dumbbell Row', '4', '8–10', A, 'Chest-Supported Dumbbell Row')
+      ]},
+      {name:'Block B', exercises:[
+        ex('Dumbbell Step-Up', '3', '10 /leg', BC, 'Reverse Lunge', 'Dumbbell/Bench'),
+        ex('Dumbbell Lateral Raise', '3', '15', BC, 'Seated Lateral Raise')
+      ]},
+      {name:'Block C', exercises:[
+        ex('Overhead Dumbbell Triceps Extension', '3', '12', BC, 'Lying Dumbbell Skull Crusher'),
+        ex('Incline Dumbbell Curl', '3', '10–12', BC, 'Standing Alternating Curl', 'Dumbbell/Bench')
+      ]},
+      {name:'Block D', exercises:[
+        ex('Deficit Push-ups (hands on dumbbells)', '3', '15–20', DE, 'Push-ups'),
+        ex('Hammer Curl', '3', '12', DE, 'Cross-Body Hammer Curl')
+      ]},
+      {name:'Block E', exercises:[ ex("Farmer's Carry", '3', '40 m', DE, "Farmer's Hold (45 sec)") ]},
+      {name:'★ Signature Hold', exercises:[ ex('Push-up Plank Hold', '', '45–60 sec', '', '', 'Bodyweight') ]}
+    ];
+    const recovery = [
+      {name:'Movement Practice', exercises:[
+        ex('Deep Squat Hold', '', '90 sec', '', '', 'Bodyweight'),
+        ex('Dead Hang', '', '60–90 sec', '', "Farmer's Hold (no bar)", 'Bar')
+      ]},
+      {name:'Core Finisher', exercises:[
+        ex('Dumbbell Crunch', '2', '10–12', '', ''),
+        ex('Prone Superman', '2', '10–12', '', '', 'Bodyweight'),
+        ex('Dumbbell Side Bend', '2', '10–12 /side', '', '')
+      ]},
+      {name:'Breath Work', exercises:[ ex('Box Breathing', '', '3–5 min', '', '', 'None') ]}
+    ];
+    return { mon: clone(dayA), tue: [], wed: clone(dayB), thu: [], fri: clone(dayC), sat: [], sun: clone(recovery) };
+  })();
   const PROGRAM_PRESETS = [
+    {
+      id: 'bnb-full-body-dumbbell',
+      name: "Full-Body Dumbbell (3 Days)",
+      description: "Bell(e)s N' Barz's own way of training with nothing but dumbbells, a bench and the floor. Three full-body days (Mon squat & horizontal push/pull, Wed hinge, single leg & overhead, Fri chest, shoulders & arms + carry) and a Sunday recovery. Each day opens with a Warm-up block (Pulse, Mobilize, Core, Activate, Potentiate), runs lettered A1/A2 superset blocks, and ends with a Signature Hold. Rest 90–120 sec on Block A, 60–90 on B/C, 45–60 on D/E. Each day's Block A1 (Goblet Squat, Romanian Deadlift, Incline Press) runs a Hepburn double progression: add a rep per session until all sets hit 10, then the next dumbbells. Every bench move has a floor alternate.",
+      data: FULL_BODY_DUMBBELL_DAYS
+    },
     {
       id: 'old-school-70s',
       name: "Old School 70’s Split",
@@ -1289,12 +1404,18 @@
         const preset = PROGRAM_PRESETS.find(p => p.id === card.dataset.presetId);
         if (!preset) return;
         if (!confirm('Load "' + preset.name + '" for the client currently selected above? This replaces every day of their current program.')) return;
-        adminProgramData = clone(preset.data);
-        saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
+        loadProgramForClient(preset.data);
         alert('Preset loaded.');
       };
     });
   })();
+  // Replace the selected client's whole program (a preset, or one made by
+  // Build a Program in js/bells-n-barz-program-generator.js).
+  function loadProgramForClient(data){
+    adminProgramData = clone(data);
+    saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
+  }
+  window.bnbLoadProgramForClient = loadProgramForClient;
   document.getElementById('admin-export').onclick = ()=>{
     const blob = new Blob([JSON.stringify(adminProgramData, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
