@@ -888,6 +888,145 @@
       return { mon: clone(d), tue: [], wed: clone(d), thu: [], fri: clone(d), sat: [], sun: [] }; };
     return { 1: week(1), 2: week(2), 3: week(3) };
   })();
+  // The New Rules of Lifting Supercharged (Lou Schuler & Alwyn Cosgrove,
+  // 2012): ten programs in three families. The book gives a template per
+  // workout — movement categories with sets and reps — and lets the lifter
+  // choose the exercises; we fill them with the authors' own sample picks
+  // where the book shows them (Basic Training I–IV, Hypertrophy I,
+  // Strength & Power I) and similar choices elsewhere. Each exercise's
+  // Alternates field names its category, so any exercise from it fits.
+  // Rest follows the book: about 30 sec after sets of 12+, 60 sec after
+  // 8–10, 90 sec after 4–6.
+  const NROL = (function(){
+    const restFor = reps => /\b(4|5|6)\b|3–6|5–10|Wave|Set 1/.test(reps) ? '90 sec' : /\b(8|10|8–10)\b/.test(reps) && !/1[2-9]|20/.test(reps) ? '60 sec' : '30 sec';
+    const ex = (cat, name, sets, reps, equipment, rest) => ({ name, rest: rest || restFor(reps), tempo: '', equipment: equipment || '', alternates: cat, sets, reps });
+    const ramp = { name:'RAMP Warm-up', exercises:[ ex('Alwyn Cosgrove’s RAMP: Range of motion, Activation, Movement Preparation (the book, Chapter 17)', 'RAMP Warm-up', '', 'about 10 min', 'Bodyweight', '') ] };
+    const stab = (name, sets, reps) => ex('Core: stability', name, sets, reps || '30 sec', 'Bodyweight', '45 sec');
+    const dyn = (name, sets, reps, eq) => ex('Core: dynamic stability', name, sets, reps || '10', eq || 'Bodyweight', '45 sec');
+    const finish = (name, rows) => ({ name, exercises: rows });
+    const wk = (a, b) => ({ mon: clone(a), tue: [], wed: clone(b), thu: [], fri: clone(a), sat: [], sun: [] });
+    const four = (a, b, c, d) => ({ mon: clone(a), tue: clone(b), wed: [], thu: clone(c), fri: clone(d), sat: [], sun: [] });
+    // Hypertrophy: the same exercise, a different set/rep scheme each time through (1st & 4th, 2nd & 5th, 3rd & 6th).
+    const rot = (cat, name, schemes, eq) => ex(cat, name, schemes.map(x => x[0]).join(' / '),
+      schemes.map(x => x[1]).join(' / ') + ' — 1st & 4th time ' + schemes[0].join('×') + ', 2nd & 5th ' + schemes[1].join('×') + ', 3rd & 6th ' + schemes[2].join('×'), eq, '30–90 sec (longer for the heavy sets)');
+    const freeZone = finish('Free Zone', [ ex('Free Zone: any two exercises you like', 'Free Zone — two exercises of your choice', 'as many as possible', '8–10 reps, as many sets as you can in 5 min', '', 'as needed') ]);
+    const wave = 'Wave — 1st time: 7, 5, 3, 7, 5, 3 · 2nd time: 6, 4, 2, 6, 4, 2 · 3rd time: 5, 3, 1, 5, 3, 1 (heavier each wave)';
+    const fiveFiveEight = '5, 5, 5, 5, then 8 at about 90% of your 5-rep weight (rest 2–4 min before the set of 8)';
+
+    const BT = {
+      1: wk(
+        [ ramp, { name:'Core', exercises:[ stab('Plank', '1–2'), dyn('Side Plank and Row', '1–2', '10 /side', 'Cable/Band') ]},
+          { name:'Power', exercises:[ ex('Power', 'Box Jump', '2', '5', 'Box', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Squat', 'Goblet Squat', '1–2', '15', 'Dumbbell/Kettlebell'), ex('Pull', 'Standing Cable Row', '1–2', '15 /side', 'Cable') ]},
+          { name:'Block 2', exercises:[ ex('Single-leg stance', 'Step-Up', '1–2', '15 /side', 'Bench/Box'), ex('Push', 'Push-up', '1–2', '15', 'Bodyweight') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '2–4', '1 min hard / 2 min easy', '', '') ]) ],
+        [ ramp, { name:'Core', exercises:[ stab('Side Plank', '1–2', '30 sec /side'), dyn('Plank with Pulldown', '2', '10 /side', 'Cable/Band') ]},
+          { name:'Combination', exercises:[ ex('Combination', 'Reverse Lunge and Shoulder Press', '2', '5–8 /side', 'Dumbbell', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Hinge', 'Swiss-Ball Supine Hip Extension', '1–2', '15', 'Swiss ball'), ex('Push', 'Jackknife Push-up', '1–2', '15', 'Bodyweight') ]},
+          { name:'Block 2', exercises:[ ex('Lunge', 'Split Squat', '1–2', '15 /side', 'Bodyweight/Dumbbell'), ex('Pull', 'Kneeling Lat Pulldown', '1–2', '15', 'Cable') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '2–4', '1 min hard / 2 min easy', '', '') ]) ]),
+      2: wk(
+        [ ramp, { name:'Core', exercises:[ stab('Cable Tall-Kneeling Static Hold', '2', '30 sec') ]},
+          { name:'Combination', exercises:[ ex('Combination', 'Romanian Deadlift and Row', '2', '10', 'Dumbbell', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Lunge', 'Reverse Lunge', '2–4', '10 /side', 'Dumbbell'), ex('Pull', 'Split-Stance Cable Row', '2–4', '10 /side', 'Cable') ]},
+          { name:'Block 2', exercises:[ ex('Hinge', 'Swiss-Ball Supine Hip Extension and Leg Curl', '2–4', '10', 'Swiss ball'), ex('Push', 'Push-up (any variation)', '2–4', '10', 'Bodyweight') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '3–6', '30 sec hard / 60 sec easy', '', '') ]) ],
+        [ ramp, { name:'Core', exercises:[ dyn('Push-Away', '2', '10', 'Swiss ball') ]},
+          { name:'Power', exercises:[ ex('Power', 'Jump Squat', '2', '5–8', 'Bodyweight', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Single-leg stance', 'Offset-Loaded Step-Up', '2–4', '10 /side', 'Dumbbell/Bench'), ex('Push', 'Jackknife Push-up, Feet Elevated', '2–4', '10', 'Bodyweight') ]},
+          { name:'Block 2', exercises:[ ex('Squat', 'Front Squat', '2–4', '10', 'Barbell'), ex('Pull', 'Single-Arm Half-Kneeling Lat Pulldown', '2–4', '10 /side', 'Cable') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '3–6', '30 sec hard / 60 sec easy', '', '') ]) ]),
+      3: wk(
+        [ ramp, { name:'Core', exercises:[ dyn('Mountain Climber', '2–3', '10 /side') ]},
+          { name:'Power', exercises:[ ex('Power', 'Kettlebell Swing', '2', '5–8', 'Kettlebell (no kettlebell: Jump Squats)', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Hinge', 'Romanian Deadlift', '2–3', '12', 'Barbell/Dumbbell'), ex('Push', 'Push-up (any variation)', '2–3', '12', 'Bodyweight'), ex('Lunge', 'Reverse Lunge (any variation)', '2–3', '12 /side', 'Dumbbell') ]},
+          { name:'Block 2', exercises:[ ex('Pull', 'Dumbbell Two-Point Row', '2–3', '12 /side', 'Dumbbell'), ex('Combination', 'Squat and Press', '2–3', '12', 'Dumbbell') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '4–6', '30 sec hard / 30 sec easy', '', '') ]) ],
+        [ ramp, { name:'Core', exercises:[ dyn('Cable Tall-Kneeling Chop', '2–3', '10 /side', 'Cable') ]},
+          { name:'Power', exercises:[ ex('Power', 'Explosive Push-up', '2', '5–8', 'Bodyweight', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Squat', 'Offset Overhead Squat', '2–3', '12', 'Dumbbell'), ex('Pull', 'Standing Lat Pulldown', '2–3', '12', 'Cable'), ex('Single-leg stance', 'Single-Leg Romanian Deadlift', '2–3', '12 /side', 'Dumbbell') ]},
+          { name:'Block 2', exercises:[ ex('Push', 'Dumbbell Shoulder Press', '2–3', '12', 'Dumbbell'), ex('Combination', 'Push-up and One-Arm Row', '2–3', '12 /side', 'Dumbbell') ]},
+          finish('Intervals', [ ex('Intervals: any cardio machine or movement', 'Intervals', '4–6', '30 sec hard / 30 sec easy', '', '') ]) ]),
+      4: wk(
+        [ ramp, { name:'Core', exercises:[ dyn('Swiss-Ball Rollout', '2', '10', 'Swiss ball') ]},
+          { name:'Combination', exercises:[ ex('Combination', 'Squat and Press', '2', '8–10', 'Dumbbell', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Hinge', 'Rack Deadlift', '3–4', '10', 'Barbell'), ex('Push', 'Standing Single-Arm Cable Chest Press', '3–4', '10 /side', 'Cable') ]},
+          { name:'Block 2', exercises:[ ex('Single-leg stance', 'Step-Up (any variation)', '3–4', '10 /side', 'Dumbbell/Bench'), ex('Pull', 'Inverted Row', '3–4', '10', 'Bar') ]},
+          { name:'Metabolic — circuit, 15–20 sec each', exercises:[ ex('Hinge', 'Romanian Deadlift', '1–2', '15–20 sec', 'Dumbbell', '—'), ex('Push', 'Push-up (any variation)', '1–2', '15–20 sec', 'Bodyweight', '—'),
+            ex('Locomotion', 'Loaded Carry (any)', '1–2', '15–20 sec', 'Dumbbell', '—'), ex('Pull', 'Standing Cable Row', '1–2', '15–20 sec', 'Cable', '90 sec after the round') ]} ],
+        [ ramp, { name:'Core', exercises:[ stab('Side Plank (any variation)', '2', '30 sec /side') ]},
+          { name:'Combination', exercises:[ ex('Combination', 'Romanian Deadlift and Row', '2', '8–10', 'Dumbbell', '60 sec') ]},
+          { name:'Block 1', exercises:[ ex('Squat', 'Front Squat', '3–4', '10', 'Barbell'), ex('Pull', 'Dumbbell Three-Point Row', '3–4', '10 /side', 'Dumbbell') ]},
+          { name:'Block 2', exercises:[ ex('Lunge', 'Rear-Foot-Elevated Split Squat', '3–4', '10 /side', 'Dumbbell/Bench'), ex('Push', 'Dumbbell Bench Press', '3–4', '10', 'Dumbbell/Bench') ]},
+          { name:'Metabolic — circuit, 15–20 sec each', exercises:[ ex('Squat', 'Goblet Squat', '1–2', '15–20 sec', 'Dumbbell', '—'), ex('Pull', 'Kneeling Lat Pulldown', '1–2', '15–20 sec', 'Cable', '—'),
+            ex('Locomotion', 'Bear Crawl', '1–2', '15–20 sec', 'Bodyweight', '—'), ex('Push', 'Dumbbell Shoulder Press', '1–2', '15–20 sec', 'Dumbbell', '90 sec after the round') ]} ])
+    };
+    const H1a = [['4','6'], ['2','20'], ['3','12']], H1b = [['3','12'], ['4','6'], ['2','20']];
+    const H2a = [['4','4'], ['2','12'], ['3','8']], H2b = [['3','8'], ['4','4'], ['2','12']];
+    const H3a = [['4','5'], ['2','15'], ['3','10']], H3b = [['3','10'], ['4','5'], ['2','15']];
+    const hcore = [ stab('Plank (any variation)', '1–2'), dyn('Cable Half-Kneeling Chop', '1–2', '10 /side', 'Cable') ];
+    const hcoreB = [ stab('Side Plank (any variation)', '1–2', '30 sec /side'), dyn('Swiss-Ball Mountain Climber', '1–2', '10 /side', 'Swiss ball') ];
+    const complex = (sets, reps) => finish('Complex', [ ex('Complex: three exercises back to back with one weight', 'Complex — e.g. Romanian Deadlift → Bent-Over Row → Squat and Press', sets, reps + ' each exercise, no rest between them', 'Barbell/Dumbbell', '90 sec after the round') ]);
+    const HY = {
+      1: wk(
+        [ ramp, { name:'Core', exercises: hcore },
+          { name:'Block 1', exercises:[ rot('Single-leg stance', 'Single-Leg Romanian Deadlift', H1a, 'Dumbbell'), rot('Push', 'Dumbbell Bench Press', H1a, 'Dumbbell/Bench') ]},
+          { name:'Block 2', exercises:[ rot('Hinge', 'Deadlift', H1a, 'Barbell'), rot('Pull', 'Dumbbell Three-Point Row', H1a, 'Dumbbell') ]}, complex('3–4', '8') ],
+        [ ramp, { name:'Core', exercises: hcoreB },
+          { name:'Block 1', exercises:[ rot('Lunge', 'Bulgarian Split Squat', H1b, 'Dumbbell/Bench'), rot('Push', 'Dumbbell Shoulder Press', H1b, 'Dumbbell') ]},
+          { name:'Block 2', exercises:[ rot('Squat', 'Front Squat', H1b, 'Barbell'), rot('Pull', 'Inverted Row', H1b, 'Bar') ]}, complex('3–4', '8') ]),
+      2: wk(
+        [ ramp, { name:'Core', exercises: hcore },
+          { name:'Block 1', exercises:[ rot('Squat', 'Back Squat', H2a, 'Barbell'), rot('Pull', 'Chin-up', H2a, 'Bar') ]},
+          { name:'Block 2', exercises:[ rot('Lunge', 'Reverse Lunge', H2a, 'Dumbbell'), rot('Push', 'Dumbbell Bench Press', H2a, 'Dumbbell/Bench') ]}, complex('4–5', '5') ],
+        [ ramp, { name:'Core', exercises: hcoreB },
+          { name:'Block 1', exercises:[ rot('Hinge', 'Romanian Deadlift', H2b, 'Barbell'), rot('Pull', 'Dumbbell Three-Point Row', H2b, 'Dumbbell') ]},
+          { name:'Block 2', exercises:[ rot('Single-leg stance', 'Single-Leg Romanian Deadlift', H2b, 'Dumbbell'), rot('Push', 'Dumbbell Shoulder Press', H2b, 'Dumbbell') ]}, complex('4–5', '5') ]),
+      3: wk(
+        [ ramp, { name:'Core', exercises:[ dyn('Swiss-Ball Jackknife', '2', '10', 'Swiss ball') ]},
+          { name:'Block 1', exercises:[ rot('Lunge', 'Bulgarian Split Squat', H3a, 'Dumbbell/Bench'), rot('Push', 'Incline Dumbbell Press', H3a, 'Dumbbell/Bench') ]},
+          { name:'Block 2', exercises:[ rot('Hinge', 'Deadlift', H3a, 'Barbell'), rot('Pull', 'Inverted Row', H3a, 'Bar') ]}, complex('4–5', '6') ],
+        [ ramp, { name:'Core', exercises:[ dyn('Cable Tall-Kneeling Chop', '2', '10 /side', 'Cable') ]},
+          { name:'Block 1', exercises:[ rot('Single-leg stance', 'Step-Up', H3b, 'Dumbbell/Bench'), rot('Push', 'Dumbbell Bench Press', H3b, 'Dumbbell/Bench') ]},
+          { name:'Block 2', exercises:[ rot('Squat', 'Front Squat', H3b, 'Barbell'), rot('Pull', 'Chin-up', H3b, 'Bar') ]}, complex('4–5', '6') ])
+    };
+    const spCore = [ stab('Plank (any variation)', '2'), dyn('Swiss-Ball Jackknife', '2', '10', 'Swiss ball') ];
+    const spCoreB = [ stab('Side Plank (any variation)', '2', '30 sec /side'), dyn('Suspended Fallout', '2', '10', 'Suspension trainer') ];
+    const dynOnly = [ dyn('Swiss-Ball Rollout', '2', '10', 'Swiss ball') ];
+    const max = (cat, name, sets, reps, eq) => ex(cat, name, sets, reps, eq, '2 min (full recovery)');
+    const SP = {
+      1: wk(
+        [ ramp, { name:'Core', exercises: spCore },
+          { name:'Maximum Strength & Power', exercises:[ max('Hinge', 'Deadlift', '2–3', '6', 'Barbell'), max('Push', 'Dumbbell Bench Press', '2–3', '6', 'Dumbbell/Bench') ]},
+          { name:'Muscle Hypertrophy & Endurance — 2a to 2d in a row', exercises:[ ex('Lunge', 'Forward Lunge', '2', '15 /side', 'Dumbbell', '60 sec after the round'), ex('Pull', 'Standing Lat Pulldown', '2', '15', 'Cable', '—'),
+            ex('Single-leg stance', 'Overhead Step-Up', '2', '15 /side', 'Dumbbell/Bench', '—'), ex('Push', 'Modified Handstand Push-up', '2', '15', 'Bodyweight', '—') ]}, freeZone ],
+        [ ramp, { name:'Core', exercises: spCoreB },
+          { name:'Maximum Strength & Power', exercises:[ max('Squat', 'Front Squat', '2–3', '6', 'Barbell'), max('Pull', 'Chin-up', '2–3', '6', 'Bar') ]},
+          { name:'Muscle Hypertrophy & Endurance — 2a to 2d in a row', exercises:[ ex('Single-leg stance', 'Single-Leg Romanian Deadlift', '2', '15 /side', 'Dumbbell', '60 sec after the round'), ex('Push', 'Dumbbell Shoulder Press', '2', '15', 'Dumbbell', '—'),
+            ex('Lunge', 'Reverse Lunge (any variation)', '2', '15 /side', 'Dumbbell', '—'), ex('Pull', 'Dumbbell Three-Point Row', '2', '15 /side', 'Dumbbell', '—') ]}, freeZone ]),
+      2: (function(){
+        const hypAC = { name:'Muscle Hypertrophy', exercises:[ ex('Push', 'Dumbbell Shoulder Press', '2–3', '8', 'Dumbbell'), ex('Single-leg stance', 'Step-Up', '2–3', '8 /side', 'Dumbbell/Bench'),
+          ex('Pull', 'Dumbbell Three-Point Row', '3', '8 /side', 'Dumbbell'), ex('Locomotion', "Farmer's Walk", '2', '20–30 sec', 'Dumbbell', '60 sec') ]};
+        const hypBD = { name:'Muscle Hypertrophy', exercises:[ ex('Lunge', 'Reverse Lunge', '3', '8 /side', 'Dumbbell'), ex('Push', 'Push-up (any variation)', '3', '8', 'Bodyweight'),
+          ex('Pull', 'Standing Cable Row', '2–3', '12', 'Cable'), ex('Hinge', 'Romanian Deadlift', '2–3', '8', 'Barbell/Dumbbell') ]};
+        const day = (cat, name, sets, reps, eq, hyp) => [ ramp, { name:'Core', exercises: clone(dynOnly) },
+          { name:'Maximum Strength & Power', exercises:[ max(cat, name, sets, reps, eq) ]}, clone(hyp), freeZone ];
+        return four(day('Squat', 'Back Squat', '5', fiveFiveEight, 'Barbell', hypAC), day('Pull', 'Chin-up (weighted when you can)', '3', '3–6 — your best three sets', 'Bar', hypBD),
+                    day('Hinge', 'Deadlift', '5', fiveFiveEight, 'Barbell', hypAC), day('Push', 'Bench Press or Shoulder Press', '5', fiveFiveEight, 'Barbell', hypBD));
+      })(),
+      3: (function(){
+        const hypAC = { name:'Muscle Hypertrophy', exercises:[ ex('Pull', 'Inverted Row', '2–3', '10', 'Bar'), ex('Lunge', 'Reverse Lunge', '2–3', '10 /side', 'Dumbbell'),
+          ex('Push', 'Push-up (any variation)', '2–3', '12', 'Bodyweight'), ex('Mobility', 'Mobility drill from the RAMP warm-up', '2', '10–12', 'Bodyweight') ]};
+        const hypBD = { name:'Muscle Hypertrophy', exercises:[ ex('Single-leg stance', 'Single-Leg Romanian Deadlift', '3', '10 /side', 'Dumbbell'), ex('Pull', 'Dumbbell Three-Point Row', '3', '10 /side', 'Dumbbell'),
+          ex('Hinge', 'Swiss-Ball Supine Hip Extension and Leg Curl', '3', '10', 'Swiss ball'), ex('Push', 'Dumbbell Shoulder Press', '3', '10', 'Dumbbell') ]};
+        const day = (cat, name, sets, reps, eq, hyp) => [ ramp, { name:'Core', exercises: clone(dynOnly) },
+          { name:'Maximum Strength & Power', exercises:[ max(cat, name, sets, reps, eq) ]}, clone(hyp), freeZone ];
+        return four(day('Hinge', 'Deadlift', '6', wave, 'Barbell', hypAC), day('Push', 'Bench Press', '6', wave, 'Barbell', hypBD),
+                    day('Squat', 'Back Squat', '6', wave, 'Barbell', hypAC), day('Pull', 'Chin-up', '3', '5–10 — beat last time’s reps with the same load', 'Bar', hypBD));
+      })()
+    };
+    return { BT, HY, SP };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'bnb-full-body-dumbbell',
@@ -978,6 +1117,66 @@
       name: "PHAT — Layne Norton's Power Hypertrophy Adaptive Training",
       description: "Dr Layne Norton's 5-day power/hypertrophy split: Upper Power and Lower Power (3–5 rep compounds, full rest — up to 5–6 min), a rest day, then Back & Shoulders, Lower Body and Chest & Arms hypertrophy days that each open with speed work (6 × 3 at 65–70% of the 3–5 rep max, no more than 90 sec rest) before 8–20 rep work at 1–2 min rest. Stop 1–2 reps short of failure early on; failure only on the last 1–2 sets, and not in the first 2–4 weeks. Rotate the power movements every 2–3 weeks; deload every 6–12 weeks at 60–70% for 1–3 weeks. Beginners: drop one assistance exercise per day. Source: Layne Norton, “PHAT — Power Hypertrophy Adaptive Training,” biolayne.com (see Sources & Credits).",
       data: PHAT_DAYS
+    },
+    {
+      id: 'nrol-basic-training-1',
+      name: "NROL Supercharged — Basic Training I",
+      description: "The starting point for most lifters. Two full-body workouts (A and B) alternated three days a week, each workout done about six times (four if you've trained this way before). A RAMP warm-up, two core exercises, a power or combination move, then two pairs of strength exercises at 1–2 × 15 — squat/pull and single-leg/push on A, hinge/push and lunge/pull on B — and 2–4 one-minute intervals with two minutes' easy recovery. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.BT[1]
+    },
+    {
+      id: 'nrol-basic-training-2',
+      name: "NROL Supercharged — Basic Training II",
+      description: "Basic Training II: the same A/B structure with heavier work — four strength exercises at 2–4 × 10 (lunge/pull and hinge/push on A, single-leg/push and squat/pull on B), a combination or power move, and 3–6 intervals of 30 seconds hard and 60 seconds easy. To make it tougher, do a mobility or core exercise between pairs instead of resting. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.BT[2]
+    },
+    {
+      id: 'nrol-basic-training-3',
+      name: "NROL Supercharged — Basic Training III",
+      description: "Basic Training III: two alternating trios and pairs of strength exercises at 2–3 × 12, ending each workout with a combination exercise (squat and press, push-up and row), plus a power move and 4–6 intervals of 30 seconds on, 30 off. For more, run 1a/1b/1c with no rest between them, then rest at least a minute. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.BT[3]
+    },
+    {
+      id: 'nrol-basic-training-4',
+      name: "NROL Supercharged — Basic Training IV",
+      description: "Basic Training IV: strength pairs at 3–4 × 10, then a metabolic circuit instead of intervals — three strength moves and one locomotion move (a carry or a crawl) for 15–20 seconds each. Start here if you've already done the NROL for Life programs. For more, run 1a/1b/2a/2b as one giant set with 90 seconds' rest. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.BT[4]
+    },
+    {
+      id: 'nrol-hypertrophy-1',
+      name: "NROL Supercharged — Hypertrophy I",
+      description: "Hypertrophy I brings in undulating periodization: every strength exercise rotates through three schemes — 4 × 6, 2 × 20 and 3 × 12 — so the 1st and 4th time you do a workout use one scheme, the 2nd and 5th another, and the 3rd and 6th the third. A and B run out of step, so each session has a different feel. Core work first and a three-exercise barbell or dumbbell complex (3–4 × 8) to finish. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.HY[1]
+    },
+    {
+      id: 'nrol-hypertrophy-2',
+      name: "NROL Supercharged — Hypertrophy II",
+      description: "Hypertrophy II: the same rotating system with sets of 4, 8 and 12 (4 × 4, 3 × 8, 2 × 12), heavier than Hypertrophy I. The finishing complex moves to 4–5 × 5. Keep the same exercises through the program so you can see the numbers climb. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.HY[2]
+    },
+    {
+      id: 'nrol-hypertrophy-3',
+      name: "NROL Supercharged — Hypertrophy III",
+      description: "Hypertrophy III: the rotation becomes 4 × 5, 3 × 10 and 2 × 15, with the complex at 4–5 × 6. By the end of the three Hypertrophy programs most lifters handle their old heavy weights for double the reps. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.HY[3]
+    },
+    {
+      id: 'nrol-strength-power-1',
+      name: "NROL Supercharged — Strength & Power I",
+      description: "Strength & Power I: each workout opens with two maximum-strength lifts at 2–3 × 6 (deadlift and bench on A, front squat and chin-ups on B) with thorough warm-up sets and full rest, then four hypertrophy-and-endurance exercises at 2 × 15 done back to back, and a Free Zone finish: any two exercises, 8–10 reps, as many sets as you can in 5 minutes. Each workout six times. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.SP[1]
+    },
+    {
+      id: 'nrol-strength-power-2',
+      name: "NROL Supercharged — Strength & Power II",
+      description: "Strength & Power II: four workouts (A–D), each built on one max-strength lift — squat, chin-up, deadlift, bench or shoulder press. The big lifts go 5, 5, 5, 5, then a set of 8 at about 90% of the 5-rep weight; the chin-up is three best sets of 3–6. Muscle-building pairs and the Free Zone follow. Each workout three times. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.SP[2]
+    },
+    {
+      id: 'nrol-strength-power-3',
+      name: "NROL Supercharged — Strength & Power III",
+      description: "Strength & Power III: the same four-workout layout with wave loading on the main lift — 7, 5, 3 and the wave again heavier; then 6, 4, 2; then 5, 3, 1 — a neural trick that makes heavy weights feel lighter and builds toward a true one-rep max. The chin-up goes for more reps (5–10) at last program's load. Source: Lou Schuler & Alwyn Cosgrove, The New Rules of Lifting Supercharged (Avery, 2012) — adapted; see Sources & Credits.",
+      data: NROL.SP[3]
     },
     {
       id: 'gironda-8x8',

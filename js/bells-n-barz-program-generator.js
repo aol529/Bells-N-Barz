@@ -35,6 +35,11 @@
     lunge: [['Bulgarian Split Squat', ['db', 'bench'], { per:'/leg' }], ['Dumbbell Reverse Lunge', ['db'], { per:'/leg' }], ['Walking Lunges', ['db'], { per:'/leg' }], ['Bulgarian Split Squat (bodyweight)', ['bench'], { per:'/leg' }], ['Reverse Lunge', [], { per:'/leg' }]],
     stepup: [['Dumbbell Step-Up', ['db', 'bench'], { per:'/leg' }], ['Barbell Step-Up', ['bb', 'bench'], { per:'/leg' }], ['Step-Up (stairs or a box)', [], { per:'/leg' }]],
     lateral_leg: [['Goblet Cossack Squat', ['db'], { per:'/leg' }], ['Cossack Squats', [], { per:'/leg' }]],
+    // NROL Supercharged's categories (any exercise in the category fits; these alternate).
+    push: [['Dumbbell Bench Press', ['db', 'bench']], ['Dumbbell Shoulder Press', ['db']], ['Barbell Bench Press', ['bb', 'bench']], ['Military Press', ['bb']], ['Push-ups', []], ['Pike Push-ups', []]],
+    pull: [['Dumbbell Three-Point Row', ['db', 'bench'], { per:'/side' }], ['Chin-ups', ['bar']], ['Standing Cable Row', ['cable']], ['Lat Pulldown', ['cable']], ['Bent-Over Dumbbell Row', ['db']], ['Inverted Row (under a sturdy table)', []]],
+    sls: [['Single-Leg Romanian Deadlift', ['db'], { per:'/side' }], ['Dumbbell Step-Up', ['db', 'bench'], { per:'/side' }], ['Step-Up (stairs or a box)', [], { per:'/side' }], ['Single-Leg RDL (bodyweight)', [], { per:'/side' }]],
+    combo: [['Dumbbell Squat and Press', ['db']], ['Dumbbell Romanian Deadlift and Row', ['db']], ['Push-up and One-Arm Dumbbell Row', ['db']], ['Reverse Lunge and Shoulder Press', ['db']], ['Squat Thrust', []], ['Lunge with Rotation', []]],
     quad_iso: [['Leg Extensions', ['cable']], ['Dumbbell Spanish Squat (feet hooked)', ['db']], ['Reverse Nordic Curl', []]],
     adductor: [['Copenhagen Plank', ['bench'], { reps:'20–30 sec', per:'/side' }], ['Short-Lever Copenhagen Plank (knee on a chair)', [], { reps:'20–30 sec', per:'/side' }]],
     hipflexor: [['Standing Cable Hip Flexion', ['cable'], { per:'/side' }], ['Hanging Knee Raise', ['bar']], ['Seated Knee Raise (dumbbell on thigh)', ['db'], { per:'/side' }], ['Standing Knee Drive', [], { per:'/side' }]],
@@ -104,6 +109,69 @@
     phatCA: { title:'Chest & Arms Hypertrophy', focus:'push', core:true, style:'hyper', speed:true,
       blocks:[['hpush', 'hpush_incline'], ['chest_iso', 'biceps'], ['triceps', 'biceps'], ['triceps']] }
   };
+  /* NROL Supercharged (Schuler & Cosgrove, 2012): each program's A/B (or
+     A–D) workout templates — core, a power or combination move, strength
+     exercises by movement category with the book's sets × reps, and the
+     finisher (intervals, metabolic circuit, complex or Free Zone). Our
+     warm-up, block style and Signature Hold wrap around them. */
+  const ROT = (a, b, c) => ({ sets: [a[0], b[0], c[0]].join(' / '), reps: `${a[1]} / ${b[1]} / ${c[1]} — 1st & 4th time ${a.join('×')}, 2nd & 5th ${b.join('×')}, 3rd & 6th ${c.join('×')}` });
+  const S = (p, sets, reps) => ({ p, sets, reps });
+  const NROL_TPL = {
+    BT1: { A: { core:[['stab', '1–2', '30 sec'], ['dyn', '1–2', '10']], pot:['power', '2', '5'], focus:'squat',
+                blocks:[[S('squat', '1–2', '15'), S('pull', '1–2', '15')], [S('sls', '1–2', '15'), S('push', '1–2', '15')]], fin:['intervals', '2–4', '1 min hard / 2 min easy'] },
+           B: { core:[['stab', '1–2', '30 sec'], ['dyn', '2', '10']], pot:['combo', '2', '5–8'], focus:'hinge',
+                blocks:[[S('hinge', '1–2', '15'), S('push', '1–2', '15')], [S('lunge', '1–2', '15'), S('pull', '1–2', '15')]], fin:['intervals', '2–4', '1 min hard / 2 min easy'] } },
+    BT2: { A: { core:[['stab', '2', '30 sec']], pot:['combo', '2', '10'], focus:'hinge',
+                blocks:[[S('lunge', '2–4', '10'), S('pull', '2–4', '10')], [S('hinge', '2–4', '10'), S('push', '2–4', '10')]], fin:['intervals', '3–6', '30 sec hard / 60 sec easy'] },
+           B: { core:[['dyn', '2', '10']], pot:['power', '2', '5–8'], focus:'squat',
+                blocks:[[S('sls', '2–4', '10'), S('push', '2–4', '10')], [S('squat', '2–4', '10'), S('pull', '2–4', '10')]], fin:['intervals', '3–6', '30 sec hard / 60 sec easy'] } },
+    BT3: { A: { core:[['dyn', '2–3', '10']], pot:['power', '2', '5–8'], focus:'hinge',
+                blocks:[[S('hinge', '2–3', '12'), S('push', '2–3', '12'), S('lunge', '2–3', '12')], [S('pull', '2–3', '12'), S('combo', '2–3', '12')]], fin:['intervals', '4–6', '30 sec hard / 30 sec easy'] },
+           B: { core:[['dyn', '2–3', '10']], pot:['power', '2', '5–8'], focus:'squat',
+                blocks:[[S('squat', '2–3', '12'), S('pull', '2–3', '12'), S('sls', '2–3', '12')], [S('push', '2–3', '12'), S('combo', '2–3', '12')]], fin:['intervals', '4–6', '30 sec hard / 30 sec easy'] } },
+    BT4: { A: { core:[['dyn', '2', '10']], pot:['combo', '2', '8–10'], focus:'hinge',
+                blocks:[[S('hinge', '3–4', '10'), S('push', '3–4', '10')], [S('sls', '3–4', '10'), S('pull', '3–4', '10')]], fin:['metabolic', '1–2', '15–20 sec', ['hinge', 'push', 'carry', 'pull']] },
+           B: { core:[['stab', '2', '30 sec']], pot:['combo', '2', '8–10'], focus:'squat',
+                blocks:[[S('squat', '3–4', '10'), S('pull', '3–4', '10')], [S('lunge', '3–4', '10'), S('push', '3–4', '10')]], fin:['metabolic', '1–2', '15–20 sec', ['squat', 'pull', 'carry', 'push']] } },
+    H1: { A: { core:[['stab', '1–2', '30 sec'], ['dyn', '1–2', '10']], focus:'hinge', rot:ROT(['4', '6'], ['2', '20'], ['3', '12']),
+               blocks:[['sls', 'push'], ['hinge', 'pull']], fin:['complex', '3–4', '8'] },
+          B: { core:[['stab', '1–2', '30 sec'], ['dyn', '1–2', '10']], focus:'squat', rot:ROT(['3', '12'], ['4', '6'], ['2', '20']),
+               blocks:[['lunge', 'push'], ['squat', 'pull']], fin:['complex', '3–4', '8'] } },
+    H2: { A: { core:[['stab', '1–2', '30 sec'], ['dyn', '1–2', '10']], focus:'squat', rot:ROT(['4', '4'], ['2', '12'], ['3', '8']),
+               blocks:[['squat', 'pull'], ['lunge', 'push']], fin:['complex', '4–5', '5'] },
+          B: { core:[['stab', '1–2', '30 sec'], ['dyn', '1–2', '10']], focus:'hinge', rot:ROT(['3', '8'], ['4', '4'], ['2', '12']),
+               blocks:[['hinge', 'pull'], ['sls', 'push']], fin:['complex', '4–5', '5'] } },
+    H3: { A: { core:[['dyn', '2', '10']], focus:'hinge', rot:ROT(['4', '5'], ['2', '15'], ['3', '10']),
+               blocks:[['lunge', 'push'], ['hinge', 'pull']], fin:['complex', '4–5', '6'] },
+          B: { core:[['dyn', '2', '10']], focus:'squat', rot:ROT(['3', '10'], ['4', '5'], ['2', '15']),
+               blocks:[['sls', 'push'], ['squat', 'pull']], fin:['complex', '4–5', '6'] } },
+    SP1: { A: { core:[['stab', '2', '30 sec'], ['dyn', '2', '10']], focus:'hinge', max:[S('hinge', '2–3', '6'), S('push', '2–3', '6')],
+                blocks:[[S('lunge', '2', '15'), S('pull', '2', '15'), S('sls', '2', '15'), S('push', '2', '15')]], fin:['freezone'] },
+           B: { core:[['stab', '2', '30 sec'], ['dyn', '2', '10']], focus:'squat', max:[S('squat', '2–3', '6'), S('pull', '2–3', '6')],
+                blocks:[[S('sls', '2', '15'), S('push', '2', '15'), S('lunge', '2', '15'), S('pull', '2', '15')]], fin:['freezone'] } }
+  };
+  (function(){
+    const ac = [[S('push', '2–3', '8'), S('sls', '2–3', '8')], [S('pull', '3', '8'), S('carry', '2', '20–30 sec')]];
+    const bd = [[S('lunge', '3', '8'), S('push', '3', '8')], [S('pull', '2–3', '12'), S('hinge', '2–3', '8')]];
+    const heavy = '5, 5, 5, 5, then 8 at ~90% of the 5-rep weight';
+    const d = (focus, p, sets, reps, blocks) => ({ core:[['dyn', '2', '10']], focus, max:[S(p, sets, reps)], blocks, fin:['freezone'] });
+    NROL_TPL.SP2 = { A: d('squat', 'squat', '5', heavy, ac), B: d('pull', 'pull', '3', '3–6 (your best three sets)', bd),
+                     C: d('hinge', 'hinge', '5', heavy, ac), D: d('push', 'push', '5', heavy, bd) };
+    const wave = 'wave 7-5-3 ×2, then 6-4-2 ×2, then 5-3-1 ×2 (heavier each wave)';
+    const ac3 = [[S('pull', '2–3', '10'), S('lunge', '2–3', '10')], [S('push', '2–3', '12'), S('mobility', '2', '10–12')]];
+    const bd3 = [[S('sls', '3', '10'), S('pull', '3', '10')], [S('hinge', '3', '10'), S('push', '3', '10')]];
+    NROL_TPL.SP3 = { A: d('hinge', 'hinge', '6', wave, ac3), B: d('push', 'push', '6', wave, bd3),
+                     C: d('squat', 'squat', '6', wave, ac3), D: d('pull', 'pull', '3', '5–10 (more reps at last program\u2019s load)', bd3) };
+  })();
+  // Strength & Power's maximum-strength lifts: the heaviest version the kit allows.
+  L.squat_max = [['Back Squat', ['bb']], ['Front Squat', ['bb']], ['Goblet Squat', ['db']], ['Tempo Bodyweight Squat (3 sec down)', []]];
+  L.hinge_max = [['Deadlift', ['bb']], ['Rack Deadlift', ['bb']], ['Dumbbell Romanian Deadlift', ['db']], ['Single-Leg RDL (bodyweight)', [], { per:'/side' }]];
+  L.push_max = [['Barbell Bench Press', ['bb', 'bench']], ['Military Press', ['bb']], ['Dumbbell Bench Press', ['db', 'bench']], ['Dumbbell Floor Press', ['db']], ['Push-ups', []]];
+  L.pull_max = [['Weighted Chin-ups', ['bar']], ['Barbell Row', ['bb']], ['Dumbbell Three-Point Row', ['db', 'bench'], { per:'/side' }], ['Bent-Over Dumbbell Row', ['db']], ['Inverted Row (under a sturdy table)', []]];
+  L.mobility = [['90/90 Switches', [], { per:'/side' }], ['Hip CARs', [], { per:'/side' }]];
+  const NROL_NAMES = { BT1:'Basic Training I', BT2:'Basic Training II', BT3:'Basic Training III', BT4:'Basic Training IV',
+    H1:'Hypertrophy I', H2:'Hypertrophy II', H3:'Hypertrophy III', SP1:'Strength & Power I', SP2:'Strength & Power II', SP3:'Strength & Power III' };
+
   // Days a week → which template on which weekday (rest days between where possible).
   const SPLITS = {
     '2': { name:'2-day full body', days:{ mon:'fb2A', thu:'fb2B' } },
@@ -113,6 +181,11 @@
     '5': { name:'5-day split (the Training Manual’s)', days:{ mon:'upH', tue:'loQ', thu:'upV', fri:'loG', sat:'arms' } },
     '5phat': { name:'5-day PHAT (power / hypertrophy)', days:{ mon:'phatUP', tue:'phatLP', thu:'phatBS', fri:'phatLH', sat:'phatCA' } }
   };
+  Object.keys(NROL_NAMES).forEach(k => {
+    const four = k === 'SP2' || k === 'SP3';
+    SPLITS['nrol' + k] = { name: 'NROL Supercharged — ' + NROL_NAMES[k], nrol: k, group: 'NROL Supercharged',
+      days: four ? { mon:'A', tue:'B', thu:'C', fri:'D' } : { mon:'A', wed:'B', fri:'A' } };
+  });
   const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
   const DAY_NAME = { mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday' };
 
@@ -283,6 +356,7 @@
     }
     const data = {}, days = [], seen = {};
     DAY_ORDER.forEach(k => { data[k] = []; });
+    if (split.nrol) return buildNrol(split, eq, opts);
     Object.entries(split.days).forEach(([key, tpl], dayIdx) => {
       const day = DAYS[tpl];
       const blocks = [];
@@ -360,6 +434,93 @@
     };
   }
 
+  /* NROL Supercharged days: the book's template, filled from the client's equipment. */
+  function buildNrol(split, eq, opts){
+    const data = {}, days = [], seen = {};
+    DAY_ORDER.forEach(k => { data[k] = []; });
+    const tpl = NROL_TPL[split.nrol];
+    const fill = (pattern, used) => {
+      const turn = (seen[pattern] || 0) + (opts.shuffle || 0);
+      let p = pick(pattern, eq, turn);
+      if (p && used.has(p.name)) p = pick(pattern, eq, turn + 1);
+      if (!p || used.has(p.name)) return null;
+      seen[pattern] = (seen[pattern] || 0) + 1;
+      used.add(p.name);
+      return p;
+    };
+    // The book's rest: about 30 sec after 12+ reps, 60 after 8–10, 90 after 4–6.
+    const restFor = reps => /^(3|4|5|6)\b|3–6|5–10|wave|5, 5/.test(reps) ? '90 sec' : /^(8|10|8–10)\b/.test(reps) ? '60 sec' : '30 sec';
+    const made = {};
+    Object.entries(split.days).forEach(([key, letter]) => {
+      // The book keeps the same exercises every time a workout comes round.
+      if (made[letter]){ data[key] = JSON.parse(JSON.stringify(made[letter])); days.push({ key, title: 'Workout ' + letter, blocks: data[key] }); return; }
+      const w = tpl[letter], blocks = [], used = new Set();
+      const day = { focus: w.focus, core: true };
+      if (opts.warmup){
+        const wu = warmup(day, eq, opts.goal);
+        // The book's core work in the Core slot, and its power or combination move as the Potentiate.
+        const coreRows = w.core.map(([kind, sets, reps]) => kind === 'stab'
+          ? row('Plank (any variation)', sets, reps, '45 sec', 'Side Plank', 'Bodyweight')
+          : (eq.has('cable') ? row('Cable Half-Kneeling Chop', sets, reps + ' /side', '45 sec', 'Mountain Climber', 'Cable') : row('Mountain Climber', sets, reps + ' /side', '45 sec', 'Dead Bug', 'Bodyweight')));
+        const rows = wu.exercises.filter(r => !/^(Dead Bug|Pallof Press|Suitcase Carry|Torso Rotations)$/.test(r.name));
+        rows.splice(2, 0, ...coreRows);
+        if (w.pot){
+          const last = rows.length - 1;
+          const [kind, sets, reps] = w.pot;
+          const p = kind === 'combo' ? fill('combo', used) : null;
+          rows[last] = p ? row(p.name, sets, reps + (p.dose.per ? ' ' + p.dose.per : ''), '60 sec', p.alt, equipLabel(p.needs))
+                         : Object.assign(rows[last], { sets, reps, rest:'60 sec' });
+        } else rows.pop();
+        blocks.push({ name:'Warm-up', exercises: rows });
+      }
+      const strength = [];
+      if (w.max) strength.push(w.max);
+      w.blocks.forEach(b => strength.push(b));
+      strength.forEach((items, bi) => {
+        const exs = [];
+        const isMax = w.max && bi === 0;
+        items.forEach(it => {
+          const slot = typeof it === 'string' ? { p: it } : it;
+          const p = fill(isMax && L[slot.p + '_max'] ? slot.p + '_max' : slot.p, used);
+          if (!p) return;
+          const sets = slot.sets || (w.rot && w.rot.sets) || '3';
+          const reps = slot.reps || (w.rot && w.rot.reps) || '10';
+          const timed = /sec/.test(reps);
+          exs.push(row(p.name, sets, reps + (!timed && p.dose.per ? ' ' + p.dose.per : ''), isMax ? '2 min (full recovery)' : w.rot ? '30–90 sec (longer for the heavy sets)' : restFor(reps), p.alt, equipLabel(p.needs)));
+        });
+        if (exs.length) blocks.push({ name: 'Block ' + 'ABCDE'[blocks.filter(b => /^Block /.test(b.name)).length], exercises: exs });
+      });
+      const [type, fsets, freps, cats] = w.fin;
+      if (type === 'intervals')
+        blocks.push({ name:'Intervals', exercises:[ row(eq.has('cable') ? 'Intervals — rower, bike or sprints' : 'Intervals — sprints, jump rope or burpees', fsets, freps, '', '', eq.has('cable') ? 'Machine' : 'Bodyweight') ] });
+      else if (type === 'metabolic')
+        blocks.push({ name:'Metabolic circuit — 15–20 sec each, 90 sec after the round', exercises: cats.map(c => { const p = fill(c, used) || fill(c, new Set()); return row(p.name, fsets, freps, '—', p.alt, equipLabel(p.needs)); }) });
+      else if (type === 'complex')
+        blocks.push({ name:'Complex', exercises:[ row(eq.has('db') || eq.has('bb') ? 'Complex — Romanian Deadlift → Bent-Over Row → Squat and Press, one weight' : 'Complex — Squat → Push-up → Reverse Lunge',
+          fsets, freps + ' each, no rest between', '90 sec after the round', '', eq.has('bb') ? 'Barbell' : eq.has('db') ? 'Dumbbell' : 'Bodyweight') ] });
+      else if (type === 'freezone')
+        blocks.push({ name:'Free Zone', exercises:[ row('Free Zone — any two exercises you like', '', '8–10 reps each, as many sets as you can in 5 min', 'as needed', '', '') ] });
+      if (opts.hold) blocks.push(signatureHold(day, eq));
+      data[key] = blocks;
+      made[letter] = blocks;
+      days.push({ key, title: 'Workout ' + letter, blocks });
+    });
+    if (opts.recovery){ data.sun = recoveryDay(eq); days.push({ key:'sun', title:'Recovery', blocks: data.sun }); }
+    const kit = opts.equipment.length ? opts.equipment.map(k => EQUIPMENT.find(e => e[0] === k)[1]).join(', ') : 'bodyweight only';
+    const fam = split.nrol.replace(/\d/, '');
+    const how = { BT:'Aim for the top of each rep range; when every set gets there, go heavier next time. Do each workout about six times (four if you\u2019ve trained this way before), then move to the next program.',
+      H:'Each exercise rotates through three set/rep schemes — note your weight for each scheme and beat it the next time it comes round. Do each workout six times.',
+      SP:'The first block is maximum strength: thorough warm-up sets, full rest, the heaviest weight you can handle with good form. The rest builds muscle — keep the rest short. ' + (split.nrol === 'SP1' ? 'Each workout six times.' : 'Each workout three times.') }[fam];
+    return {
+      data, days,
+      name: `${split.name} · ${kit}`,
+      summary: `${split.name}, adapted from Lou Schuler & Alwyn Cosgrove\u2019s The New Rules of Lifting Supercharged, with ${kit.toLowerCase()}. `
+        + `${opts.warmup ? 'Our Warm-up block carries the book\u2019s core work and its power or combination move; then come ' : 'Each workout runs '}the book\u2019s strength exercises by movement category, `
+        + `${{ intervals:'and intervals', metabolic:'and a metabolic circuit', complex:'and a complex', freezone:'and the Free Zone' }[tpl.A.fin[0]]}${opts.hold ? ', with a Signature Hold to finish' : ''}. ${how} `
+        + `NROL programs set their own sets and reps, so Goal and Method don\u2019t apply.`
+    };
+  }
+
   /* ---------------- Program Builder panel ---------------- */
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   const STORE = 'bnb-program-generator-v1';
@@ -379,7 +540,7 @@
           <div class="pg-checks">${EQUIPMENT.map(([k, n]) => `<label class="pg-check"><input type="checkbox" data-eq="${k}"${state.equipment.includes(k) ? ' checked' : ''}> ${esc(n)}</label>`).join('')}
             <span class="field-hint">Bodyweight moves are always allowed.</span></div></div>
         <div class="pg-row">
-          <div class="field"><label>Days a week</label><select id="pg-days">${Object.entries(SPLITS).map(([n, s]) => `<option value="${n}"${n === String(state.days) ? ' selected' : ''}>${n.charAt(0)} — ${esc(s.name)}</option>`).join('')}</select></div>
+          <div class="field"><label>Days a week / program</label><select id="pg-days">${daysOptions()}</select></div>
           <div class="field"><label>Goal</label><select id="pg-goal">${Object.entries(GOALS).map(([k, g]) => `<option value="${k}"${k === state.goal ? ' selected' : ''}>${esc(g.name)}</option>`).join('')}</select></div>
           <div class="field"><label>Session length</label><select id="pg-minutes">${Object.keys(LENGTHS).map(m => `<option value="${m}"${+m === +state.minutes ? ' selected' : ''}>about ${m} min</option>`).join('')}</select></div>
         </div>
@@ -426,6 +587,14 @@
         if (typeof window.bnbOpenProgramBuilder === 'function') window.bnbOpenProgramBuilder();
       });
     };
+  }
+
+  // Our splits first, then each named family in its own group.
+  function daysOptions(){
+    const opt = ([n, s]) => `<option value="${n}"${n === String(state.days) ? ' selected' : ''}>${esc(s.nrol ? (s.nrol.startsWith('SP') && s.nrol !== 'SP1' ? '4' : '3') + ' — ' + NROL_NAMES[s.nrol] : n.charAt(0) + ' — ' + s.name)}</option>`;
+    const all = Object.entries(SPLITS);
+    return all.filter(([, s]) => !s.group).map(opt).join('')
+      + `<optgroup label="NROL Supercharged (Schuler & Cosgrove)">${all.filter(([, s]) => s.group).map(opt).join('')}</optgroup>`;
   }
 
   function preview(p){
