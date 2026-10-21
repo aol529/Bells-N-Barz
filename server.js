@@ -5,7 +5,7 @@ const path = require('path');
 const ROOT = __dirname;
 const INDEX_FILE = 'bells n barz (main file).html';
 const PORT = process.env.PORT || 3000;
-const PUBLIC_FILES = [INDEX_FILE, 'manifest.json', 'icon.svg', 'sw.js'];
+const PUBLIC_FILES = [INDEX_FILE, 'manifest.json', 'icon.svg', 'favicon.svg', 'favicon.ico', 'sw.js'];
 const PUBLIC_DIRS = ['css', 'js', 'docs'];
 
 const MIME_TYPES = {

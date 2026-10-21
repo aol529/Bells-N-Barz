@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#121210"/>
+  <!-- barbell, through the kettlebell's handle -->
+  <rect x="4" y="19" width="56" height="4" rx="2" fill="#ece6d6"/>
+  <rect x="6" y="12" width="5" height="18" rx="1.5" fill="#ece6d6"/>
+  <rect x="53" y="12" width="5" height="18" rx="1.5" fill="#ece6d6"/>
+  <!-- kettlebell: a wide, flat handle over a round bell -->
+  <path d="M19.5 37 C17 26 19 13 32 13 C45 13 47 26 44.5 37" fill="none" stroke="#e8b923" stroke-width="5"/>
+  <circle cx="32" cy="42" r="17" fill="#e8b923"/>
+  <path d="M23 56.5 h18" stroke="#e8b923" stroke-width="5" stroke-linecap="round"/>
+  <path d="M27 35.5 h6.8 a3.7 3.7 0 0 1 0 7.4 H27 Z M27 42.9 h7.6 a4 4 0 0 1 0 8 H27 Z" fill="none" stroke="#121210" stroke-width="2.8" stroke-linejoin="round"/>
+</svg>
