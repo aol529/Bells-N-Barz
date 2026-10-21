@@ -9,7 +9,7 @@
    plus an optional Sunday recovery. Each day's Block A1 is the lift that
    runs Hepburn double progression by default. On top of that base sit
    optional switches from named methods: PHUL / PHAT splits, a set scheme
-   (5×5, Gironda 8×8, German Volume 10×10, Hepburn A or B) and the
+   (StrongLifts, Bill Starr or Reg Park 5×5, Gironda 8×8, German Volume 10×10, Hepburn A or B) and the
    progression rule. Rule-based, no AI: the same choices
    give the same program, and "Shuffle exercises" picks other options.
    The coach previews it and loads it for the selected client, the same
@@ -131,12 +131,16 @@
     hyper: { name:'hypertrophy', A:['3', '8–12'], B:['3', '8–12'], C:['3', '8–12'], D:['2', '12–15'], E:['2', '15–20'],
              rest:{ A:'90–120 sec', B:'60–90 sec', C:'60–90 sec', D:'45–60 sec', E:'45–60 sec' }, top:12 }
   };
+  // Bill Starr's week: heavy, light, medium (repeating for other day counts).
+  const STARR_DAY = ['heavy day', 'light day, ~80% of heavy', 'medium day, ~90% of heavy'];
   const SPEED = { sets:'6', reps:'3 — speed work: explosive, 65–70% of your 3–5 rep max', rest:'90 sec max' };
 
   // Set schemes from named methods, layered on the manual's blocks.
   const METHODS = {
     manual:  { name:'The manual (sets × reps by goal)' },
     '5x5':   { name:'5×5 (StrongLifts) on the main lifts', progress:'linear' },
+    starr:   { name:'Bill Starr 5×5 (ramping sets, heavy / light / medium days)', progress:'starr' },
+    park:    { name:'Reg Park 5×5 (2 warm-up + 3 work sets)', progress:'park' },
     gironda: { name:'Gironda 8×8 (8 sets of 8, short rest)', progress:'gironda' },
     gvt:     { name:'German Volume Training (10×10 on Block A)', progress:'gvt', blocks:3 },
     hepA:    { name:'Hepburn Program A on each A1 (8×2→8×3, then pump)', progress:'own' },
@@ -153,6 +157,8 @@
     linear:  '+2.5 kg each session',
     double:  'top of the range on all sets → add weight',
     gironda: 'all 8 × 8 done → add weight',
+    starr:   '5 reps on the 5th set → raise every set',
+    park:    'all 3 work sets of 5 → add 5–10 lb',
     gvt:     'all 10 × 10 done → add 4–5%'
   };
   const LENGTHS = { 45:3, 60:4, 75:5 };   // minutes → how many blocks after the warm-up
@@ -252,10 +258,14 @@
     const progress = opts.progress && opts.progress !== 'auto' ? opts.progress
       : METHODS[method].progress === 'own' ? '' : METHODS[method].progress || 'hepburn';
     // A method's sets × reps over the goal's, on one row.
-    function applyMethod(r, { tier, pattern, first, timed, per, pump }){
+    function applyMethod(r, { tier, pattern, first, timed, per, pump, dayIdx }){
       const suffix = per ? ' ' + per : '';
       if (method === '5x5' && MAIN.includes(pattern) && (tier === 'A' || tier === 'B'))
         Object.assign(r, { sets:'5', reps:'5' + suffix, rest: tier === 'A' ? '3 min' : '2–3 min' });
+      else if (method === 'starr' && MAIN.includes(pattern) && (tier === 'A' || tier === 'B'))
+        Object.assign(r, { sets:'5', reps:'5' + suffix + ' (each set heavier; ' + STARR_DAY[dayIdx % 3] + ')', rest:'2–3 min' });
+      else if (method === 'park' && MAIN.includes(pattern) && (tier === 'A' || tier === 'B'))
+        Object.assign(r, { sets:'5', reps:'5' + suffix + ' (2 warm-up sets, then 3 at one weight)', rest: tier === 'A' ? '3–5 min' : '2 min' });
       else if (method === 'gironda' && !timed)
         Object.assign(r, { sets:'8', reps:'8' + suffix, rest:'15–30 sec' });
       else if (method === 'gvt' && !timed)
@@ -298,7 +308,7 @@
           const r = row(p.name, d.sets || sets, (d.reps || reps) + (d.per ? ' ' + d.per : ''), scheme.rest[doseTier], p.alt, equipLabel(p.needs));
           const first = tier === 'A' && !exs.length;
           if (first && day.speed) Object.assign(r, { name: r.name + ' — speed work', sets: SPEED.sets, reps: SPEED.reps, rest: SPEED.rest });
-          else applyMethod(r, { tier, pattern, first, timed: !!d.reps, per: d.per });
+          else applyMethod(r, { tier, pattern, first, timed: !!d.reps, per: d.per, dayIdx });
           exs.push(r);
           // Hepburn A/B: the A1 lift's pump sets follow its power sets.
           if (first && !day.speed && (method === 'hepA' || method === 'hepB')){
@@ -324,11 +334,15 @@
       hepburn: `Block A1 lifts run Hepburn double progression (add a rep per session until every set reaches the top of the range, then add load): ${a1.join(', ')}.`,
       linear: `Linear progression: add about 2.5 kg every session the sets are all completed (5 kg on deadlifts); fail a weight three sessions running, drop 10% and build back.`,
       double: `Double progression on every lift: work up to the top of the rep range on all sets, then add weight and start again at the bottom.`,
+      starr: `Bill Starr's rule: when all 5 reps come on the fifth set, raise every set next time — small jumps, as little as 2.5 lb a week.`,
+      park: `Reg Park's rule: when all three work sets reach 5 reps, add 5–10 lb to every set. No training to failure.`,
       gironda: `Gironda's rule: keep one weight for all 8 sets; when all 8 × 8 are done with good form and short rest, add weight.`,
       gvt: `German Volume Training: start Block A at about 60% of your max (a weight you could lift 20 times); when all 10 × 10 are done, add 4–5%.`
     }[progress] || '';
     const methodText = {
       '5x5': 'Main lifts in Blocks A and B run 5 × 5. ',
+      starr: 'Main lifts in Blocks A and B run Bill Starr\u2019s 5 × 5 — each set heavier than the last — with the training days rotating heavy, light (~80%) and medium (~90%). ',
+      park: 'Main lifts in Blocks A and B run Reg Park\u2019s 5 × 5: two warm-up sets, then three work sets of 5 at one weight, 3–5 min rest on Block A. ',
       gironda: 'Every block runs Gironda\u2019s 8 × 8 with 15–30 sec rest — an advanced shock routine, not for every week. ',
       gvt: 'Block A runs 10 × 10 (90 sec rest), Blocks B–C 3 × 10–12; the session stops at three blocks. Expect real soreness. ',
       hepA: 'Each Block A1 runs Hepburn\u2019s Program A: 8 × 2 building to 8 × 3, then a pump of 3 × 6 building to 3 × 8. ',

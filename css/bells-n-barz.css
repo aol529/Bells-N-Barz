@@ -3495,3 +3495,20 @@ body > *{flex-shrink:0;}
 .pg-meta{font-size:11px;color:var(--muted);margin-top:3px;}
 /* Long prescriptions (progression notes, Hepburn's schemes) wrap instead of running off the table. */
 table.block td:last-child{white-space:normal;min-width:7.5em;max-width:55%;}
+/* ===== Blog: Featured reading (the original articles, linked, not reprinted) ===== */
+.blog-scope .featured-reading:empty{display:none;}
+.blog-scope .featured-reading{margin:0 0 26px;}
+.blog-scope .fr-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:12px;}
+.blog-scope .fr-kicker{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:15px;letter-spacing:.05em;color:var(--text);}
+.blog-scope .fr-note{font-size:12px;color:var(--muted-2);flex:1 1 320px;}
+.blog-scope .fr-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;}
+.blog-scope .fr-card{flex:0 0 min(290px,82vw);scroll-snap-align:start;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:var(--radius);padding:14px 16px;}
+.blog-scope .fr-site{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase;}
+.blog-scope .fr-card h3{font-size:16px;line-height:1.3;margin:0;}
+.blog-scope .fr-by{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted-2);}
+.blog-scope .fr-card p{font-size:13px;color:var(--muted);margin:2px 0 6px;flex:1;}
+.blog-scope .fr-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.blog-scope .fr-read{background:var(--accent);color:var(--on-accent);font-weight:600;font-size:13px;padding:7px 12px;border-radius:2px;text-decoration:none;border:0;}
+.blog-scope .fr-ours{background:transparent;border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;padding:6px 12px;border-radius:2px;cursor:pointer;}
+.blog-scope .fr-ours:hover{border-color:var(--accent-dim);}
+

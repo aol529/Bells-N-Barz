@@ -836,6 +836,58 @@
     const day2 = [{ name:'Deadlift & Press Day', exercises:[ ...lift('Deadlift'), ...lift('Overhead Press') ]}];
     return { mon: clone(day1), tue: clone(day2), wed: [], thu: clone(day1), fri: clone(day2), sat: [], sun: [] };
   })();
+  // Bill Starr's 5×5 ("The Big Three," The Strongest Shall Survive, 1976):
+  // power cleans, bench and squats as a circuit, Mon heavy / Wed light /
+  // Fri medium, every one of the five sets a little heavier than the last.
+  const STARR_5X5_DAYS = (function(){
+    const ramp = (load) => '5 — each set heavier than the last' + (load ? '; top set ' + load : '');
+    const ex = (name, sets, reps, rest, equipment, alternates) => ({ name, rest: rest || '', tempo: '', equipment: equipment || 'Barbell', alternates: alternates || '', sets, reps });
+    const warm = [
+      ex('Leg Extensions', '1–2', '12–15 (warm-up)', '', 'Machine'),
+      ex('Leg Curls', '1–2', '12–15 (warm-up)', '', 'Machine')
+    ];
+    const core = { name:'Abs', exercises:[ ex('Sit-ups', '2', '20–25', '', 'Bodyweight'), ex('Leg Raises', '2', '15–20', '', 'Bodyweight') ]};
+    const day = (title, press, load, note) => [
+      { name:'Warm-up', exercises: clone(warm) },
+      { name: title + ' — circuit: one set of each, then repeat', exercises:[
+        ex('Power Clean', '5', ramp(load), '2–3 min'),
+        ex(press, '5', ramp(load), '2–3 min'),
+        ex('Back Squat (as deep as you can)', '5', ramp(load) + (note || ''), '2–3 min')
+      ]},
+      clone(core)
+    ];
+    return {
+      mon: day('Heavy Day', 'Bench Press', 'near your best for 5'),
+      tue: [],
+      wed: day('Light Day', 'Overhead Press', 'about 80% of Monday’s'),
+      thu: [],
+      fri: day('Medium Day', 'Bench Press', 'about 90% of Monday’s'),
+      sat: [], sun: []
+    };
+  })();
+  // Reg Park's 5×5 (Strength and Bulk Training, 1960): three phases of
+  // three months each, three days a week. "5×5" means two warm-up sets,
+  // then three work sets of five at one weight.
+  const PARK_5X5 = (function(){
+    const five = '5 — sets 1–2 warm-ups, sets 3–5 at one weight; all three done → add 5–10 lb';
+    const ex = (name, sets, reps, rest, equipment) => ({ name, rest: rest || '', tempo: '', equipment: equipment || 'Barbell', alternates: '', sets, reps });
+    const backExt = (sets) => ex('45° Back Extension', sets, '10 (bodyweight first; add weight once all sets are done)', '', 'Bench');
+    const phases = {
+      1: [ backExt('3'), ex('Back Squat', '5', five, '3–5 min'), ex('Bench Press', '5', five, '3–5 min'), ex('Deadlift', '5', five, '3–5 min') ],
+      2: [ backExt('3–4'), ex('Front Squat', '5', five, '2 min'), ex('Back Squat', '5', five, '2 min'), ex('Bench Press', '5', five, '2 min'),
+           ex('Standing Barbell Press', '5', five, '2 min'), ex('High Pull', '5', five, '2 min'), ex('Deadlift', '5', five, '2 min'),
+           ex('Standing Barbell Calf Raise', '5', '25', '2 min') ],
+      3: [ backExt('4'), ex('Front Squat', '5', five, '2 min'), ex('Back Squat', '5', five, '2 min'), ex('Standing Barbell Press', '5', five, '2 min'),
+           ex('Bench Press', '5', five, '2 min'), ex('Bent-Over Barbell Row', '5', five, '2 min'),
+           ex('Deadlift', '5', '3 — warm up over the first sets, then work sets at one weight', '2 min'),
+           ex('Behind-the-Neck Press', '5', five, '2 min', 'Barbell (alt: One-Arm Dumbbell Press)'),
+           ex('Barbell Curl', '5', five, '2 min'), ex('Lying Triceps Extension', '5', '8', '2 min', 'Barbell/EZ-Bar'),
+           ex('Standing Barbell Calf Raise', '5', '25', '2 min') ]
+    };
+    const week = n => { const d = [{ name:'Phase ' + n, exercises: phases[n] }];
+      return { mon: clone(d), tue: [], wed: clone(d), thu: [], fri: clone(d), sat: [], sun: [] }; };
+    return { 1: week(1), 2: week(2), 3: week(3) };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'bnb-full-body-dumbbell',
@@ -890,6 +942,30 @@
       name: "StrongLifts 5×5",
       description: "Mehdi Hadim's 5×5: two full-body barbell workouts alternated three days a week — Workout A (Squat, Bench Press, Barbell Row) and Workout B (Squat, Overhead Press, Deadlift 1×5). Mon/Wed/Fri as A/B/A, then B/A/B the next week. 5 sets of 5 at the same weight, about 3 minutes' rest (5 after a failed set), and 2.5 kg more every session you complete all reps (5 kg on the deadlift). Fail a weight three sessions in a row: drop it 10% and build back. Simple linear progression for beginners and anyone returning to the barbell. Source: Mehdi Hadim, StrongLifts.com (see Sources & Credits).",
       data: STRONGLIFTS_5X5_DAYS
+    },
+    {
+      id: 'bill-starr-5x5',
+      name: "Bill Starr’s 5×5 (The Big Three)",
+      description: "Strength coach Bill Starr's original 5×5 from The Strongest Shall Survive (1976): power cleans, bench press and deep back squats, done as a circuit (one set of each, then repeat) on Monday (heavy), Wednesday (light, about 80% of Monday's weights, with the overhead press in place of the bench) and Friday (medium, about 90%). Unlike Reg Park's version, every one of the five sets is a little heavier than the last. Leg extensions and leg curls warm the legs up; sit-ups and leg raises finish. When you get all 5 reps on the fifth set, raise every set next time — small jumps, as little as 2.5 lb a week. Sources: Breaking Muscle and The Barbell summaries of Starr's book; details vary between later versions (see Sources & Credits).",
+      data: STARR_5X5_DAYS
+    },
+    {
+      id: 'reg-park-5x5-phase-1',
+      name: "Reg Park’s 5×5 — Phase 1",
+      description: "Three-time Mr Universe Reg Park's 5×5 from Strength and Bulk Training for Weight Lifters and Body Builders (1960) — the routine Arnold grew up on. Phase 1 (three months, three days a week): 45° back extensions 3×10, then back squat, bench press and deadlift 5×5. Sets 1–2 are warm-ups, sets 3–5 work sets at one weight; when all three work sets reach 5, add 5–10 lb. 3–5 min between work sets, no training to failure. At the end of the phase, test a single, take four days off, then move to Phase 2. Sources: Breaking Muscle's summary and a transcription of the book (see Sources & Credits).",
+      data: PARK_5X5[1]
+    },
+    {
+      id: 'reg-park-5x5-phase-2',
+      name: "Reg Park’s 5×5 — Phase 2",
+      description: "Phase 2 of Reg Park's 5×5 (three more months, three days a week), for bodybuilders: back extensions 3–4×10, front squat, back squat, bench press, standing barbell press, high pull and deadlift at 5×5, and standing calf raises 5×25. Same 2 warm-up + 3 work set rule, 2 min rest. Park gave lifters aiming at Olympic weightlifting a different Phase 2 with lunges and power cleans; this is the bodybuilder version. Sources: Breaking Muscle's summary and a transcription of the book (see Sources & Credits).",
+      data: PARK_5X5[2]
+    },
+    {
+      id: 'reg-park-5x5-phase-3',
+      name: "Reg Park’s 5×5 — Phase 3",
+      description: "Phase 3 of Reg Park's 5×5 (three months, three days a week): back extensions 4×10, front squat, back squat, standing press, bench press, bent-over row, behind-the-neck press (or one-arm dumbbell press) and barbell curl at 5×5, deadlift 5×3, lying triceps extension 5×8 and calf raises 5×25. 2 min rest. After Phase 3, test your singles and start again at Phase 1 with heavier weights. Sources: Breaking Muscle's summary and a transcription of the book; secondary sources differ on some set counts in this phase (see Sources & Credits).",
+      data: PARK_5X5[3]
     },
     {
       id: 'phul',

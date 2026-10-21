@@ -263,6 +263,60 @@
       excerpt: "Arnold Schwarzenegger's chest-and-back and shoulders-and-arms routines are already old-school classics — but he was just as deliberate about the mindset behind them.",
       body: "## Not just what he did — how he thought about it\n\nArnold Schwarzenegger's training splits from the golden era are already represented in this app's other Old School presets (the same Mon/Thu Chest & Back → Tue/Fri Shoulders & Arms → Wed/Sat Legs structure traces back to his era). What's less often covered is the mental approach he wrote and spoke about for decades, which he considered just as important as the exercise selection.\n\n### A few of the principles\n\n- **Lifting requires brain work, too.** Arnold trained with total mental focus, using visualization to \"see\" the muscle he wanted before and during the set — imagining his biceps as mountains, for instance, and consciously coaxing them to grow rather than just moving the weight.\n- **Train harder than everybody else.** Arnold's stated goal wasn't to be as good as his competition, it was to be unmistakably better — which meant treating every session as an opportunity to outwork the room, not just complete the prescribed sets.\n- **Prioritize your weak points.** Arnold trained the body parts he judged weakest first in a session, while fresh and able to give them maximum intensity, rather than leaving them for the end of a tired workout.\n- **Use variety deliberately.** Rather than sticking to one routine indefinitely, Arnold regularly changed exercises, angles, and techniques specifically to keep forcing the muscle to adapt to something new.\n\n### Why this is worth reading even with the routines already covered\n\nA written program only captures exercises, sets, and reps — it can't capture the intensity, focus, or self-belief a lifter brings to each set, and Arnold was explicit that those mental factors were a deliberate part of his training, not an afterthought. Pair this mindset with any of the other Old School presets rather than treating it as a separate program.\n\n### How to use this\n\nThis is a set of training principles and mindset guidance rather than a specific routine, so there's no standalone Program Builder preset attached to it.\n\n---\n\n**Source:** David Robson & Bill Geiger, [\"Arnold Schwarzenegger's 8 Best Training Principles\"](https://web.archive.org/web/20161207232058/http://www.bodybuilding.com/fun/arnold-schwarzenegger-8-best-training-principles.html), Bodybuilding.com. This post summarizes and adapts that article's explanations — see the original 4-part series for Arnold's full commentary, including his specific chest/back, shoulders/arms, and legs/abs workouts.",
       status: 'published'
+    },
+    {
+      id: 'p30', title: "StrongLifts 5×5: Three Lifts a Day, A Little More Every Time",
+      slug: 'stronglifts-5x5', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['5x5',  'strength',  'beginner',  'program-design'],
+      excerpt: "Two workouts, five lifts, and one rule: if you made every rep, the bar gets heavier next time.",
+      body: "## The program most people meet first\n\nStrongLifts 5×5 is Mehdi Hadim's take on the old five-sets-of-five idea, and it has introduced more people to the barbell than almost anything else. It strips training down to five lifts and one decision per session: did you make all your reps or not?\n\n### The scheme\n\nThere are two workouts, alternated three days a week with a day off between:\n\n- **Workout A:** Squat 5×5, Bench Press 5×5, Barbell Row 5×5\n- **Workout B:** Squat 5×5, Overhead Press 5×5, Deadlift 1×5\n\nWeek one runs A/B/A, week two B/A/B, and so on. All five sets use the same weight, with about three minutes of rest — five after a set you missed.\n\n### The rule that does the work\n\nMake every rep, and the next session adds **2.5 kg** to that lift (5 kg on the deadlift). Miss a weight three sessions in a row and you take 10% off and build back up. That's the whole progression.\n\n### Why it works\n\nSquatting three times a week with small, steady jumps is a fast way for a newer lifter to get strong, and the fixed 5×5 removes almost every decision. The trade-off is the same as any linear program: the jumps eventually outrun recovery, and that's the signal to move on to something with more variety — PHUL, Bill Starr's heavy/light/medium week, or our own manual.\n\n### Try it yourself\n\nLoad **StrongLifts 5×5** from **Coach > Program Builder > Preset Programs**, or pick **5×5 (StrongLifts)** as the Method in **Build a Program** to keep our warm-up, blocks and Signature Hold around it.\n\n---\n\n**Source:** Mehdi Hadim, [\"Stronglifts 5×5: The Complete Workout Guide\"](https://stronglifts.com/5x5/), StrongLifts. This post summarizes the program in our own words — read the original for the full guide.",
+      status: 'published'
+    },
+    {
+      id: 'p31', title: "Bill Starr's 5×5: The Big Three and the Heavy, Light, Medium Week",
+      slug: 'bill-starr-5x5', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['5x5',  'old-school',  'strength',  'program-design'],
+      excerpt: "The strength coach who taught football players to lift built his program on three movements and a week that never asks for maximum effort twice.",
+      body: "## The coach behind the 5×5 most people run\n\nBill Starr coached strength for football teams and Olympic lifters, and his 1976 book *The Strongest Shall Survive* is where the 5×5 most coaches know today comes from. His version is built around **\"The Big Three\"**: the power clean, the bench press and the back squat, taken as deep as you can.\n\n### The scheme\n\n- **Monday — heavy:** work up to near your best for five.\n- **Wednesday — light:** about 80% of Monday's weights, with the overhead press in place of the bench.\n- **Friday — medium:** about 90% of Monday's weights.\n\nThe three lifts are run as a **circuit** — one set of power cleans, one of bench, one of squats, then round again — five times.\n\n### The detail that separates it from Reg Park's 5×5\n\nStarr **ramps every set**: each of the five sets is heavier than the one before, so only the last is a true top set. Reg Park did two warm-up sets and then three sets at one weight. Same \"5×5\" on paper, very different day under the bar.\n\n### Progression and extras\n\nWhen all five reps come on the fifth set, every set goes up next time — in small jumps, as little as 2.5 lb a week. Leg extensions and leg curls warm the knees up first; sit-ups and leg raises finish the session.\n\n### Try it yourself\n\nLoad **Bill Starr's 5×5 (The Big Three)** from **Preset Programs**, or choose **Bill Starr 5×5** as the Method in **Build a Program** — it ramps the main lifts and rotates your days heavy, light and medium.\n\n---\n\n**Sources:** Chris Colucci, [\"The 5x5 Workout Explained: The Classic Program for Size and Strength\"](https://breakingmuscle.com/5-x-5-workout-explained/), Breaking Muscle; Greg Merritt, [\"5x5 Workout: Your Complete Training Guide\"](https://thebarbell.com/5x5-workout/), The Barbell. Starr's original is his book, *The Strongest Shall Survive* (1976); later versions differ in the details.",
+      status: 'published'
+    },
+    {
+      id: 'p32', title: "Reg Park's 5×5: The Three-Phase Plan Arnold Grew Up On",
+      slug: 'reg-park-5x5', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['5x5',  'old-school',  'bodybuilding',  'strength',  'program-design'],
+      excerpt: "Before Arnold had a training philosophy of his own, he had Reg Park's — three phases, three months each, and very little that was optional.",
+      body: "## Arnold's idol, Arnold's first program\n\nReg Park won Mr Universe three times and was the man a teenage Arnold Schwarzenegger wanted to become. His 1960 book *Strength and Bulk Training for Weight Lifters and Body Builders* laid out a 5×5 plan in three phases, each run for about three months, three days a week.\n\n### What \"5×5\" meant to Park\n\nThe first two sets are **warm-ups** that climb toward the working weight; the last **three sets of five are at one weight**. When you get all three, add 5–10 lb next time. No training to failure — Park wanted every set clean.\n\n### The three phases\n\n- **Phase 1:** 45° back extensions 3×10, then back squat, bench press and deadlift at 5×5. Rest 3–5 minutes between work sets.\n- **Phase 2 (for bodybuilders):** back extensions, front squat, back squat, bench press, standing barbell press, high pulls and deadlift at 5×5, plus standing calf raises 5×25. Rest drops to about two minutes.\n- **Phase 3:** the big lifts plus bent-over rows, behind-the-neck presses (or one-arm dumbbell presses), barbell curls, lying triceps extensions and calf raises.\n\nAt the end of a phase, Park tested his singles, took four days off and moved on. After Phase 3, back to Phase 1 — heavier.\n\n### Try it yourself\n\nAll three phases are in **Preset Programs** as **Reg Park's 5×5 — Phase 1, 2 and 3**. In **Build a Program**, the **Reg Park 5×5** Method gives your main lifts his two-warm-up, three-work-set structure.\n\n---\n\n**Sources:** Chris Colucci, [\"The 5x5 Workout Explained: The Classic Program for Size and Strength\"](https://breakingmuscle.com/5-x-5-workout-explained/), Breaking Muscle, and a reader's transcription of Park's phases on the [Ronnie.cz forum](https://forum.ronnie.cz/post1159958.html). Park's original is his book (1960); secondary sources differ on some Phase 3 set counts.",
+      status: 'published'
+    },
+    {
+      id: 'p33', title: "PHUL: Strong on Monday, Big by Friday",
+      slug: 'phul-power-hypertrophy-upper-lower', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['upper-lower',  'powerbuilding',  'hypertrophy',  'program-design'],
+      excerpt: "Brandon Campbell's four-day split hits every muscle twice a week — once heavy, once for size — and fits around a working life.",
+      body: "## Two goals, one week\n\nPHUL — **Power Hypertrophy Upper Lower** — is Brandon Campbell's answer to the lifter who wants to get stronger and bigger without living in the gym. Four sessions a week, every muscle trained twice: once with heavy, low-rep compounds, once with lighter, higher-rep work.\n\n### The week\n\n- **Monday — Upper Power:** bench press and bent-over rows at 3–5 reps, then incline dumbbell press, pulldowns, overhead press and arms at 5–10.\n- **Tuesday — Lower Power:** squats and deadlifts at 3–5, then leg press, leg curls and calves.\n- **Wednesday:** off.\n- **Thursday — Upper Hypertrophy:** incline bench, flyes, cable and dumbbell rows, lateral raises and arms, all at 8–12.\n- **Friday — Lower Hypertrophy:** front squats, lunges, leg extensions and curls, and two calf movements at 8–15.\n\n### The rules that make it work\n\nLeave at least a rep in the tank on every set, rest properly on the heavy compounds (three to five minutes is normal), and don't stack both power days or both hypertrophy days back to back. Run it in blocks of about four weeks and push the power numbers up a little each block.\n\n### Try it yourself\n\nLoad **PHUL — Power Hypertrophy Upper Lower** from **Preset Programs**, or pick **4 — PHUL** under Days a week in **Build a Program** to get the same power/hypertrophy week built in our warm-up-and-blocks format, fitted to your equipment.\n\n---\n\n**Source:** Brandon Campbell, [\"Power Hypertrophy Upper Lower (P.H.U.L.) Workout\"](https://www.muscleandstrength.com/workouts/phul-workout), Muscle & Strength. This post summarizes the program in our own words — read the original for the full write-up.",
+      status: 'published'
+    },
+    {
+      id: 'p34', title: "PHAT: Layne Norton's Power and Pump in One Week",
+      slug: 'phat-layne-norton', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['powerbuilding',  'hypertrophy',  'strength',  'program-design'],
+      excerpt: "Two heavy days, three size days, and a speed-work opener most programs forget: how a natural pro bodybuilder and powerlifter trained both qualities at once.",
+      body: "## Built by someone who competed at both\n\nDr Layne Norton competed as a natural pro bodybuilder and a powerlifter, and **PHAT — Power Hypertrophy Adaptive Training** — is how he trained for both at once. It's a five-day week for lifters with a few years behind them.\n\n### The week\n\n- **Day 1 — Upper Body Power:** rows and dumbbell presses at 3–5 reps, then pull-ups, chins, dips, shoulder presses and arms at 6–10.\n- **Day 2 — Lower Body Power:** squats at 3–5, then hack squats, extensions, stiff-legged deadlifts, hamstrings and calves.\n- **Day 3:** rest.\n- **Day 4 — Back & Shoulders Hypertrophy**, **Day 5 — Lower Body Hypertrophy**, **Day 6 — Chest & Arms Hypertrophy:** 8–20 reps, 1–2 minutes' rest.\n- **Day 7:** rest.\n\n### The speed-work opener\n\nEach hypertrophy day starts with **6 sets of 3** on that day's power lift at **65–70% of your 3–5 rep max**, moved as fast as you can with no more than 90 seconds' rest. If the bar slows, it's too heavy. It keeps the power days' skill sharp without adding fatigue.\n\n### Norton's guard rails\n\nRest as long as you need on the power days — five or six minutes is fine. Stop a rep or two short of failure on the size days, only go to failure on the last set or two, and not at all for the first few weeks. Rotate the power movements every two to three weeks and deload every 6–12 weeks. Newer lifters: drop one assistance exercise per day until you adapt.\n\n### Try it yourself\n\nLoad **PHAT** from **Preset Programs**, or pick **5 — PHAT** under Days a week in **Build a Program** — the speed work opens each hypertrophy day automatically, on the same lift as the power day.\n\n---\n\n**Source:** Layne Norton, [\"PHAT: Power Hypertrophy Adaptive Training\"](https://biolayne.com/articles/training/phat-power-hypertrophy-adaptive-training/), biolayne.com. This post summarizes the program in our own words — read the original for Norton's full explanation.",
+      status: 'published'
+    },
+    {
+      id: 'p35', title: "Doug Hepburn's Program B: Singles for Power, Fives for Size",
+      slug: 'doug-hepburn-program-b', category: 'Health & Appearance',
+      date: '2026-10-21', author: 'Coach KA', views: 0,
+      cover: '', tags: ['old-school',  'strength',  'powerlifting',  'program-design'],
+      excerpt: "Program A built Hepburn's strength with 2s and 3s. Program B goes heavier still — singles first, then the fives that put the size on.",
+      body: "## The other half of Hepburn's method\n\nOur post on Doug Hepburn's Program A covered the famous 2s-and-3s ladder. Hepburn also trained with a second, heavier scheme — usually called **Program B** — that pairs a power part with a pump part on each lift.\n\n### The scheme, lift by lift\n\n- **Power:** singles with a weight you could lift **three times**. Start with 5 singles; add one single each workout until you reach 8; then add 5–10 lb and go back to 5.\n- **Pump:** straight after, **6 sets of 3** with a weight you could lift **eight times**. Add a rep to one set each workout until it reads 6 × 5; then add weight and start again at 3s.\n\nSquat and bench on Monday and Thursday, deadlift and overhead press on Tuesday and Friday is a common way to set out the week.\n\n### What Hepburn himself said\n\nAsked about his bench routine, Hepburn described it as roughly **singles, then fives** — and said he rarely ran exactly the same scheme twice. The singles get the body used to a single maximal effort; the fives add the volume that builds muscle.\n\n### A word of caution\n\nThis is demanding. Most write-ups suggest running it for about six weeks and then switching to something lighter. Hepburn never published a definitive \"Program B\" himself, so the numbers vary a little between sources.\n\n### Try it yourself\n\nLoad **Doug Hepburn's Program B** from **Preset Programs**, or pick **Hepburn Program B on each A1** as the Method in **Build a Program** to run it on each day's main lift inside our format.\n\n---\n\n**Sources:** Dresdin Archibald, [\"The Doug Hepburn Bench Press Success Formula\"](https://breakingmuscle.com/the-doug-hepburn-bench-press-success-formula/), Breaking Muscle, and a [StrongFirst forum summary](https://www.strongfirst.com/community/goto/post?id=260685) of Mike Mahler's T-Nation article on Hepburn's method.",
+      status: 'published'
     }
   ];
 
@@ -689,10 +743,66 @@
     });
   });
 
+  /* ---------------- FEATURED READING ----------------
+     The original articles behind our program write-ups, by their own
+     authors. We link out to them rather than reprinting them: a short
+     summary in our words, the original's title, author and site, and a
+     button to read it where it was published. `post` is the slug of our
+     own write-up of the same program. */
+  const FEATURED_READING = [
+    { title:'PHAT: Power Hypertrophy Adaptive Training', author:'Layne Norton', site:'biolayne.com', year:'2016',
+      url:'https://biolayne.com/articles/training/phat-power-hypertrophy-adaptive-training/', post:'phat-layne-norton',
+      summary:'The five-day power and hypertrophy split in Norton\u2019s own words, with his rules on rest, failure, speed work and deloads.' },
+    { title:'Power Hypertrophy Upper Lower (P.H.U.L.) Workout', author:'Brandon Campbell', site:'Muscle & Strength', year:'2013',
+      url:'https://www.muscleandstrength.com/workouts/phul-workout', post:'phul-power-hypertrophy-upper-lower',
+      summary:'The original PHUL write-up: two power days, two hypertrophy days, every muscle twice a week.' },
+    { title:'Stronglifts 5×5: The Complete Workout Guide', author:'Mehdi Hadim', site:'StrongLifts', year:'',
+      url:'https://stronglifts.com/5x5/', post:'stronglifts-5x5',
+      summary:'The full StrongLifts guide: workouts A and B, how much to add each session, and what to do when you stall.' },
+    { title:'The 5x5 Workout Explained: The Classic Program for Size and Strength', author:'Chris Colucci', site:'Breaking Muscle', year:'2023',
+      url:'https://breakingmuscle.com/5-x-5-workout-explained/', post:'reg-park-5x5',
+      summary:'Where 5×5 came from — Reg Park\u2019s three phases and Bill Starr\u2019s heavy, light and medium week, side by side.' },
+    { title:'5x5 Workout: Your Complete Training Guide', author:'Greg Merritt', site:'The Barbell', year:'',
+      url:'https://thebarbell.com/5x5-workout/', post:'bill-starr-5x5',
+      summary:'A wide look at the 5×5 family, from Bill Starr\u2019s original to the versions lifters run today.' },
+    { title:'The Doug Hepburn Bench Press Success Formula', author:'Dresdin Archibald', site:'Breaking Muscle', year:'2012',
+      url:'https://breakingmuscle.com/the-doug-hepburn-bench-press-success-formula/', post:'doug-hepburn-program-b',
+      summary:'Hepburn\u2019s own description of how he trained the bench: singles, then fives — and why he rarely repeated a scheme.' },
+    { title:'Double progression', author:'Benjamin Schnabel', site:'Alpha Progression', year:'',
+      url:'https://alphaprogression.com/en/glossary/double-progression', post:'double-progression-explained-simply',
+      summary:'The rule behind most rep ranges: reps first, then weight — and where it comes from.' }
+  ];
+  function renderFeatured(){
+    const box = document.getElementById('featured-reading');
+    if (!box) return;
+    // Only on the unfiltered list (or the training topic), not over a search.
+    if (searchTerm || (activeCategory !== 'all' && activeCategory !== 'Health & Appearance')){ box.innerHTML = ''; return; }
+    box.innerHTML = `
+      <div class="fr-head"><span class="fr-kicker">Featured reading</span>
+        <span class="fr-note">The original articles behind our program write-ups, by their own authors. We summarize and link to them — the full articles belong to their writers.</span></div>
+      <div class="fr-row">${FEATURED_READING.map((f, i) => {
+        const ours = posts.find(p => p.slug === f.post && p.status === 'published');
+        return `<article class="fr-card">
+          <div class="fr-site">${esc(f.site)}</div>
+          <h3>${esc(f.title)}</h3>
+          <div class="fr-by">by ${esc(f.author)}${f.year ? ' · ' + esc(f.year) : ''}</div>
+          <p>${esc(f.summary)}</p>
+          <div class="fr-actions">
+            <a class="fr-read" href="${escAttr(f.url)}" target="_blank" rel="noopener">Read the original →</a>
+            ${ours ? `<button type="button" class="fr-ours" data-fr="${i}">Our write-up</button>` : ''}
+          </div>
+        </article>`; }).join('')}</div>`;
+    box.querySelectorAll('[data-fr]').forEach(b => b.onclick = () => {
+      const p = posts.find(x => x.slug === FEATURED_READING[b.dataset.fr].post && x.status === 'published');
+      if (p) openPost(p.id);
+    });
+  }
+
   /* ---------------- LIST VIEW ---------------- */
   function renderList(){
     renderCategoryChips();
     renderSideList();
+    renderFeatured();
     const grid = document.getElementById('post-grid');
     const emptyMsg = document.getElementById('empty-msg');
     grid.innerHTML = '';
