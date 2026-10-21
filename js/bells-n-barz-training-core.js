@@ -736,6 +736,106 @@
     ];
     return { mon: clone(dayA), tue: [], wed: clone(dayB), thu: [], fri: clone(dayC), sat: [], sun: clone(recovery) };
   })();
+  // StrongLifts 5×5 (Mehdi Hadim): two full-body workouts alternated three
+  // days a week, barbell compounds only, a little more weight every session.
+  const STRONGLIFTS_5X5_DAYS = (function(){
+    const ex = (name, sets, reps, rest, alternates) => ({ name, rest: rest || '3 min', tempo: '', equipment: 'Barbell', alternates: alternates || '', sets, reps });
+    const prog = '5 — add 2.5 kg next session when all 5×5 are done (miss 3 sessions in a row: drop 10% and build back)';
+    const A = [{ name:'Workout A', exercises:[
+      ex('Squat', '5', prog), ex('Bench Press', '5', prog), ex('Barbell Row', '5', prog, '3 min', 'Pendlay Row')
+    ]}];
+    const B = [{ name:'Workout B', exercises:[
+      ex('Squat', '5', prog), ex('Overhead Press', '5', prog),
+      ex('Deadlift', '1', '5 — add 5 kg next session when the set of 5 is done', '3 min')
+    ]}];
+    // Week 1 is A/B/A; week 2 starts with B (B/A/B), and so on.
+    return { mon: clone(A), tue: [], wed: clone(B), thu: [], fri: clone(A), sat: [], sun: [] };
+  })();
+  // PHUL — Power Hypertrophy Upper Lower (Brandon Campbell): two heavy days
+  // and two hypertrophy days, every muscle twice a week.
+  const PHUL_DAYS = (function(){
+    const ex = (name, sets, reps, rest, equipment, alternates) => ({ name, rest: rest || '', tempo: '', equipment: equipment || '', alternates: alternates || '', sets, reps });
+    const H = '3–5 min', AC = '2–3 min', HY = '60–90 sec';
+    return {
+      mon: [{ name:'Upper Power', exercises:[
+        ex('Barbell Bench Press', '3–4', '3–5', H, 'Barbell'), ex('Incline Dumbbell Bench Press', '3–4', '6–10', AC, 'Dumbbell'),
+        ex('Bent Over Row', '3–4', '3–5', H, 'Barbell'), ex('Lat Pulldown', '3–4', '6–10', AC, 'Cable', 'Pull-ups'),
+        ex('Overhead Press', '2–3', '5–8', AC, 'Barbell'), ex('Barbell Curl', '2–3', '6–10', AC, 'Barbell'), ex('Skullcrusher', '2–3', '6–10', AC, 'EZ-Bar')
+      ]}],
+      tue: [{ name:'Lower Power', exercises:[
+        ex('Squat', '3–4', '3–5', H, 'Barbell'), ex('Deadlift', '3–4', '3–5', H, 'Barbell'), ex('Leg Press', '3–5', '10–15', AC, 'Machine'),
+        ex('Leg Curl', '3–4', '6–10', AC, 'Machine'), ex('Calf Raise', '4', '6–10', AC, 'Machine')
+      ]}],
+      wed: [],
+      thu: [{ name:'Upper Hypertrophy', exercises:[
+        ex('Incline Barbell Bench Press', '3–4', '8–12', HY, 'Barbell'), ex('Flat Bench Dumbbell Flye', '3–4', '8–12', HY, 'Dumbbell'),
+        ex('Seated Cable Row', '3–4', '8–12', HY, 'Cable'), ex('One Arm Dumbbell Row', '3–4', '8–12', HY, 'Dumbbell'),
+        ex('Dumbbell Lateral Raise', '3–4', '8–12', HY, 'Dumbbell'), ex('Seated Incline Dumbbell Curl', '3–4', '8–12', HY, 'Dumbbell'),
+        ex('Cable Tricep Extension', '3–4', '8–12', HY, 'Cable')
+      ]}],
+      fri: [{ name:'Lower Hypertrophy', exercises:[
+        ex('Front Squat', '3–4', '8–12', HY, 'Barbell'), ex('Barbell Lunge', '3–4', '8–12', HY, 'Barbell'),
+        ex('Leg Extension', '3–4', '10–15', HY, 'Machine'), ex('Leg Curl', '3–4', '10–15', HY, 'Machine'),
+        ex('Seated Calf Raise', '3–4', '8–12', HY, 'Machine'), ex('Calf Press', '3–4', '8–12', HY, 'Machine')
+      ]}],
+      sat: [], sun: []
+    };
+  })();
+  // PHAT — Power Hypertrophy Adaptive Training (Layne Norton): two power
+  // days, then three hypertrophy days that open with speed work.
+  const PHAT_DAYS = (function(){
+    const ex = (name, sets, reps, rest, equipment, alternates) => ({ name, rest: rest || '', tempo: '', equipment: equipment || '', alternates: alternates || '', sets, reps });
+    const P = 'full recovery (up to 5–6 min)', HY = '1–2 min', SP = '90 sec max';
+    const speed = 'explosive — 65–70% of your 3–5 rep max';
+    return {
+      mon: [{ name:'Upper Body Power', exercises:[
+        ex('Bent Over or Pendlay Rows', '3', '3–5', P, 'Barbell'), ex('Weighted Pull-ups', '2', '6–10', P, 'Bodyweight + load'),
+        ex('Rack Chins', '2', '6–10', P, 'Bar'), ex('Flat Dumbbell Press', '3', '3–5', P, 'Dumbbell'),
+        ex('Weighted Dips', '2', '6–10', P, 'Bodyweight + load'), ex('Seated Dumbbell Shoulder Press', '3', '6–10', P, 'Dumbbell'),
+        ex('Cambered Bar Curls', '3', '6–10', P, 'EZ-Bar'), ex('Skull Crushers', '3', '6–10', P, 'EZ-Bar')
+      ]}],
+      tue: [{ name:'Lower Body Power', exercises:[
+        ex('Squats', '3', '3–5', P, 'Barbell'), ex('Hack Squats', '2', '6–10', P, 'Machine'), ex('Leg Extensions', '2', '6–10', P, 'Machine'),
+        ex('Stiff-Legged Deadlifts', '3', '5–8', P, 'Barbell'), ex('Glute Ham Raises', '2', '6–10', P, 'GHD', 'Lying Leg Curls'),
+        ex('Standing Calf Raises', '3', '6–10', P, 'Machine'), ex('Seated Calf Raises', '2', '6–10', P, 'Machine')
+      ]}],
+      wed: [],
+      thu: [{ name:'Back & Shoulders Hypertrophy', exercises:[
+        ex('Bent Over Rows — speed work', '6', '3 (' + speed + ')', SP, 'Barbell'), ex('Rack Chins', '3', '8–12', HY, 'Bar'),
+        ex('Seated Cable Rows', '3', '8–12', HY, 'Cable'), ex('Dumbbell Rows (chest on an incline bench)', '2', '12–15', HY, 'Dumbbell', 'Shrugs'),
+        ex('Close-Grip Pulldowns', '2', '15–20', HY, 'Cable'), ex('Seated Dumbbell Shoulder Press', '3', '8–12', HY, 'Dumbbell'),
+        ex('Upright Rows', '2', '12–15', HY, 'Barbell'), ex('Side Lateral Raises', '3', '12–20', HY, 'Dumbbell/Cable')
+      ]}],
+      fri: [{ name:'Lower Body Hypertrophy', exercises:[
+        ex('Squats — speed work', '6', '3 (' + speed + ')', SP, 'Barbell'), ex('Hack Squats', '3', '8–12', HY, 'Machine'),
+        ex('Leg Presses', '2', '12–15', HY, 'Machine'), ex('Leg Extensions', '3', '15–20', HY, 'Machine'),
+        ex('Romanian Deadlifts', '3', '8–12', HY, 'Barbell'), ex('Lying Leg Curls', '2', '12–15', HY, 'Machine'),
+        ex('Seated Leg Curls', '2', '15–20', HY, 'Machine'), ex('Donkey Calf Raises', '4', '10–15', HY, 'Machine'),
+        ex('Seated Calf Raises', '3', '15–20', HY, 'Machine')
+      ]}],
+      sat: [{ name:'Chest & Arms Hypertrophy', exercises:[
+        ex('Flat Dumbbell Press — speed work', '6', '3 (' + speed + ')', SP, 'Dumbbell'), ex('Incline Dumbbell Press', '3', '8–12', HY, 'Dumbbell'),
+        ex('Hammer Strength Chest Press', '3', '12–15', HY, 'Machine'), ex('Incline Cable Flyes', '2', '15–20', HY, 'Cable'),
+        ex('Cambered Bar Preacher Curls', '3', '8–12', HY, 'EZ-Bar'), ex('Dumbbell Concentration Curls', '2', '12–15', HY, 'Dumbbell'),
+        ex('Spider Curls (on an incline bench)', '2', '15–20', HY, 'Dumbbell'), ex('Seated Cambered Bar Tricep Extension', '3', '8–12', HY, 'EZ-Bar'),
+        ex('Rope Cable Pressdowns', '2', '12–15', HY, 'Cable'), ex('Cable Kickbacks', '2', '15–20', HY, 'Cable')
+      ]}],
+      sun: []
+    };
+  })();
+  // Doug Hepburn's Program B: heavy singles for power, then fives for pump,
+  // on each main lift — the companion to Program A's 2s-and-3s.
+  const HEPBURN_PROGRAM_B_DAYS = (function(){
+    const power = 'Singles — start with 5 sets of 1 at a weight you could lift 3 times; add one single each workout up to 8, then add 5–10 lb and start again at 5';
+    const pump = '3 → 5 — start at 6 sets of 3 with a weight you could lift 8 times; add a rep to one set each workout up to 6 × 5, then add weight and start again at 3s';
+    const lift = (name) => [
+      { name, rest:'3–5 min', tempo:'', equipment:'Barbell', alternates:'', sets:'5 → 8', reps: power },
+      { name: name + ' (pump)', rest:'2 min', tempo:'', equipment:'Barbell', alternates:'', sets:'6', reps: pump }
+    ];
+    const day1 = [{ name:'Squat & Bench Day', exercises:[ ...lift('Squat'), ...lift('Bench Press') ]}];
+    const day2 = [{ name:'Deadlift & Press Day', exercises:[ ...lift('Deadlift'), ...lift('Overhead Press') ]}];
+    return { mon: clone(day1), tue: clone(day2), wed: [], thu: clone(day1), fri: clone(day2), sat: [], sun: [] };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'bnb-full-body-dumbbell',
@@ -778,6 +878,30 @@
       name: "Doug Hepburn’s Program A",
       description: "1953 Weightlifting World Champion Doug Hepburn's double-progression strength method: squat, bench press, and deadlift each trained twice a week, 8 sets per lift starting at 2 reps a set. Each workout, one more 2-rep set becomes a 3-rep set — once all 8 sets read 3 reps, add 10 lb and restart at 2s. A slow, steady, low-drama way to add weight to the bar every month. Source: “Extreme Powerbuilding: The Hepburn Method,” Muscle & Strength (see Sources & Credits).",
       data: HEPBURN_PROGRAM_A_DAYS
+    },
+    {
+      id: 'hepburn-program-b',
+      name: "Doug Hepburn’s Program B",
+      description: "The companion to Program A: each main lift gets a power part and a pump part. Power — singles at a weight you could lift 3 times, starting with 5 and adding one each workout until you reach 8; then add 5–10 lb and go back to 5. Pump — 6 sets of 3 at a weight you could lift 8 times, adding a rep to one set each workout until 6 × 5; then add weight and go back to 3s. Squat & Bench on Mon/Thu, Deadlift & Overhead Press on Tue/Fri. Hepburn himself described his bench routine as singles followed by fives. Demanding: run it for about six weeks, then switch to something lighter. Sources: Mike Mahler's summary of Hepburn's method (T-Nation), and Hepburn's own description quoted by Breaking Muscle; the details vary between sources (see Sources & Credits).",
+      data: HEPBURN_PROGRAM_B_DAYS
+    },
+    {
+      id: 'stronglifts-5x5',
+      name: "StrongLifts 5×5",
+      description: "Mehdi Hadim's 5×5: two full-body barbell workouts alternated three days a week — Workout A (Squat, Bench Press, Barbell Row) and Workout B (Squat, Overhead Press, Deadlift 1×5). Mon/Wed/Fri as A/B/A, then B/A/B the next week. 5 sets of 5 at the same weight, about 3 minutes' rest (5 after a failed set), and 2.5 kg more every session you complete all reps (5 kg on the deadlift). Fail a weight three sessions in a row: drop it 10% and build back. Simple linear progression for beginners and anyone returning to the barbell. Source: Mehdi Hadim, StrongLifts.com (see Sources & Credits).",
+      data: STRONGLIFTS_5X5_DAYS
+    },
+    {
+      id: 'phul',
+      name: "PHUL — Power Hypertrophy Upper Lower",
+      description: "Brandon Campbell's 4-day upper/lower split: Upper Power (Mon) and Lower Power (Tue) with heavy compounds at 3–5 reps, then Upper Hypertrophy (Thu) and Lower Hypertrophy (Fri) at 8–15 reps — every muscle trained twice a week, once heavy and once for size. Leave at least one rep in the tank on every set; rest 3–5 min on the heavy compounds. Don't put the two power days or the two hypertrophy days back to back without rest. Usually run in 4-week blocks. Source: Brandon Campbell, “PHUL Workout,” Muscle & Strength (see Sources & Credits).",
+      data: PHUL_DAYS
+    },
+    {
+      id: 'phat',
+      name: "PHAT — Layne Norton's Power Hypertrophy Adaptive Training",
+      description: "Dr Layne Norton's 5-day power/hypertrophy split: Upper Power and Lower Power (3–5 rep compounds, full rest — up to 5–6 min), a rest day, then Back & Shoulders, Lower Body and Chest & Arms hypertrophy days that each open with speed work (6 × 3 at 65–70% of the 3–5 rep max, no more than 90 sec rest) before 8–20 rep work at 1–2 min rest. Stop 1–2 reps short of failure early on; failure only on the last 1–2 sets, and not in the first 2–4 weeks. Rotate the power movements every 2–3 weeks; deload every 6–12 weeks at 60–70% for 1–3 weeks. Beginners: drop one assistance exercise per day. Source: Layne Norton, “PHAT — Power Hypertrophy Adaptive Training,” biolayne.com (see Sources & Credits).",
+      data: PHAT_DAYS
     },
     {
       id: 'gironda-8x8',
