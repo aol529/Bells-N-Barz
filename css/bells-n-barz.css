@@ -3480,7 +3480,7 @@ body > *{flex-shrink:0;}
 .pg-form .field > label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;}
 .pg-form select{width:100%;background:var(--surface-2);border:1px solid var(--line-soft);color:var(--text);padding:9px 10px;font:inherit;font-size:14px;}
 .pg-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.pg-row-2{grid-template-columns:repeat(2,1fr);}
+.pg-row-2{grid-template-columns:repeat(3,1fr);}
 @media (max-width:820px){.pg-row{grid-template-columns:1fr;}}
 .pg-checks{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;}
 .pg-check{display:inline-flex;align-items:center;gap:7px;font-size:14px;color:var(--text);cursor:pointer;}

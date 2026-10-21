@@ -9,7 +9,7 @@
    plus an optional Sunday recovery. Each day's Block A1 is the lift that
    runs Hepburn double progression by default. On top of that base sit
    optional switches from named methods: PHUL / PHAT splits, a set scheme
-   (StrongLifts, Bill Starr or Reg Park 5×5, Gironda 8×8, German Volume 10×10, Hepburn A or B) and the
+   (StrongLifts, Bill Starr or Reg Park 5×5, Gironda 8×8, German Volume 10×10, Hepburn A or B), 1% Fitness pairing and the
    progression rule. Rule-based, no AI: the same choices
    give the same program, and "Shuffle exercises" picks other options.
    The coach previews it and loads it for the client chosen on Coach >
@@ -384,17 +384,22 @@
           const first = tier === 'A' && !exs.length;
           if (first && day.speed) Object.assign(r, { name: r.name + ' — speed work', sets: SPEED.sets, reps: SPEED.reps, rest: SPEED.rest });
           else applyMethod(r, { tier, pattern, first, timed: !!d.reps, per: d.per, dayIdx });
+          r._p = pattern;
           exs.push(r);
           // Hepburn A/B: the A1 lift's pump sets follow its power sets.
           if (first && !day.speed && (method === 'hepA' || method === 'hepB')){
             exs.push(row(p.name + ' (pump)', '', '', '2 min', '', r.equipment));
             applyMethod(exs[exs.length - 1], { tier, pattern, pump: true });
+            exs[exs.length - 1]._p = pattern;
+            exs[exs.length - 1]._pump = true;
           }
         });
         if (exs.length) blocks.push({ name: 'Block ' + tier, exercises: exs });
       });
+      if (opts.pairing === 'onepct') pairOnePercent(blocks);
       // Letters stay in order even if a block came out empty.
-      blocks.filter(b => /^Block /.test(b.name)).forEach((b, i) => { b.name = 'Block ' + 'ABCDE'[i]; });
+      blocks.filter(b => /^Block /.test(b.name)).forEach((b, i) => { b.name = 'Block ' + String.fromCharCode(65 + i); });
+      if (!opts._keepTags) blocks.forEach(b => b.exercises.forEach(r => { delete r._p; delete r._pump; }));   // _keepTags: tests only
       if (opts.hold) blocks.push(signatureHold(day, eq));
       data[key] = blocks;
       days.push({ key, title: day.title, blocks });
@@ -426,12 +431,69 @@
     const kit = opts.equipment.length ? opts.equipment.map(k => EQUIPMENT.find(e => e[0] === k)[1]).join(', ') : 'bodyweight only';
     return {
       data, days,
-      name: `${split.name}${method !== 'manual' ? ' · ' + METHODS[method].name.split(' (')[0] : ''}${styled ? '' : ' · ' + goal.name.toLowerCase()} · ${kit}`,
+      name: `${split.name}${method !== 'manual' ? ' · ' + METHODS[method].name.split(' (')[0] : ''}${opts.pairing === 'onepct' ? ' · 1% pairing' : ''}${styled ? '' : ' · ' + goal.name.toLowerCase()} · ${kit}`,
       summary: `${split.name}, about ${opts.minutes} min a session, with ${kit.toLowerCase()}. Each day runs the manual's way: `
         + `${opts.warmup ? 'a Warm-up block (Pulse, Mobilize, Core on full-body and upper days, Activate, Potentiate), ' : ''}`
         + `lettered A1/A2 blocks${styled ? ' (power days heavy at 3–5 reps with 3–5 min rest on Block A, hypertrophy days 8–20 reps' + (Object.values(split.days).some(t => DAYS[t].speed) ? ', each opening with speed work' : '') + ')' : ` (rest ${goal.rest.A} on A, ${goal.rest.B} on B/C, ${goal.rest.D} on D/E)`}`
-        + `${opts.hold ? ' and a Signature Hold' : ''}. ` + methodText + progressText
+        + `${opts.hold ? ' and a Signature Hold' : ''}. ` + methodText
+        + (opts.pairing === 'onepct' ? '1% Fitness pairing: each superset puts a leg move with an upper-body one — pulls with squats and lunges, pushes with hinges — legs first, so grip never works twice in a row. A move with no partner the rule allows is done as straight sets. It fits full-body days best; on upper/lower days most pairs end up push with pull. ' : '')
+        + progressText
     };
+  }
+
+  /* 1% Fitness pairing (Mike Sheridan, Principle #5): every superset puts
+     a leg move with an upper-body move — upper pull with lower "bend"
+     (squat / knee-dominant), upper push with lower "extend" (hinge /
+     hip-dominant) — so the grip never works twice in a row, and the legs go
+     first. Upper moves left over pair push with pull; accessories (calves,
+     adductors, hip flexors, carries) keep their place at the end. Re-pairs
+     a day's lettered blocks in place, keeping each lift's sets, reps and
+     rest. */
+  const PAIR_CLASS = {
+    bend: ['squat', 'squat_max', 'lunge', 'stepup', 'lateral_leg', 'quad_iso'],
+    extend: ['hinge', 'hinge_max', 'glute', 'hamcurl', 'lowback'],
+    pull: ['hpull', 'hpull_uni', 'vpull', 'pullover', 'reardelt', 'biceps', 'trap', 'pull', 'pull_max'],
+    push: ['hpush', 'hpush_incline', 'vpush', 'pushup', 'dips', 'chest_iso', 'triceps', 'lateral', 'push', 'push_max']
+  };
+  const classOf = p => Object.keys(PAIR_CLASS).find(k => PAIR_CLASS[k].includes(p)) || 'other';
+  function pairOnePercent(blocks){
+    const main = blocks.filter(b => /^Block /.test(b.name));
+    if (!main.length) return;
+    // Units: a lift and any pump sets that belong to it, in their original order.
+    const units = [];
+    main.forEach(b => b.exercises.forEach(r => {
+      if (r._pump && units.length) units[units.length - 1].rows.push(r);
+      else units.push({ cls: classOf(r._p), rows: [r] });
+    }));
+    const take = cls => { const i = units.findIndex(u => !u.used && u.cls === cls); if (i < 0) return null; units[i].used = true; return units[i]; };
+    const pairs = [];
+    // Legs first, in the order they came (so the day's main leg lift stays in Block A).
+    units.forEach(u => {
+      if (u.used || (u.cls !== 'bend' && u.cls !== 'extend')) return;
+      u.used = true;
+      const partner = take(u.cls === 'bend' ? 'pull' : 'push');
+      pairs.push(partner ? [u, partner] : [u]);
+    });
+    // Upper moves left over: push with pull.
+    units.forEach(u => {
+      if (u.used || (u.cls !== 'push' && u.cls !== 'pull')) return;
+      u.used = true;
+      const partner = take(u.cls === 'push' ? 'pull' : 'push');
+      pairs.push(partner ? [u, partner] : [u]);
+    });
+    // A leg or upper move still on its own takes an accessory (calves,
+    // adductors, hip flexors, a carry) as its partner, which competes with neither.
+    pairs.forEach(pr => {
+      if (pr.length !== 1) return;
+      const acc = take('other');
+      if (acc) pr.push(acc);
+    });
+    // Accessories left over keep their place at the end, two to a block.
+    const rest = units.filter(u => !u.used);
+    for (let i = 0; i < rest.length; i += 2) pairs.push(rest.slice(i, i + 2));
+    const rebuilt = pairs.map(pr => ({ name: 'Block ?', exercises: pr.flatMap(u => u.rows) }));   // lettered by the caller
+    const at = blocks.indexOf(main[0]);
+    blocks.splice(at, main.length, ...rebuilt);
   }
 
   /* NROL Supercharged days: the book's template, filled from the client's equipment. */
@@ -517,7 +579,7 @@
       summary: `${split.name}, adapted from Lou Schuler & Alwyn Cosgrove\u2019s The New Rules of Lifting Supercharged, with ${kit.toLowerCase()}. `
         + `${opts.warmup ? 'Our Warm-up block carries the book\u2019s core work and its power or combination move; then come ' : 'Each workout runs '}the book\u2019s strength exercises by movement category, `
         + `${{ intervals:'and intervals', metabolic:'and a metabolic circuit', complex:'and a complex', freezone:'and the Free Zone' }[tpl.A.fin[0]]}${opts.hold ? ', with a Signature Hold to finish' : ''}. ${how} `
-        + `NROL programs set their own sets and reps, so Goal and Method don\u2019t apply.`
+        + `NROL programs set their own sets, reps and pairs, so Goal, Method and Pairing don\u2019t apply.`
     };
   }
 
@@ -527,7 +589,7 @@
   let state = (function(){
     try { return Object.assign(defaults(), JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e){ return defaults(); }
   })();
-  function defaults(){ return { equipment:['db', 'bench'], days:'3', goal:'muscle', minutes:60, method:'manual', progress:'auto', warmup:true, hold:true, recovery:true, shuffle:0 }; }
+  function defaults(){ return { equipment:['db', 'bench'], days:'3', goal:'muscle', minutes:60, method:'manual', progress:'auto', pairing:'template', warmup:true, hold:true, recovery:true, shuffle:0 }; }
   function remember(){ try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e){} }
   let built = null;
 
@@ -547,6 +609,7 @@
         <div class="pg-row pg-row-2">
           <div class="field"><label>Method</label><select id="pg-method">${Object.entries(METHODS).map(([k, m]) => `<option value="${k}"${k === state.method ? ' selected' : ''}>${esc(m.name)}</option>`).join('')}</select></div>
           <div class="field"><label>Progression</label><select id="pg-progress">${Object.entries(PROGRESS).map(([k, n]) => `<option value="${k}"${k === state.progress ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+          <div class="field"><label>Pairing</label><select id="pg-pairing">${[['template', 'The day\u2019s own pairs'], ['onepct', '1% Fitness: pull + bend, push + extend, legs first']].map(([k, n]) => `<option value="${k}"${k === state.pairing ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
         </div>
         <div class="pg-checks">
           <label class="pg-check"><input type="checkbox" id="pg-warmup"${state.warmup ? ' checked' : ''}> Warm-up block</label>
@@ -566,6 +629,7 @@
       state.days = box.querySelector('#pg-days').value;
       state.method = box.querySelector('#pg-method').value;
       state.progress = box.querySelector('#pg-progress').value;
+      state.pairing = box.querySelector('#pg-pairing').value;
       state.goal = box.querySelector('#pg-goal').value;
       state.minutes = +box.querySelector('#pg-minutes').value;
       state.warmup = box.querySelector('#pg-warmup').checked;
