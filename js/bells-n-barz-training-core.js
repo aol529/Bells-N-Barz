@@ -1094,6 +1094,75 @@
     // Week 1 is A/B/A; week 2 is B/A/B, and so on.
     return { mon: clone(A), tue: [], wed: clone(B), thu: [], fri: clone(A), sat: [], sun: [] };
   })();
+  // The rest of 1% Fitness's phases (Mike Sheridan), from the book's own
+  // tables. Phase 1 is a bodyweight circuit; Phases 2 and 3 follow
+  // Principle #5's pairing (bend with pull, extend with push, legs first)
+  // with a tempo on every lift; Phase 3 adds a weekly HIIT or sprint day.
+  // Each sub-phase runs two weeks.
+  const ONE_PERCENT_PHASES = (function(){
+    const ex = (name, sets, reps, rest, tempo, equipment, alternates) => ({ name, rest: rest || '', tempo: tempo || '', equipment: equipment || '', alternates: alternates || '', sets, reps });
+    const warm = { name:'A — Dynamic Warm-Up', exercises:[ ex('1% Fitness Dynamic Warm-Up', '1', '5 each drill', '120 sec', '1-1-1-1', 'Bodyweight') ] };
+    const strength = (b1, b2, c1, c2, d) => [ warm,
+      { name:'B — ' + b1[6] + ' + ' + b2[6], exercises:[ ex(...b1.slice(0, 6)), ex(...b2.slice(0, 6)) ]},
+      { name:'C — ' + c1[6] + ' + ' + c2[6], exercises:[ ex(...c1.slice(0, 6)), ex(...c2.slice(0, 6)) ]},
+      { name:'D', exercises:[ ex(...d) ]} ];
+    const cond = (title, blocks) => [ warm, ...blocks.map((rows, i) => ({ name: 'BCD'[i] + ' — ' + title, exercises: rows.map(r => ex(...r)) })) ];
+    const twice = (w) => ({ mon: clone(w), tue: [], wed: [], thu: clone(w), fri: [], sat: [], sun: [] });
+    const twicePlus = (w, c) => ({ mon: clone(w), tue: [], wed: [], thu: clone(w), fri: [], sat: clone(c), sun: [] });
+
+    // Phase 1 (2 weeks): one bodyweight circuit, 30 sec on / 30 sec off, 3 rounds, under 15 minutes.
+    const lvl = (n, alts) => ex(n, '3 rounds', '30 sec work', '30 sec', '', 'Bodyweight', alts);
+    const p1 = [{ name:'A — Circuit: A1 to A5, three rounds', exercises:[
+      lvl('Push-Up', 'Levels 1–4 — start at Level 1; move up only after 30 clean seconds'),
+      lvl('Dead Bug — Bent Knees', 'Level 2: Bent-to-Straight · Level 3: Straight Legs · Level 4: Crossover Crunches'),
+      lvl('Bodyweight Squat', 'Levels 1–4'),
+      lvl('Partial Bird Dog', 'Level 2: Full Bird Dog · Level 3: RKC Plank · Level 4: Plank Limb Lifts'),
+      lvl('Glute Bridge', 'Levels 1–4') ]}];
+
+    const t4 = '4-0-1-0', t3 = '3-0-1-0';
+    return {
+      p1: twice(p1),
+      p21: twice(strength(
+        ['Front Squat — 1 Dumbbell, Goblet Grip', '3', '10–12', '30 sec', t4, 'Dumbbell', 'Bend'],
+        ['Seated Overhead Pulldown — Supinated Grip', '3', '10–12', '30 sec', t4, 'Cable', 'Pull'],
+        ['Straight-Leg Deadlift — Low Pulley, Sumo Grip', '3', '10–12', '0 sec', t4, 'Cable', 'Extend'],
+        ['Seated 45° Chest Press — 2 Dumbbells, Neutral Grip', '3', '10–12', '60 sec', t4, 'Dumbbell/Bench', 'Push'],
+        ['Standing Pallof Press — Mid Pulley', '3', '10–12 /side', '60 sec', 'slow', 'Cable'])),
+      p22: twice(strength(
+        ['Bent-Knee Deadlift — 2 Dumbbells, Suitcase Grip', '3', '6–8', '60 sec', t3, 'Dumbbell', 'Bend'],
+        ['1-Arm Row From All 4s — 2 Dumbbells, Alternating', '3', '6–8 /side', '60 sec', t3, 'Dumbbell', 'Pull'],
+        ['Straight-Leg Deadlift — 1 Dumbbell, Sumo Grip', '3', '6–8', '0 sec', t3, 'Dumbbell', 'Extend'],
+        ['Flat Chest Press — 2 Dumbbells, Pronated Grip', '3', '6–8', '120 sec', t3, 'Dumbbell/Bench', 'Push'],
+        ['1-Arm Low Farmer’s Carry — 1 Dumbbell', '3', '20 yd /side', '60 sec', 'slow', 'Dumbbell'])),
+      p32: twicePlus(strength(
+        ['Straight-Leg Deadlift (Hip Hinge) — 2 Dumbbells, Suitcase Grip', '3', '6–8', '60 sec', t3, 'Dumbbell', 'Extend'],
+        ['Flat Chest Press — 2 Dumbbells, Neutral-to-Pronated Twist', '3', '6–8', '60 sec', t3, 'Dumbbell/Bench', 'Push'],
+        ['Inverted Row — Supinated Grip (Incline or Flat)', '3', '6–8', '0 sec', t3, 'Bar', 'Pull'],
+        ['Lunge — 2 Dumbbells, Front Foot Elevated', '3', '6–8 /side', '120 sec', t3, 'Dumbbell/Step', 'Bend'],
+        ['45° Iso Hold — Bodyweight (Levels 1–3)', '3', '30 sec /side', '60 sec', 'hold', 'Bench/GHD']),
+        cond('HIIT', [
+          [['Speed Skaters or Sprinter Starts', '4', '20 sec work', '10 sec', '', 'Bodyweight'], ['V-Ups (Levels 1–4)', '4', '20 sec work', '70 sec', '', 'Bodyweight']],
+          [['Elevated Burpee + Step or Jump Up', '4', '30 sec work', '90 sec', '', 'Bench/Box']] ])),
+      p33: twicePlus(strength(
+        ['Front Squat — 2 Dumbbells, Neutral Grip', '4', '8–10', '30 sec', t4, 'Dumbbell', 'Bend'],
+        ['15° Prone Row — 2 Dumbbells, Neutral Grip', '4', '8–10', '30 sec', t4, 'Dumbbell/Bench', 'Pull'],
+        ['Seated Overhead Press (Unsupported) — 2 Dumbbells, Pronated Grip', '4', '8–10', '0 sec', t4, 'Dumbbell/Bench', 'Push'],
+        ['Glute Bridge — 1 Dumbbell, Back on Bench', '4', '8–10', '60 sec', t4, 'Dumbbell/Bench', 'Extend'],
+        ['Hanging Iso-Hold — Knees at 90°', '3', '30 sec', '60 sec', 'hold', 'Bar']),
+        cond('Sprint Intervals (SIT)', [
+          [['Build-Up Sprints — 40–90% effort', '4', '30 sec work', '130 sec', '', 'None']],
+          [['All-Out Sprints — 90–110% effort', '6', '15 sec work', '165 sec', '', 'None']] ])),
+      p34: twicePlus(strength(
+        ['Bent-Knee Deadlift (to Rack or Step) — Barbell', '4', '4–6', '30 sec', t3, 'Barbell', 'Bend'],
+        ['45° Chest Press — Barbell', '4', '4–6', '90 sec', t3, 'Barbell/Bench', 'Push'],
+        ['Assisted Pull-Up — Neutral Grip', '4', '4–6', '60 sec', t3, 'Bar/Band', 'Pull'],
+        ['Split Squat — 2 Dumbbells, Front Foot Elevated or Flat', '4', '4–6 /side', '60 sec', t3, 'Dumbbell', 'Bend'],
+        ['1-Arm Overhead Farmer’s Carry — 1 Dumbbell', '3', '40 yd /side', '60 sec', 'slow', 'Dumbbell']),
+        cond('HIIT', [
+          [['Sumo Deadlift + Overhead Press — 1 Dumbbell or Med Ball', '3', '20 sec work', '10 sec', '', 'Dumbbell'], ['Active Plank — 1 Dumbbell Pull-Across', '3', '20 sec work', '70 sec', '', 'Dumbbell']],
+          [['Skier on Step or Standard Step-Ups', '3', '20 sec work', '10 sec', '', 'Step'], ['V-Sit + Med Ball Hold or Press', '3', '20 sec work', '70 sec', '', 'Med ball']] ]))
+    };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'bnb-full-body-dumbbell',
@@ -1288,14 +1357,50 @@
       data: MENS_HEALTH_AB_DAYS
     },
     {
+      id: 'one-percent-phase-1',
+      name: "1% Fitness — Phase 1: Bodyweight Foundations",
+      description: "Two weeks, twice a week with at least two days between. One bodyweight circuit — push-up, dead bug, bodyweight squat, bird dog, glute bridge — each for 30 seconds with 30 seconds' rest, three rounds, under 15 minutes. Every exercise has four levels: start at Level 1 and move up only after 30 clean seconds; drop a level if you can't last 30. You'll likely end up at different levels for different exercises. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p1
+    },
+    {
+      id: 'one-percent-phase-2-1',
+      name: "1% Fitness — Phase 2.1: Bend + Pull, Extend + Push",
+      description: "Weeks 1–2 of Phase 2, twice a week. The first loaded phase, built on Principle #5: a goblet front squat paired with an overhead pulldown, a low-pulley straight-leg deadlift paired with a 45° dumbbell chest press, then a Pallof press. 3 × 10–12 with a slow 4-second lowering (tempo 4-0-1-0). Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p21
+    },
+    {
+      id: 'one-percent-phase-2-2',
+      name: "1% Fitness — Phase 2.2: Heavier Bend + Pull, Extend + Push",
+      description: "Weeks 3–4 of Phase 2, twice a week. Heavier and shorter: a suitcase-grip bent-knee deadlift with a one-arm row from all fours, a sumo straight-leg deadlift with a flat dumbbell press, then a one-arm low farmer's carry. 3 × 6–8 at tempo 3-0-1-0, with up to two minutes' rest after the press. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p22
+    },
+    {
       id: 'one-percent-superset-upper-lower',
-      name: "1% Fitness: Superset Upper With Lower & Push With Pull",
+      name: "1% Fitness — Phase 3.1: Superset Upper With Lower & Push With Pull (+ HIIT)",
       description: "Mike Sheridan's Principle #5 as a program. Every superset pairs a leg movement with an upper-body one: upper pulls go with lower 'bends' (squat and knee-dominant moves), upper pushes with lower 'extends' (hinge and hip-dominant moves), so the grip never has to work twice in a row, and the legs always go first. Alternate the two exercises of each pair until all sets are done (in this phase with 30 seconds between them), then move to the next pair. This is the book's Phase 3.1 (two weeks): the strength workout Monday and Thursday with a slow 4-second lowering (tempo 4-0-1-0), 3 × 10–12, and a HIIT day on Saturday. The book then moves through Phase 3.2 (hinge + chest press, inverted row + front-foot-elevated lunge, 6–8 reps), 3.3 (front squat + prone row, overhead press + glute bridge, 4 × 8–10, sprint intervals) and 3.4 (barbell deadlift + 45° press, assisted pull-up + split squat, 4 × 4–6) — swap the exercises every two weeks to follow it. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
       data: ONE_PERCENT_SUPERSET_DAYS
     },
     {
+      id: 'one-percent-phase-3-2',
+      name: "1% Fitness — Phase 3.2: Extend + Push, Pull + Bend (+ HIIT)",
+      description: "Weeks 3–4 of Phase 3: strength Monday and Thursday — a suitcase straight-leg deadlift with a flat dumbbell press, an inverted row with a front-foot-elevated lunge, then a 45° iso hold; 3 × 6–8 at tempo 3-0-1-0 — and a HIIT day on Saturday (speed skaters or sprinter starts with V-ups, then elevated burpees). Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p32
+    },
+    {
+      id: 'one-percent-phase-3-3',
+      name: "1% Fitness — Phase 3.3: Bend + Pull, Push + Extend (+ Sprints)",
+      description: "Weeks 5–6 of Phase 3: strength Monday and Thursday — a dumbbell front squat with a 15° prone row, an unsupported seated overhead press with a bench glute bridge, then a hanging knees-at-90° iso hold; 4 × 8–10 at tempo 4-0-1-0 — and sprint intervals on Saturday (four build-up sprints, then six all-out 15-second sprints with long rests). Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p33
+    },
+    {
+      id: 'one-percent-phase-3-4',
+      name: "1% Fitness — Phase 3.4: Heavy Bend + Push, Pull + Bend (+ HIIT)",
+      description: "Weeks 7–8 of Phase 3, the heaviest block: a barbell bent-knee deadlift (to a rack or step) with a 45° barbell press, an assisted pull-up with a split squat, then a one-arm overhead farmer's carry; 4 × 4–6 at tempo 3-0-1-0. HIIT on Saturday: sumo deadlift + press with plank pull-across, then skier steps with V-sits. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_PHASES.p34
+    },
+    {
       id: 'one-percent-fitness-ab',
-      name: "1% Fitness Push/Pull Template (A/B)",
+      name: "1% Fitness — Push/Pull Template (A/B): Bend + Pull, Extend + Push",
       description: "Another \"choose your movement pattern\" full-body A/B template, paired as supersets (A1+A2, B1+B2, etc.) rather than straight sets. Workout A leans lower-body push / upper-body pull (squat, vertical pull, lunge, horizontal pull); Workout B mirrors it as lower-body pull / upper-body push (deadlift, vertical push, reverse lunge, horizontal push) — alternate the two and every major pattern gets trained across the week. Ends with a high-rep ankle + elbow finisher pairing (7 sets, 12/side and 100+ reps). As with the exercise slots, the coach picks the specific movement that fits each named pattern. Alternates Mon/Fri A, Wed B — swap to strict A/B/A/B if preferred. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — a purchased book, not a free article, so no companion blog post accompanies this preset.",
       data: ONE_PERCENT_FITNESS_AB_DAYS
     }
