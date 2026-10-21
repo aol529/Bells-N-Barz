@@ -1027,6 +1027,73 @@
     };
     return { BT, HY, SP };
   })();
+  // 1% Fitness, Principle #5 — "Superset Upper With Lower & Push With
+  // Pull" (Mike Sheridan): every superset pairs a leg movement with an
+  // upper-body one, upper pulls with lower "bends" (squat/knee-dominant),
+  // upper pushes with lower "extends" (hinge/hip-dominant) so grip never
+  // fails twice, and the legs go first; the two exercises of a pair
+  // alternate set by set. This is the book's Phase 3.1 (weeks 1–2): the strength
+  // workout twice a week, a HIIT day once a week.
+  const ONE_PERCENT_SUPERSET_DAYS = (function(){
+    const ex = (name, sets, reps, rest, tempo, equipment, alternates) => ({ name, rest, tempo: tempo || '', equipment: equipment || '', alternates: alternates || '', sets, reps });
+    const warm = { name:'A — Dynamic Warm-Up', exercises:[ ex('1% Fitness Dynamic Warm-Up', '1', '5 each drill', '120 sec', '1-1-1-1', 'Bodyweight') ] };
+    const strength = [
+      warm,
+      { name:'B — Bend + Pull (legs first)', exercises:[
+        ex('Bent-Knee Deadlift — 1 Dumbbell, Sumo Grip', '3', '10–12', '30 sec', '4-0-1-0', 'Dumbbell', 'Bend (knee-dominant)'),
+        ex('Seated Row — Low Pulley, Neutral Grip', '3', '10–12', '30 sec', '4-0-1-0', 'Cable', 'Upper-body pull')
+      ]},
+      { name:'C — Push + Extend', exercises:[
+        ex('1-Arm Standing Overhead Press — 1 Dumbbell, Neutral Grip', '3', '10–12 /side', '30 sec', '4-0-1-0', 'Dumbbell', 'Upper-body push'),
+        ex('45° Back Extension — Dumbbell or Bodyweight', '3', '10–12', '30 sec', '4-0-1-0', 'Bench/GHD', 'Extend (hip-dominant)')
+      ]},
+      { name:'D — Carry', exercises:[ ex('High Farmer’s Carry — 1 Dumbbell, Goblet Grip', '3', '80 yd (about 73 m)', '60 sec', 'slow', 'Dumbbell') ]}
+    ];
+    const hiit = [
+      warm,
+      { name:'B — HIIT', exercises:[
+        ex('Step-Up + Knee Drive', '3', '20 sec work', '20 sec', '', 'Bench/Box'),
+        ex('Active Plank — Foot Walks', '3', '20 sec work', '60 sec', '', 'Bodyweight')
+      ]},
+      { name:'C — HIIT', exercises:[
+        ex('Sumo Squat + Kick or Knee Drive', '3', '20 sec work', '20 sec', '', 'Bodyweight'),
+        ex('Active Plank — Triceps Get-Ups', '3', '20 sec work', '60 sec', '', 'Bodyweight')
+      ]}
+    ];
+    return { mon: clone(strength), tue: [], wed: [], thu: clone(strength), fri: [], sat: clone(hiit), sun: [] };
+  })();
+  // The Women's Health Big Book of Exercises (Rodale, 2010), Chapter 3,
+  // "The Exercise Plan" by Craig Rasmussen: a choose-your-own fat-loss
+  // workout. A core straight set, two pairs by body part, 3 × 12 with a
+  // minute's rest throughout, then a cardio finisher. Workouts A and B
+  // alternate three days a week. The book names the category for each slot
+  // and a few examples; we fill each slot with one of them and list the
+  // others (or "any ...") as alternates.
+  const WH_EXERCISE_PLAN_DAYS = (function(){
+    const ex = (name, equipment, alternates, reps) => ({ name, rest:'1 min', tempo:'', equipment, alternates, sets:'3', reps: reps || '12' });
+    const warm = { name:'Warm-up', exercises:[ { name:'Warm-up of your choice', rest:'', tempo:'', equipment:'Bodyweight', alternates:'Build it from the book’s Chapter 12 warm-up exercises', sets:'', reps:'5–10 min' } ] };
+    const cardio = { name:'Cardio Finisher — straight after the weights', exercises:[ { name:'Cardio Finisher', rest:'', tempo:'', equipment:'Any', alternates:'Any finisher from the book’s Chapter 14 (e.g. 400 Repeats, In-and-Outs) or sprints, bike or rower intervals', sets:'', reps:'as the finisher you choose sets out' } ] };
+    const A = [ warm,
+      { name:'1 — Core (straight sets)', exercises:[ ex('Plank', 'Bodyweight', 'Any core stability exercise: Side Plank, Mountain Climber, Swiss-Ball Jackknife', 'hold for the time the exercise calls for') ]},
+      { name:'2A/2B — Glutes & Hamstrings (one leg) + Upper Back', exercises:[
+        ex('Dumbbell Stepup', 'Dumbbell/Bench', 'Any single-leg glutes/hamstrings move: Single-Leg Barbell Straight-Leg Deadlift, Single-Leg Hip Raise', '12 /leg'),
+        ex('Dumbbell Row', 'Dumbbell', 'Any upper-back row: Barbell Row, Cable Row') ]},
+      { name:'3A/3B — Quadriceps (both legs) + Chest', exercises:[
+        ex('Goblet Squat', 'Dumbbell', 'Any two-leg squat: Dumbbell Squat, Barbell Front Squat'),
+        ex('Dumbbell Bench Press', 'Dumbbell/Bench', 'Any chest exercise: Pushup, Swiss-Ball Dumbbell Chest Press') ]},
+      cardio ];
+    const B = [ warm,
+      { name:'1 — Core (straight sets)', exercises:[ ex('Side Plank', 'Bodyweight', 'Any core stability exercise: Plank, Mountain Climber, Swiss-Ball Jackknife', 'hold for the time the exercise calls for, each side') ]},
+      { name:'2A/2B — Quadriceps (one leg) + Lats', exercises:[
+        ex('Dumbbell Split Squat', 'Dumbbell', 'Any single-leg quad move: Barbell or Dumbbell Lunge, Barbell Split Squat, Single-Leg Squat', '12 /leg'),
+        ex('Lat Pulldown', 'Cable', 'Any lats exercise: Chinup, Pullover') ]},
+      { name:'3A/3B — Glutes & Hamstrings (both legs) + Shoulders', exercises:[
+        ex('Dumbbell Straight-Leg Deadlift', 'Dumbbell', 'Any two-leg glutes/hamstrings move: Barbell Deadlift, Swiss-Ball Hip Raise and Leg Curl'),
+        ex('Dumbbell Shoulder Press', 'Dumbbell', 'Any shoulder exercise: Lateral Raise, Scaption and Shrug') ]},
+      cardio ];
+    // Week 1 is A/B/A; week 2 is B/A/B, and so on.
+    return { mon: clone(A), tue: [], wed: clone(B), thu: [], fri: clone(A), sat: [], sun: [] };
+  })();
   const PROGRAM_PRESETS = [
     {
       id: 'bnb-full-body-dumbbell',
@@ -1209,10 +1276,22 @@
       data: RONNIE_COLEMAN_DAYS
     },
     {
+      id: 'womens-health-exercise-plan',
+      name: "Women's Health: The 4-Week Exercise Plan",
+      description: "Craig Rasmussen's plug-and-play fat-loss workout from The Women's Health Big Book of Exercises — you choose the exercises, the plan sets the structure. Three days a week, alternating Workout A and Workout B (Mon/Wed/Fri as A/B/A, then B/A/B the next week), at least a day off after each. After a 5–10 minute warm-up: a core stability exercise as a straight set, then two pairs — A: single-leg glutes/hamstrings with an upper-back row, then a two-leg squat with a chest press; B: a single-leg quad move with a lats exercise, then a two-leg hinge with a shoulder exercise. Everything is 3 × 12 with 1 minute's rest between every set, using the heaviest weight that lets you finish all the reps. Do one set of the first exercise in a pair, rest, one set of the second, rest, and repeat. A cardio finisher follows straight after. Each slot shows one of the book's suggested exercises, with the others as alternates. Source: The Women's Health Big Book of Exercises (Adam Campbell and the editors of Women's Health, Rodale, 2010), workout by Craig Rasmussen, CSCS — adapted; see Sources & Credits.",
+      data: WH_EXERCISE_PLAN_DAYS
+    },
+    {
       id: 'mens-health-total-body-ab',
       name: "Men's Health Total-Body Template (A/B)",
       description: "A modern \"choose your own exercise\" full-body template, not tied to a specific historical lifter like the Old School presets above. Two alternating workouts (A and B) each cover the whole body — core, one lower-body pattern, one upper-body pull or push — with a named exercise category per slot (e.g. \"Quadriceps, single-leg\") rather than one fixed movement, so pick whichever listed alternate suits the client's equipment and experience. 3 sets of 12 reps per exercise, 1 minute rest, a cardio finisher after every session. This preset alternates A/Wed-B/A across the week (Mon/Fri A, Wed B) — swap it to A/B/A/B if you'd rather alternate strictly workout-to-workout regardless of the calendar. Source: Adam Campbell, The Men's Health Big Book of Exercises (Rodale Books) — a purchased book, not a free article, so no companion blog post accompanies this preset.",
       data: MENS_HEALTH_AB_DAYS
+    },
+    {
+      id: 'one-percent-superset-upper-lower',
+      name: "1% Fitness: Superset Upper With Lower & Push With Pull",
+      description: "Mike Sheridan's Principle #5 as a program. Every superset pairs a leg movement with an upper-body one: upper pulls go with lower 'bends' (squat and knee-dominant moves), upper pushes with lower 'extends' (hinge and hip-dominant moves), so the grip never has to work twice in a row, and the legs always go first. Alternate the two exercises of each pair until all sets are done (in this phase with 30 seconds between them), then move to the next pair. This is the book's Phase 3.1 (two weeks): the strength workout Monday and Thursday with a slow 4-second lowering (tempo 4-0-1-0), 3 × 10–12, and a HIIT day on Saturday. The book then moves through Phase 3.2 (hinge + chest press, inverted row + front-foot-elevated lunge, 6–8 reps), 3.3 (front squat + prone row, overhead press + glute bridge, 4 × 8–10, sprint intervals) and 3.4 (barbell deadlift + 45° press, assisted pull-up + split squat, 4 × 4–6) — swap the exercises every two weeks to follow it. Source: Mike Sheridan, 1% Fitness: Move Better. Train Smarter. Live Longer. — adapted; see Sources & Credits.",
+      data: ONE_PERCENT_SUPERSET_DAYS
     },
     {
       id: 'one-percent-fitness-ab',
