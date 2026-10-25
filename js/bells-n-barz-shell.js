@@ -2419,3 +2419,32 @@ document.querySelectorAll('[data-home-gym]').forEach(card => {
   if (login) login.addEventListener('click', () => enter('login'));
   if (tools) tools.addEventListener('click', () => { switchTab('tools'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
 })();
+
+/* ---------------- SCHEDULED RELOAD ----------------
+   Reload the app every 8 hours on the clock: at midnight, 8:00 and 16:00
+   (local time), so a tab left open all day picks up the latest deploy and
+   the new day's data. The open tab is in the URL hash, so the reload lands
+   back where you were. Checked once a minute and whenever the app comes
+   back into view (timers sleep with the laptop or a hidden phone tab).
+   Never while a dialog is open or the field you're in has unsaved typing:
+   then it waits for the next minute's check. */
+(function(){
+  const PERIOD_HOURS = 8;
+  const slotOf = d => d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate() + '@' + Math.floor(d.getHours() / PERIOD_HOURS);
+  const loadedSlot = slotOf(new Date());
+
+  function busy(){
+    if (document.querySelector('dialog[open]')) return true;
+    const el = document.activeElement;
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    return /^(INPUT|TEXTAREA)$/.test(el.tagName) && el.value !== el.defaultValue;
+  }
+  function check(){
+    if (slotOf(new Date()) === loadedSlot) return;
+    if (busy()) return;
+    location.reload();
+  }
+  setInterval(check, 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+})();
