@@ -1187,6 +1187,8 @@
     selfCheckinBtn.onclick = ()=>{
       if (logCheckin(u.id, TODAY)){ showToast('Checked in — see you on the floor!'); renderProfile(); }
     };
+    // Check-in code and membership freeze (js/bells-n-barz-checkin.js).
+    if (typeof window.bnbProfileExtras === 'function') window.bnbProfileExtras(u);
 
     // Points (sql/40) — balance and history come from the ledger itself,
     // fetched fresh each time so a just-earned or just-redeemed change
@@ -1935,6 +1937,15 @@
     // chart a member's logged weight/body-fat over their Assessment history.
     // Newest-first, same order the Assessment tab itself already uses.
     getAssessments: function(userId){ return userAssessments(userId); },
+    // Read-only check-in figures, as on My Profile (QR check-in, the Coach
+    // Dashboard's going-quiet list, the member Today card).
+    daysSinceLastVisit: function(userId){ return daysSinceLastVisit(userId); },
+    currentStreak: function(userId){ return currentStreak(userId); },
+    visitsThisMonth: function(userId){ return visitsThisMonth(userId); },
+    hasCheckinOn: function(userId, date){ return checkins.some(function(c){ return c.userId === userId && c.date === date; }); },
+    // Re-read from Supabase after another module wrote rows directly.
+    refreshCheckins: function(){ return refreshCheckinsFromSupabase(); },
+    refreshUsers: function(){ return refreshUsersFromSupabase(); },
     // Read-only — buckets a member's check-ins into rolling 7-day windows
     // (not calendar weeks, to keep the math simple) for the Coach
     // Dashboard's Attendance marker. Returns oldest-first.

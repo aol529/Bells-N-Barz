@@ -2007,6 +2007,69 @@
       .filter(x=> x.days > 14)
       .sort((a,b)=> b.days - a.days);
   }
+  /* Members going quiet: active members with no check-in for 10+ days
+     (or none since joining 10+ days ago). Gym-wide, since any coach can
+     reach out; this coach's own clients are marked and listed first.
+     Frozen (On Hold) and cancelled memberships are left out. */
+  const QUIET_DAYS = 10;
+  const QUIET_SENT_KEY = 'bnb-quiet-messaged-v1';
+  function quietSent(){ try { return JSON.parse(localStorage.getItem(QUIET_SENT_KEY) || '{}'); } catch(e){ return {}; } }
+  function goingQuietMembers(trainerId){
+    const U = window.BNB_USERS;
+    if (!U || !U.daysSinceLastVisit) return [];
+    const mine = new Set(activeClientIdsForTrainer(trainerId));
+    return U.getMembers().filter(u => String(u.id).length === 36 && !(u.roles || []).some(r => ['admin','trainer','staff'].includes(r)) &&
+        ['hold', 'cancelled'].indexOf(u.mstatus) === -1)
+      .map(u => {
+        const days = U.daysSinceLastVisit(u.id);
+        const joined = u.createdAt ? daysSince(String(u.createdAt).slice(0, 10)) : null;
+        return { u, days, joined, mine: mine.has(u.id) || u.trainerId === trainerId };
+      })
+      .filter(x => x.days === null ? (x.joined !== null && x.joined >= QUIET_DAYS) : x.days >= QUIET_DAYS)
+      .sort((a, b) => (b.mine - a.mine) || ((b.days === null ? 9999 : b.days) - (a.days === null ? 9999 : a.days)));
+  }
+  function goingQuietHtml(trainerId){
+    const list = goingQuietMembers(trainerId);
+    if (!list.length) return '';
+    const sent = quietSent();
+    let html = '<div class="section-sub-head"><h3>Going Quiet</h3></div>';
+    html += '<div class="field-hint" style="margin-bottom:10px;">Active members with no check-in for ' + QUIET_DAYS + '+ days. A short note now is what brings most of them back.</div>';
+    html += '<table class="admin-table quiet-table"><tr><th>Member</th><th>Last visit</th><th></th></tr>';
+    list.slice(0, 25).forEach(x => {
+      const when = x.days === null ? 'Never (joined ' + x.joined + 'd ago)' : x.days + ' days ago';
+      const last = sent[x.u.id];
+      html += '<tr><td>' + esc(x.u.fullName) + (x.mine ? ' <span class="status-pill hold">your client</span>' : '') + '</td><td>' + when + '</td><td>' +
+        (last ? '<span class="field-hint">Messaged ' + fmtDate(last) + '</span> ' : '') +
+        '<button class="btn2 small" type="button" data-quiet-msg="' + x.u.id + '">' + (last ? 'Message again' : "Send 'We miss you'") + '</button></td></tr>';
+    });
+    html += '</table>';
+    if (list.length > 25) html += '<div class="field-hint">…and ' + (list.length - 25) + ' more.</div>';
+    return html;
+  }
+  function openQuietMessage(userId){
+    const U = window.BNB_USERS, u = U && U.getById(userId), me = U && U.getSelf();
+    if (!u || !window.BNB_UI) return;
+    const first = (u.fullName || '').split(' ')[0];
+    const body = 'Hi ' + first + ', we haven\'t seen you at Bells n Barz for a little while and wanted to check in. ' +
+      'Everything OK? If something\'s got in the way (time, an injury, motivation) tell us and we\'ll help you work around it. ' +
+      'Hope to see you on the floor this week!' + (me ? ' — ' + (me.fullName || '').split(' ')[0] : '');
+    const m = window.BNB_UI.modal('Message ' + u.fullName,
+      '<div class="t-field"><label>Message (goes to their Messages, like any coach reply)</label><textarea class="ls-notes" rows="6" data-q-body></textarea></div>' +
+      '<button type="button" class="btn2 primary" data-q-send>Send</button> <span class="field-hint" data-q-msg></span>');
+    const ta = m.body.querySelector('[data-q-body]');
+    ta.value = body;
+    m.body.querySelector('[data-q-send]').onclick = async () => {
+      const text = ta.value.trim();
+      if (!text) return;
+      const { error } = await bnbClient.rpc('send_message', { p_member_id: userId, p_body: text });
+      if (error){ m.body.querySelector('[data-q-msg]').textContent = error.message || 'Could not send.'; return; }
+      const sent = quietSent(); sent[userId] = TODAY;
+      try { localStorage.setItem(QUIET_SENT_KEY, JSON.stringify(sent)); } catch(e){}
+      m.close();
+      toast('Sent to ' + u.fullName + '.');
+      renderCoachDashboard();
+    };
+  }
   function unpaidForTrainerClients(trainerId){
     if (!window.BNB_BILLING || !window.BNB_BILLING.getOutstandingForUsers) return [];
     const clientIds = activeClientIdsForTrainer(trainerId);
@@ -2485,6 +2548,7 @@
     html += '<div class="crud-actions" style="padding:0 0 20px;">';
     html += '<button class="btn2 primary" id="dash-add-slot-btn" type="button">+ Add Availability Slot</button>';
     html += '<button class="btn2" id="dash-start-session-btn" type="button">Start Live Session</button>';
+    html += '<button class="btn2" type="button" data-open-checkin-scanner>Scan Check-in</button>';
     html += '</div>';
 
     html += '<div class="section-sub-head" style="margin-top:0;"><h3>Today\'s Schedule</h3></div>';
@@ -2517,6 +2581,8 @@
       }
     }
 
+    html += goingQuietHtml(selfTrainerId);
+
     return html;
   }
 
@@ -2545,6 +2611,9 @@
     if (startSessionBtn) startSessionBtn.addEventListener('click', ()=>{
       const btn = document.querySelector('#coach-section-switch [data-coach-section="session"]');
       if (btn) btn.click();
+    });
+    body.querySelectorAll('[data-quiet-msg]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openQuietMessage(btn.getAttribute('data-quiet-msg')));
     });
     body.querySelectorAll('[data-action="dash-open-roster"]').forEach(btn=>{
       btn.addEventListener('click', ()=> openRoster(btn.getAttribute('data-id')));

@@ -172,13 +172,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','me','accountability','messages','schedule'];
+const memberSectionTabs = ['session','me','leaderboard','accountability','messages','schedule'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -244,7 +244,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin',
-  session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', messages: 'Messages', inbox: 'Inbox'
+  session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', messages: 'Messages', inbox: 'Inbox'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -269,6 +269,7 @@ function switchTab(rawTab, scrollTop){
   const TAB_TO_MODULE = {
     me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track load lazily from the inner me-section-switch instead, once actually selected.
     accountability: 'accountability',
+    leaderboard: 'engage',
     messages: 'messages',
     inbox: 'inbox',
     schedule: 'bookingCoach',
@@ -378,6 +379,10 @@ function switchTab(rawTab, scrollTop){
   // pending invite responded to in another tab, a member signing up
   // mid-session) — refresh on tab-open, same pattern as the others above.
   if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
+  // Leaderboard: fresh counts each time (the module draws itself on first load).
+  if (tab === 'leaderboard' && typeof window.bnbLeaderboardOnTabShown === 'function') window.bnbLeaderboardOnTabShown();
+  // Member's card screen: the Today card (js/bells-n-barz-today.js).
+  if (rawTab === 'member' && typeof window.bnbMemberTodayRender === 'function') window.bnbMemberTodayRender();
   // Messages: same reasoning as My Teams above — refresh on tab-open so a
   // reply sent from elsewhere (or by staff) doesn't sit stale in the DOM.
   if (tab === 'messages' && typeof window.bnbMessagesOnTabShown === 'function') window.bnbMessagesOnTabShown();
@@ -489,9 +494,10 @@ let previousLocation = null;
     nutrition: document.getElementById('tab-nutrition'),
     fasting: document.getElementById('tab-fasting'),
     mealplan: document.getElementById('tab-mealplan'),
-    recipes: document.getElementById('tab-recipes')
+    recipes: document.getElementById('tab-recipes'),
+    photos: document.getElementById('tab-photos')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan', photos: 'engage' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
@@ -500,6 +506,7 @@ let previousLocation = null;
           // Meal Plan refetches every time it's opened, so a plan the
           // coach just saved shows up without a reload.
           if (key === 'mealplan' && typeof window.bnbMealPlanOnTabShown === 'function') window.bnbMealPlanOnTabShown();
+          if (key === 'photos' && typeof window.bnbPhotosOnShown === 'function') window.bnbPhotosOnShown();
         }).catch(err => {
           console.error(err);
           const t = document.getElementById('t-toast');
@@ -1854,6 +1861,7 @@ createIntervalTimer(
   }
   async function systemNotify(n){
     if (document.visibilityState === 'visible') return; // the pop-up covers it
+    if (window.BNB_PUSH && window.BNB_PUSH.active) return; // the push (sw.js) shows it
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const title = "Bell(e)s n' Barz";
     const opts = { body: n.message, icon: 'icon.svg', tag: 'bnb-message' };

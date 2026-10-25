@@ -449,7 +449,32 @@
     after gallery.sql. Safe to re-run. Until it's run, uploading says
     "Bucket not found"; pasting an image link still works.
 
-75. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+75. **83-membership-freeze.sql** — members ask to pause their membership
+    on My Profile; staff approve, decline, freeze directly or end early in
+    Admin > Members. Approving moves `contract_end` back by the freeze's
+    days and sets `mstatus` to 'hold' while it runs. New table
+    `membership_freezes` (written only through its functions) and
+    `apply_membership_freezes()`, which the staff app calls on open since
+    there's no scheduler. Run after 09 and 54. Safe to re-run.
+
+76. **84-leaderboard-challenges.sql** — Member > Leaderboard: monthly
+    check-ins, sessions and points from `leaderboard()` (first name +
+    initial only), `member_prefs` for opting out, and staff-made
+    `challenges`. Run after 40. Safe to re-run.
+
+77. **85-progress-photos.sql** — Me > Photos: a private
+    `progress-photos` bucket (each member's own folder) and the
+    `progress_photos` table. Members only; staff have no access by
+    design. Run after gym.sql. Safe to re-run.
+
+78. **86-push-notifications.sql** — phone alerts with the app closed:
+    `push_subscriptions`, `save_push_subscription()`, a Vault secret,
+    and a trigger that posts each new notification to the `send-push`
+    Edge Function (pg_net). Needs that function deployed with its
+    secrets: follow `supabase/functions/send-push/README.md`. Run after
+    09. Safe to re-run.
+
+79. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

@@ -1442,6 +1442,7 @@
     renderTodayProgram();
     renderMlsDay();
     renderSessionDay();
+    if (typeof window.bnbMemberTodayRender === 'function') window.bnbMemberTodayRender();
   }
   document.addEventListener('bnb-auth-changed', refreshProgramFromSupabase);
   function saveProgram(){
@@ -2498,6 +2499,7 @@
   function renderSessionDay(){
     const traineeEl = document.getElementById('cs-trainee');
     if (!traineeEl) return;
+    fillTraineeList();
     traineeEl.value = slotTraineeName(csSlot);
     document.getElementById('cs-date').value = sessionStore[csKey(csSlot,csDay,'meta','date')] || '';
     document.getElementById('cs-bw').value = sessionStore[csKey(csSlot,csDay,'meta','bw')] || '';
@@ -2571,7 +2573,7 @@
           `;
           const cb = setDiv.querySelector('input[type=checkbox]');
           const inputs = setDiv.querySelectorAll('input[type=text]');
-          cb.onchange = ()=>{ sessionStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveSession(); };
+          cb.onchange = ()=>{ sessionStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveSession(); if (cb.checked) startRest(ex, programExName(ex, sessionStore[swapKey])); };
           inputs[0].oninput = ()=>{ sessionStore[wtKey]=inputs[0].value; saveSession(); };
           inputs[1].oninput = ()=>{ sessionStore[repsKey]=inputs[1].value; saveSession(); };
           setsDiv.appendChild(setDiv);
@@ -2646,7 +2648,7 @@
         `;
         const cb = setDiv.querySelector('input[type=checkbox]');
         const inputs = setDiv.querySelectorAll('input[type=text]');
-        cb.onchange = ()=>{ set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveFreeformExercises(csSlot, csDay, list); };
+        cb.onchange = ()=>{ set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveFreeformExercises(csSlot, csDay, list); if (cb.checked) startRest(null, ex.name); };
         inputs[0].oninput = ()=>{ set.wt = inputs[0].value; saveFreeformExercises(csSlot, csDay, list); };
         inputs[1].oninput = ()=>{ set.reps = inputs[1].value; saveFreeformExercises(csSlot, csDay, list); };
 
@@ -2727,20 +2729,85 @@
     wrap.appendChild(copyWrap);
   }
 
-  /* Placeholder for member-side sync — pushes a coach's logged sets into
-     that trainee's own Session Log storage. Only meaningful when coach and
-     trainee share the same device/browser (this file has no server, so
-     localStorage can't cross devices) — left as a stub until the sync
-     approach (same-device vs. some future backend) is decided. */
-  function syncFreeformToMemberLog(slot, day){
-    const name = slotTraineeName(slot).trim() || 'this trainee';
-    alert("Sync to Member Log isn't wired up yet — this will push " + name + "'s logged sets from this session into their own Session Log. Coming soon.");
+  /* Sync to Member Log: the active slot's day goes into that member's own
+     history (mls_history, which staff can write for any member), so it
+     shows in their History, progress graph and personal records. The
+     trainee has to be a real member: the Trainee box suggests members'
+     names, and the name must match one. Re-syncing the same day replaces
+     the coach's entry for that day instead of adding another; it's kept
+     apart from the member's own log of the day (mode 'coach'). */
+  function memberByName(name){
+    const n = String(name || '').trim().toLowerCase();
+    if (!n || !window.BNB_USERS) return null;
+    return window.BNB_USERS.getMembers().find(u => (u.fullName || '').trim().toLowerCase() === n) || null;
+  }
+  function fillTraineeList(){
+    const dl = document.getElementById('cs-trainee-list');
+    if (!dl || !window.BNB_USERS) return;
+    dl.innerHTML = window.BNB_USERS.getMembers().filter(u => String(u.id).length === 36)
+      .map(u => '<option value="' + esc(u.fullName) + '"></option>').join('');
+  }
+  async function syncFreeformToMemberLog(slot, day){
+    const typed = slotTraineeName(slot).trim();
+    const member = memberByName(typed);
+    if (!member){
+      alert(typed
+        ? '"' + typed + '" isn\'t a member account. Pick the trainee from the suggestions in the Trainee box (start typing their name), then sync again.'
+        : 'Type the trainee\'s name first (pick it from the suggestions), then sync.');
+      return;
+    }
+    const snap = snapshotSessionDay(slot, day);
+    const exercises = snap.blocks.flatMap(b => b.exercises).filter(ex => ex.sets.some(st => st.wt || st.reps || st.done));
+    if (!exercises.length){ alert('Nothing logged for ' + member.fullName + ' on this day yet.'); return; }
+    const me = window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const btn = document.getElementById('cs-sync-member');
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Syncing…';
+    try {
+      const dateIso = localIsoDate();
+      const { data: existing, error: findErr } = await bnbClient.from('mls_history').select('id')
+        .eq('member_id', member.id).eq('date_iso', dateIso).eq('day', day).eq('mode', 'coach').limit(1);
+      if (findErr) throw findErr;
+      const row = {
+        member_id: member.id, date_iso: dateIso, display_date: snap.date || '', day, mode: 'coach', bw: snap.bw,
+        notes: [snap.notes, me ? 'Logged by ' + me.fullName : 'Logged by your coach'].filter(Boolean).join(' — '),
+        exercises
+      };
+      if (existing && existing.length) row.id = existing[0].id;
+      const { error } = await bnbClient.from('mls_history').upsert([row]);
+      if (error) throw error;
+      refreshMlsHistoryFromSupabase();
+      window.BNB_UI.toast('Synced to ' + member.fullName + "'s log — it's in their History and progress graph.");
+    } catch(e){
+      console.error('Sync to member log failed:', e);
+      alert('Could not sync — check your connection and try again. (' + (e.message || e) + ')');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  // Local date as YYYY-MM-DD (toISOString would give the UTC date).
+  function localIsoDate(d){
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  /* Rest timer after a ticked set: the exercise's own Rest from the
+     program when it has one, otherwise the default (js/bells-n-barz-lift-tools.js). */
+  function startRest(ex, name){
+    if (!window.BNB_REST) return;
+    window.BNB_REST.start(ex ? window.BNB_LIFT.parseRest(ex.rest) : null, name ? splitAltFromName(name).name || name : '');
   }
 
   function wireSessionOnce(){
     const traineeEl = document.getElementById('cs-trainee');
     if (!traineeEl || traineeEl.dataset.wired) return;
     traineeEl.dataset.wired = '1';
+    // Members load after this first draws: refresh the name suggestions
+    // each time the box is used.
+    traineeEl.addEventListener('focus', fillTraineeList);
     traineeEl.addEventListener('input', e=>{
       sessionStore[csKey(csSlot,'trainee')]=e.target.value;
       saveSession();
@@ -3101,6 +3168,12 @@
   // and fails; try again once sign-in has finished (and on every later
   // sign-in), same as the program (refreshProgramFromSupabase).
   document.addEventListener('bnb-auth-changed', e => { if (e.detail && e.detail.signedIn) refreshMlsStoreFromSupabase(); });
+  // Logged with no signal (the gym floor): the sets wait on this device,
+  // and go up as soon as the connection is back rather than at the next edit.
+  window.addEventListener('online', () => {
+    const owner = mlsSignedInMember();
+    if (owner && isMlsPending()) pushMlsStoreToSupabase(owner);
+  });
   function mlsKey(...rest){ return rest.join(':'); }
 
   /* One-time migration: LOGSHEET used to be a separate tab/store with the
@@ -3264,7 +3337,14 @@
           `;
           const cb = setDiv.querySelector('input[type=checkbox]');
           const inputs = setDiv.querySelectorAll('input[type=text]');
-          cb.onchange = ()=>{ mlsStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsStore(); };
+          cb.onchange = ()=>{
+            mlsStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsStore();
+            if (cb.checked){
+              const name = programExName(ex, mlsStore[swapKey]);
+              startRest(ex, name);
+              checkForPr(name, mlsStore[wtKey], mlsStore[repsKey]);
+            }
+          };
           inputs[0].oninput = ()=>{ mlsStore[wtKey]=inputs[0].value; saveMlsStore(); };
           inputs[1].oninput = ()=>{ mlsStore[repsKey]=inputs[1].value; saveMlsStore(); };
           setsDiv.appendChild(setDiv);
@@ -3335,7 +3415,10 @@
         `;
         const cb = setDiv.querySelector('input[type=checkbox]');
         const inputs = setDiv.querySelectorAll('input[type=text]');
-        cb.onchange = ()=>{ set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsFreeformExercises(day, list); };
+        cb.onchange = ()=>{
+          set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsFreeformExercises(day, list);
+          if (cb.checked){ startRest(null, ex.name); checkForPr(ex.name, set.wt, set.reps); }
+        };
         inputs[0].oninput = ()=>{ set.wt = inputs[0].value; saveMlsFreeformExercises(day, list); };
         inputs[1].oninput = ()=>{ set.reps = inputs[1].value; saveMlsFreeformExercises(day, list); };
 
@@ -3489,9 +3572,9 @@
     const snap = snapshotMlsDay(day);
     const exercises = snap.blocks.flatMap(b => b.exercises).filter(ex => ex.sets.some(s => s.wt || s.reps || s.done));
     if (!exercises.length) return; // nothing logged yet — don't create an empty history row
-    const dateIso = new Date().toISOString().slice(0,10);
+    const dateIso = localIsoDate();
     const history = loadMlsHistory();
-    const existing = history.find(h => h.memberId === member.id && h.day === day && h.dateIso === dateIso);
+    const existing = history.find(h => h.memberId === member.id && h.day === day && h.dateIso === dateIso && h.mode !== 'coach');
     const entry = {
       id: existing ? existing.id : mlsUuid(),
       memberId: member.id, dateIso, displayDate: snap.date || '',
@@ -3512,7 +3595,7 @@
     return `<tr>
       <td class="mono">${esc(h.displayDate || h.dateIso)}</td>
       <td>${esc(dayTitle)}</td>
-      <td>${h.mode==='freeform' ? 'Freeform' : "Day's Program"}</td>
+      <td>${h.mode==='coach' ? 'With coach' : h.mode==='freeform' ? 'Freeform' : "Day's Program"}</td>
       <td>${esc(exList)}</td>
       <td>${h.notes ? esc(h.notes) : '—'}</td>
       <td><button type="button" class="sesh-del-btn" data-id="${h.id}" title="Delete">×</button></td>
@@ -3549,43 +3632,127 @@
     const prevVal = exSel.value;
     exSel.innerHTML = '';
     if (!member) return;
-    const names = new Set();
+    // One entry per lift (see liftKey), labelled without its "(alt: …)".
+    const names = new Map();
     loadMlsHistory().filter(h=>h.memberId===member.id).forEach(h=>(h.exercises||[]).forEach(ex=>{
-      if ((ex.name||'').trim()) names.add(ex.name.trim());
+      const key = liftKey(ex.name||'');
+      if (key && !names.has(key)) names.set(key, splitAltFromName(ex.name).name);
     }));
-    [...names].sort().forEach(n=>{
+    [...names.values()].sort().forEach(n=>{
       const o = document.createElement('option'); o.value = n; o.textContent = n; exSel.appendChild(o);
     });
-    if ([...names].includes(prevVal)) exSel.value = prevVal;
+    if ([...names.values()].includes(prevVal)) exSel.value = prevVal;
   }
 
-  /* Simple line chart in the same visual language as the Weight tab's
-     .weight-chart-svg — plots the heaviest numeric set weight logged per
-     saved session for the selected exercise. Sets logged as "BW" (bodyweight)
-     have no numeric value, so they're skipped in the trend line rather than
-     parsed as 0 or NaN. */
+  /* ---------------- PERSONAL RECORDS ----------------
+     Worked out from the member's saved history: per exercise, the heaviest
+     set and the best estimated one-rep max (Epley, sets of 1–12 reps).
+     Names are matched without their "(alt: …)" part and case, so a
+     program exercise and the same lift typed in Freeform count together.
+     Sets logged as BW have no number and don't count. */
+  function liftKey(name){ return splitAltFromName(name).name.toLowerCase().replace(/\s+/g, ' ').trim(); }
+  function memberHistory(member){ return loadMlsHistory().filter(h => h.memberId === member.id); }
+  function bestsFrom(history, beforeIso){
+    const L = window.BNB_LIFT, bests = {};
+    history.forEach(h => {
+      if (beforeIso && h.dateIso >= beforeIso) return;
+      (h.exercises || []).forEach(ex => {
+        const key = liftKey(ex.name || '');
+        if (!key) return;
+        (ex.sets || []).forEach(st => {
+          const wt = L.parseWt(st.wt), reps = L.parseReps(st.reps);
+          if (wt == null || !reps) return;
+          const b = bests[key] || (bests[key] = { name: splitAltFromName(ex.name).name, wt: -Infinity, wtReps: 0, e1: -Infinity });
+          if (wt > b.wt || (wt === b.wt && reps > b.wtReps)){ b.wt = wt; b.wtReps = reps; b.wtDate = h.dateIso; }
+          const e = L.e1rm(wt, reps);
+          if (e != null && e > b.e1){ b.e1 = e; b.e1Wt = wt; b.e1Reps = reps; b.e1Date = h.dateIso; }
+        });
+      });
+    });
+    return bests;
+  }
+
+  /* A ticked set that beats everything before today gets a toast. The
+     first time an exercise is logged there's nothing to beat, so no toast;
+     each record is celebrated once per visit. */
+  const prAnnounced = {};
+  function checkForPr(name, wtStr, repsStr){
+    const member = mlsSignedInMember(), L = window.BNB_LIFT;
+    if (!member || !L) return;
+    const key = liftKey(name || ''), wt = L.parseWt(wtStr), reps = L.parseReps(repsStr);
+    if (!key || wt == null || !reps) return;
+    const prev = bestsFrom(memberHistory(member), localIsoDate())[key];
+    if (!prev) return;
+    const seen = prAnnounced[key] || { wt: prev.wt, e1: prev.e1 };
+    const e = L.e1rm(wt, reps);
+    let msg = '';
+    if (wt > seen.wt) msg = '🏆 New PR! ' + prev.name + ' ' + L.fmtKg(wt) + ' × ' + reps + ' (best was ' + L.fmtKg(prev.wt) + ')';
+    else if (e != null && e > seen.e1 + 0.01) msg = '🏆 New PR! ' + prev.name + ' ' + L.fmtKg(wt) + ' × ' + reps + ', est. 1RM ' + L.fmtKg(e);
+    if (!msg) return;
+    prAnnounced[key] = { wt: Math.max(seen.wt, wt), e1: Math.max(seen.e1, e == null ? -Infinity : e) };
+    window.BNB_UI.toast(msg, 5000);
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
+
+  function renderMlsPrBoard(){
+    const el = document.getElementById('mls-pr-board');
+    if (!el) return;
+    const member = mlsSignedInMember(), L = window.BNB_LIFT;
+    const bests = member && L ? Object.values(bestsFrom(memberHistory(member))) : [];
+    if (!bests.length){ el.innerHTML = ''; return; }
+    bests.sort((a, b) => a.name.localeCompare(b.name));
+    const day = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(2, 4) : '';
+    el.innerHTML = '<h3 class="pr-head">Personal Records</h3>' +
+      '<table class="weight-history-table pr-table"><thead><tr><th>Exercise</th><th>Heaviest set</th><th>Best est. 1RM</th></tr></thead><tbody>' +
+      bests.map(b => '<tr><td>' + esc(b.name) + '</td>' +
+        '<td class="mono">' + L.fmtKg(b.wt) + ' × ' + b.wtReps + ' <span class="field-hint">' + day(b.wtDate) + '</span></td>' +
+        '<td class="mono">' + (b.e1 > 0 ? L.fmtKg(b.e1) + ' <span class="field-hint">' + L.fmtKg(b.e1Wt) + ' × ' + b.e1Reps + ', ' + day(b.e1Date) + '</span>' : '—') + '</td></tr>').join('') +
+      '</tbody></table><div class="field-hint">Est. 1RM is a guide (Epley formula, from sets of 12 reps or fewer), not a max to test.</div>';
+  }
+
+  /* Line chart in the same visual language as the Weight tab's
+     .weight-chart-svg. Per saved session, for the chosen exercise:
+       top    — the heaviest set
+       e1rm   — the best estimated one-rep max
+       volume — total weight × reps across its sets
+     Sets logged as BW have no number, so they're left out rather than
+     counted as 0. */
+  const GRAPH_METRICS = { top: 'Heaviest set', e1rm: 'Estimated 1RM', volume: 'Volume (weight × reps)' };
   function renderMlsGraph(){
+    renderMlsPrBoard();
     const svg = document.getElementById('mls-graph-svg');
     const empty = document.getElementById('mls-graph-empty');
     const exSel = document.getElementById('mls-graph-exercise');
     if (!svg || !exSel) return;
+    const metricSel = document.getElementById('mls-graph-metric');
+    if (metricSel && !metricSel.options.length){
+      metricSel.innerHTML = Object.keys(GRAPH_METRICS).map(k => '<option value="' + k + '">' + GRAPH_METRICS[k] + '</option>').join('');
+      metricSel.onchange = renderMlsGraph;
+    }
+    const metric = metricSel ? metricSel.value : 'top';
     const exName = exSel.value;
     const member = mlsSignedInMember();
     if (!member || !exName){ svg.style.display='none'; empty.style.display='block'; return; }
 
-    const history = loadMlsHistory().filter(h=>h.memberId===member.id).sort((a,b)=> a.dateIso.localeCompare(b.dateIso));
-    const points = [];
+    const L = window.BNB_LIFT, key = liftKey(exName);
+    const history = memberHistory(member).sort((a,b)=> a.dateIso.localeCompare(b.dateIso));
+    const byDate = {};
     history.forEach(h=>{
       (h.exercises||[]).forEach(ex=>{
-        if ((ex.name||'').trim().toLowerCase() !== exName.trim().toLowerCase()) return;
-        let maxWt = null;
-        (ex.sets||[]).forEach(s=>{
-          const n = parseFloat(s.wt);
-          if (!isNaN(n) && (maxWt===null || n>maxWt)) maxWt = n;
+        if (liftKey(ex.name||'') !== key) return;
+        let v = null;
+        (ex.sets||[]).forEach(st=>{
+          const wt = L.parseWt(st.wt), reps = L.parseReps(st.reps);
+          if (wt == null) return;
+          const val = metric === 'e1rm' ? L.e1rm(wt, reps) : metric === 'volume' ? (reps ? wt * reps : null) : wt;
+          if (val == null) return;
+          v = metric === 'volume' ? (v || 0) + val : (v === null || val > v ? val : v);
         });
-        if (maxWt !== null) points.push({ date: h.dateIso, wt: maxWt });
+        // Two entries on one day (your own log and a coach's) make one point.
+        if (v !== null) byDate[h.dateIso] = metric === 'volume' ? (byDate[h.dateIso] || 0) + v : Math.max(byDate[h.dateIso] == null ? -Infinity : byDate[h.dateIso], v);
       });
     });
+    const points = Object.keys(byDate).sort().map(d => ({ date: d, wt: byDate[d] }));
 
     if (points.length < 2){ svg.style.display='none'; empty.style.display='block'; return; }
     empty.style.display='none'; svg.style.display='block';
@@ -3598,16 +3765,17 @@
     const xStep = (W-padL-padR) / Math.max(points.length-1,1);
     const xAt = i => padL + i*xStep;
     const yAt = v => H-padB - ((v-minY)/yRange)*(H-padT-padB);
+    const fmt = v => metric === 'volume' ? Math.round(v).toLocaleString() : v.toFixed(1);
 
     let gridSvg = '';
     for(let i=0;i<=4;i++){
       const gy = padT + i*((H-padT-padB)/4);
       gridSvg += `<line class="grid-line" x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}"></line>`;
       const val = maxY - i*(yRange/4);
-      gridSvg += `<text class="axis-label" x="${padL-8}" y="${gy+3}" text-anchor="end">${val.toFixed(1)}</text>`;
+      gridSvg += `<text class="axis-label" x="${padL-8}" y="${gy+3}" text-anchor="end">${fmt(val)}</text>`;
     }
     const pathD = points.map((p,i)=> (i===0?'M':'L') + xAt(i).toFixed(1) + ',' + yAt(p.wt).toFixed(1)).join(' ');
-    const dots = points.map((p,i)=> `<circle class="data-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(p.wt).toFixed(1)}" r="3.5"><title>${esc(p.date)}: ${p.wt}</title></circle>`).join('');
+    const dots = points.map((p,i)=> `<circle class="data-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(p.wt).toFixed(1)}" r="3.5"><title>${esc(p.date)}: ${fmt(p.wt)}</title></circle>`).join('');
     const xLabels = points.map((p,i)=> (i===0 || i===points.length-1 || i===Math.floor(points.length/2))
       ? `<text class="axis-label" x="${xAt(i).toFixed(1)}" y="${H-12}" text-anchor="middle">${esc(p.date.slice(5))}</text>`
       : '').join('');
@@ -4580,6 +4748,19 @@
     renderCoachWorkouts();
     await refreshCoachWorkouts();
     renderCoachWorkouts();
+  };
+
+  // Today's workout from the program, for the member Today card
+  // (js/bells-n-barz-today.js).
+  window.BNB_TRAINING = {
+    today(){
+      const idx = new Date().getDay();
+      const day = DAY_ORDER[idx === 0 ? 6 : idx - 1];
+      const blocks = programData[day] || [];
+      const meta = DAY_META[day] || {};
+      return { day, title: meta.title || '', duration: meta.duration || '',
+        exercises: blocks.flatMap(b => (b.exercises || []).map(e => splitAltFromName(e.name).name)).filter(Boolean) };
+    }
   };
 
   /* -------------------------------- INIT ---------------------------------- */

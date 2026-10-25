@@ -175,6 +175,8 @@
     reports:      { file: 'js/bells-n-barz-reports.js' },
     // Admin > Content: the owner's overview of the blog, library, gallery and shop.
     content:      { file: 'js/bells-n-barz-content.js' },
+    // Member > Leaderboard and Me > Photos.
+    engage:       { file: 'js/bells-n-barz-engage.js' },
     // Coach > Program Builder > Build a Program.
     programGenerator: { file: 'js/bells-n-barz-program-generator.js' }
   };
@@ -1172,6 +1174,7 @@
     <!-- Live message alerts (js/bells-n-barz-shell.js, LIVE MESSAGE ALERTS) -->
     <div class="notif-bell-settings">
       <label><input type="checkbox" id="notif-sound-toggle" checked> Sound for new messages</label>
+      <label><input type="checkbox" id="notif-push-toggle"> Alerts on this device, even with the app closed</label>
       <button type="button" id="notif-desktop-btn">Enable desktop alerts</button>
       <div class="notif-desktop-hint" id="notif-desktop-hint" hidden></div>
     </div>
@@ -1678,9 +1681,11 @@
   <div class="day-head"><h2>Member — Training Tools</h2><span class="day-sub">Live session logging, interval timers, weight tracking, and progress</span></div>
   <div class="sched-scope">
   <button class="member-back-btn" id="member-back-btn" type="button">&larr; Back</button>
+  <div id="member-today"></div>
   <div class="sched-sub" id="member-section-switch">
     <button class="plate active" data-tab="session"><span class="plate-title">Live Session</span><span class="plate-desc">Log today's workout set by set</span></button>
     <button class="plate" data-tab="me"><span class="plate-title">Me</span><span class="plate-desc">Weight, BP, steps, food, fasting &amp; recipes</span></button>
+    <button class="plate" data-tab="leaderboard"><span class="plate-title">Leaderboard</span><span class="plate-desc">This month's top members and challenges</span></button>
     <button class="plate" data-tab="accountability"><span class="plate-title">My Teams</span><span class="plate-desc">Your accountability groups and streaks</span></button>
     <button class="plate" data-tab="messages"><span class="plate-title">Messages</span><span class="plate-desc">Chat with your coach</span></button>
     <button class="plate" data-tab="schedule"><span class="plate-title">Booking</span><span class="plate-desc">Book classes and 1-on-1 sessions</span></button>
@@ -1702,7 +1707,14 @@
   <button data-me-section="mealplan"><span class="plate-title">Meal Plan</span><span class="plate-desc">The plan your coach made for you</span></button>
   <button data-me-section="fasting"><span class="plate-title">Fasting</span><span class="plate-desc">Daily eating window or 5:2 weekly</span></button>
   <button data-me-section="recipes"><span class="plate-title">Recipes</span><span class="plate-desc">Smoothies, porridge, soups and snacks</span></button>
+  <button data-me-section="photos"><span class="plate-title">Photos</span><span class="plate-desc">Private progress photos, side by side</span></button>
 </div>
+
+<!-- ================= PROGRESS PHOTOS (js/bells-n-barz-engage.js) ================= -->
+<section class="me-section" id="tab-photos">
+<div class="day-head"><h2>Progress Photos</h2></div>
+<div id="photos-body"></div>
+</section>
 
 <!-- ================= MEAL PLAN (member side; coach side is Coach > Meal Plans) ================= -->
 <section class="me-section" id="tab-mealplan">
@@ -2824,6 +2836,11 @@
 
 </section>
 <!-- ================= MY TEAMS (accountability) ================= -->
+<section class="member-section" id="tab-leaderboard">
+<div class="day-head"><h2>Leaderboard</h2></div>
+<div id="leaderboard-body"></div>
+</section>
+
 <section class="member-section" id="tab-accountability">
 <div class="day-head"><h2>My Teams</h2></div>
 <div class="day-focus">An accountability partner in your pocket — see what your group is expected to do today, and whether they've shown up.</div>
@@ -2901,6 +2918,7 @@
     <button class="cs-mode-btn active" id="mls-mode-program" type="button">Day's Program</button>
     <button class="cs-mode-btn" id="mls-mode-freeform" type="button">Freeform</button>
   </div>
+  <div class="ls-tools" data-ls-tools></div>
 
   <div id="mls-blocks"></div>
 
@@ -2934,9 +2952,10 @@
 
 <div class="weight-chart-card" id="mls-graph-section" style="margin-top:var(--stack-gap);display:none;">
 <h3 style="font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:0.03em;font-size:15px;color:var(--text);margin-bottom:14px;">Progress Graph</h3>
-<div class="t-field" style="max-width:320px;margin-bottom:14px;"><label>Exercise</label><select id="mls-graph-exercise"></select></div>
+<div class="t-row2" style="max-width:640px;"><div class="t-field"><label>Exercise</label><select id="mls-graph-exercise"></select></div><div class="t-field"><label>Show</label><select id="mls-graph-metric"></select></div></div>
 <svg class="weight-chart-svg" id="mls-graph-svg" style="display:none;" viewbox="0 0 700 230"></svg>
 <div class="weight-chart-empty" id="mls-graph-empty">Save a couple of sessions logging the same exercise to see a trend here.</div>
+<div id="mls-pr-board"></div>
 </div>
 </section>
 
@@ -3237,11 +3256,13 @@
   <div class="wrap">
     <div class="admin-toolbar">
       <button class="btn2 primary" id="usr-new-user-btn">+ Add Member</button>
+      <button class="btn2" type="button" data-open-checkin-scanner>Scan Check-in</button>
       <button class="btn2" id="usr-export-btn">Export Members JSON</button>
       <button class="btn2" id="usr-import-btn">Import Members JSON</button>
       <input type="file" id="usr-import-file" accept="application/json" style="display:none;">
       <input type="text" class="search-input" id="usr-search-input" placeholder="Search name or email…">
     </div>
+    <div id="freeze-admin"></div>
     <div class="admin-toolbar">
       <div class="role-filter" id="usr-role-filter"></div>
       <div class="layout-toggle" id="usr-layout-toggle">
@@ -3311,6 +3332,7 @@
 <button data-tools-page="challenges" type="button"><span class="plate-title">Challenges</span><span class="plate-desc">Themed workouts built around a beat</span></button>
 <button data-tools-page="body" type="button"><span class="plate-title">Body Calculators</span><span class="plate-desc">BMI, body fat % and waist measures</span></button>
 <button data-tools-page="calories" type="button"><span class="plate-title">Calories &amp; Macros</span><span class="plate-desc">Daily calorie needs and macro split</span></button>
+<button data-open-plates type="button"><span class="plate-title">Plate Calculator</span><span class="plate-desc">What to load on each side of the bar</span></button>
 </div>
 <div class="tools-page" id="tools-page-timers">
 <div class="day-focus">A ready-made Tabata clock, plus a fully editable interval timer for anything else</div>
@@ -3531,7 +3553,7 @@
   </div>
 
   <div class="coach-section" id="coach-section-session">
-    <div class="admin-notice">Run up to 5 trainees' set-by-set logs live, right here on your device — separate from the member module, so nothing gets mixed up with anyone else's tracker. Switch slots below to jump between trainees; each slot keeps its own name, sets and notes. Tick each set and log weight/reps as you go, then save a copy for whichever trainee is active. Nothing here is uploaded anywhere; each save is a plain file download to this device. Clear a slot yourself once you're done with that trainee.</div>
+    <div class="admin-notice">Run up to 5 trainees' set-by-set logs live, right here on your device — separate from the member module, so nothing gets mixed up with anyone else's tracker. Switch slots below to jump between trainees; each slot keeps its own name, sets and notes. Tick each set and log weight/reps as you go (a rest timer starts with each tick), then save a copy for whichever trainee is active. Sets stay on this device until you press Sync to Member Log, which adds the day to that member's own History, progress graph and personal records: pick the trainee from the name suggestions so it knows whose log it is. Clear a slot yourself once you're done with that trainee.</div>
 
     <div class="cs-slot-switch" id="cs-slot-switch"></div>
 
@@ -3540,7 +3562,7 @@
 
     <div class="page-main">
       <div class="logsheet-meta">
-        <div class="ls-field cs-trainee-field"><label>Trainee <span class="cs-required-mark">*</span></label><input type="text" id="cs-trainee" placeholder="Name of trainee in session"></div>
+        <div class="ls-field cs-trainee-field"><label>Trainee <span class="cs-required-mark">*</span></label><input type="text" id="cs-trainee" list="cs-trainee-list" autocomplete="off" placeholder="Name of trainee in session"><datalist id="cs-trainee-list"></datalist></div>
         <div class="ls-field"><label>Date</label><input type="text" id="cs-date" placeholder="DD/MM/YYYY"></div>
         <div class="ls-field"><label>Bodyweight</label><input type="text" id="cs-bw" placeholder="kg"></div>
       </div>
@@ -3551,6 +3573,7 @@
         <button class="cs-mode-btn active" id="cs-mode-program" type="button">Day's Program</button>
         <button class="cs-mode-btn" id="cs-mode-freeform" type="button">Freeform</button>
       </div>
+      <div class="ls-tools" data-ls-tools></div>
 
       <div id="cs-blocks"></div>
 
@@ -3564,7 +3587,7 @@
         <button class="btn2 primary" id="cs-save-pdf">PDF</button>
         <button class="btn2" id="cs-save-md">.md</button>
         <button class="btn2" id="cs-save-txt">.txt</button>
-        <button class="btn2 stub" id="cs-sync-member" type="button" title="Not yet implemented">Sync to Member Log</button>
+        <button class="btn2" id="cs-sync-member" type="button" title="Add this day's sets to the member's own History and progress graph">Sync to Member Log</button>
         <button class="btn2 danger" id="cs-clear">Clear This Slot (new trainee)</button>
       </div>
     </div>
@@ -4091,7 +4114,11 @@
 
 })();
 </script>
+<script src="js/bells-n-barz-lift-tools.js?v=__BUILD__"></script>
+<script src="js/bells-n-barz-checkin.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-training-core.js?v=__BUILD__"></script>
+<script src="js/bells-n-barz-today.js?v=__BUILD__"></script>
+<script src="js/bells-n-barz-push.js?v=__BUILD__"></script>
 
 
 <script>
