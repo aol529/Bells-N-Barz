@@ -155,7 +155,7 @@ document.querySelectorAll('table').forEach(t => {
 
 /* ---------------- TAB SWITCHING ---------------- */
 const plates = document.querySelectorAll('.plate');
-const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', tools:'Tools', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams', messages:'Messages', reports:'Reports', content:'Content', switchboard:'Switchboard'};
+const tabLabels = {overview:'Overview', mon:'Monday', tue:'Tuesday', wed:'Wednesday', thu:'Thursday', fri:'Friday', sat:'Saturday', sun:'Sunday', appendix:'Appendix', log:'Log', tools:'Tools', session:'Session Log', glance:'Exercise Glance', coach:'Coach', schedule:'Booking', billing:'Billing', me:'Me', accountability:'My Teams', messages:'Messages', reports:'Reports', content:'Content', switchboard:'Switchboard', parking:'Parking'};
 
 /* ---------------- MANUAL SECTION HIGHLIGHT ---------------- */
 // The top-level MANUAL button shares data-tab="overview" with the side-rack's own
@@ -173,12 +173,12 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
 const memberSectionTabs = ['session','me','leaderboard','accountability','messages','schedule'];
-const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard'];
+const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard', 'parking'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin', parking: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -243,7 +243,7 @@ const TAB_TITLES = {
   overview: 'Training Manual', mon: 'Training Manual', tue: 'Training Manual',
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
-  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin',
+  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin', parking: 'Parking — Admin',
   session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', messages: 'Messages', inbox: 'Inbox'
 };
 
@@ -396,6 +396,8 @@ function switchTab(rawTab, scrollTop){
   if (tab === 'content' && typeof window.bnbContentOnTabShown === 'function') window.bnbContentOnTabShown();
   // Switchboard: a switch may have been flipped on another device.
   if (tab === 'switchboard' && typeof window.bnbSwitchboardOnTabShown === 'function') window.bnbSwitchboardOnTabShown();
+  // Parking: cars come and go all day.
+  if (tab === 'parking' && typeof window.bnbParkingOnTabShown === 'function') window.bnbParkingOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
   // logged — refresh on tab-open so that line doesn't go stale.

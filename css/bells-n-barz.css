@@ -3684,3 +3684,34 @@ body.kiosk{min-height:100vh;min-height:100dvh;font-family:'IBM Plex Sans',sans-s
   .k-panel{padding:18px 16px;}
   .k-qr svg,.k-bar{width:min(60vw,30vh,320px);}
 }
+
+/* ---------------- PARKING (Admin > Parking, sql/88) ---------------- */
+.park-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-bottom:14px;}
+.park-card{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:16px;}
+.park-card h3,.park-head{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:17px;margin:0 0 10px;}
+.park-head{margin-top:18px;}
+.park-form{display:flex;gap:8px;}
+.park-plate{flex:1;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:22px;letter-spacing:.08em;text-transform:uppercase;padding:10px 12px;box-sizing:border-box;}
+.park-out-msg{min-height:20px;margin-top:8px;font-size:14px;}
+.park-stats{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13.5px;color:var(--muted);}
+.park-stats b{color:var(--text);}
+.park-list{display:flex;flex-direction:column;gap:6px;}
+.park-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:10px 14px;color:var(--text);cursor:pointer;font:inherit;}
+.park-row:hover{border-color:var(--accent);}
+.park-row-plate{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;letter-spacing:.06em;}
+.park-row-sub{color:var(--muted);font-size:13px;flex:1;}
+.park-row-go{color:var(--accent);font-size:13px;}
+.park-settings{margin-top:20px;}
+.park-settings summary{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:15px;cursor:pointer;}
+.park-settings .t-row2{margin-top:12px;}
+.park-co-plate{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;letter-spacing:.08em;text-align:center;}
+.park-co-sub{text-align:center;color:var(--muted);font-size:13.5px;margin:2px 0 14px;}
+.park-co-members{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.park-exempt{border-color:var(--accent-3);color:var(--text);}
+.park-co-fee{text-align:center;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:14px;margin:12px 0;}
+.park-co-amount{font-family:'Oswald',sans-serif;font-size:34px;}
+.park-co-pay{font-size:14px;color:var(--muted);margin-top:4px;}
+.park-co-pay b{color:var(--text);font-family:'IBM Plex Mono',monospace;}
+.park-co-actions{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;}
+.park-co-actions .btn2{flex:1;}
+.park-co-remove{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:12.5px;cursor:pointer;margin-top:12px;padding:0;}

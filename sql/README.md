@@ -485,7 +485,15 @@
     checkins" policy, so check-ins come only from staff or the door.
     Run after 40, 52, 71 and 83. Safe to re-run.
 
-80. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+80. **88-parking.sql** — Admin > Parking: the guard types plates in
+    (`parking_enter`), the desk checks them out (`parking_lookup`,
+    `parking_checkout`): M-Pesa paybill (confirmed by hand for now) or
+    cash at `rate_per_hour` per started hour, or free for a member whose
+    plate is in `member_vehicles` and who checked in at the door that
+    day (checked on the server). Admins set the rate and paybill in
+    `parking_settings`. Run after 41 and 87. Safe to re-run.
+
+81. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.
