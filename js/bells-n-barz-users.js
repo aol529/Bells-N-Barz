@@ -390,13 +390,13 @@
     if (isNaN(dt)) return d;
     return dt.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'});
   }
-  const ROLE_PRIORITY = ['admin','trainer','staff','member'];
+  const ROLE_PRIORITY = ['admin','trainer','staff','member','kiosk'];
   function primaryRole(roles){
     if (!Array.isArray(roles) || !roles.length) return 'member';
     return ROLE_PRIORITY.find(r=>roles.includes(r)) || roles[0];
   }
   function roleLabel(r){
-    return {member:'Member', trainer:'Trainer/Coach', staff:'Staff', admin:'Admin'}[r] || r;
+    return {member:'Member', trainer:'Trainer/Coach', staff:'Staff', admin:'Admin', kiosk:'Front Door Kiosk'}[r] || r;
   }
   function rolePillsHtml(roles){
     const list = Array.isArray(roles) && roles.length ? roles : ['member'];
@@ -657,6 +657,8 @@
   }
   function routeAfterAuth(matched){
     const staff = ['admin','trainer','staff'];
+    // A front door tablet account (sql/87) only runs the kiosk.
+    if (matched.roles && matched.roles.length && matched.roles.every(r => r === 'kiosk')){ location.href = 'kiosk.html'; return; }
     onAuthStateChanged();
     // An admin set a temporary password (sql/76): choose a real one first.
     if (matched.tempPassword){ openReset('temp'); return; }
@@ -1183,10 +1185,9 @@
     const selfCheckinBtn = document.getElementById('usr-self-checkin-btn');
     const alreadyToday = checkins.some(c=>c.userId===u.id && c.date===TODAY);
     selfCheckinBtn.disabled = alreadyToday;
-    selfCheckinBtn.textContent = alreadyToday ? 'Checked In Today ✓' : 'Check In Today';
-    selfCheckinBtn.onclick = ()=>{
-      if (logCheckin(u.id, TODAY)){ showToast('Checked in — see you on the floor!'); renderProfile(); }
-    };
+    selfCheckinBtn.textContent = alreadyToday ? 'Checked In Today ✓' : 'Check In at the Door';
+    // Check-ins go through the front door check (js/bells-n-barz-checkin.js, sql/87).
+    selfCheckinBtn.onclick = ()=>{ if (window.BNB_CHECKIN) window.BNB_CHECKIN.openDoorScan(); };
     // Check-in code and membership freeze (js/bells-n-barz-checkin.js).
     if (typeof window.bnbProfileExtras === 'function') window.bnbProfileExtras(u);
 

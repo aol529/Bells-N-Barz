@@ -474,7 +474,18 @@
     secrets: follow `supabase/functions/send-push/README.md`. Run after
     09. Safe to re-run.
 
-79. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+79. **87-front-door-kiosk.sql** — self check-in at the door (`kiosk.html`):
+    members scan the kiosk's rotating QR code with the app, or type their
+    phone number + Check-in PIN. `bnb_door_checkin()` decides: blocked if
+    archived/suspended, cancelled, pending, frozen or ended; overdue gets
+    two nudges, then blocked until paid. New tables `checkin_pins`
+    (bcrypt), `checkin_overdue_nudges`, `kiosk_tokens`, `kiosk_events`,
+    `kiosk_pin_failures`, all written only through its functions. Adds a
+    `kiosk` role (no staff access) and drops the "members create own
+    checkins" policy, so check-ins come only from staff or the door.
+    Run after 40, 52, 71 and 83. Safe to re-run.
+
+80. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

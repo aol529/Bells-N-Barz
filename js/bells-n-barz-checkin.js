@@ -8,6 +8,10 @@
      a member without their phone.
    - Membership freeze (sql/83): members ask on My Profile; staff approve,
      decline, freeze directly or end early in Admin > Members.
+   - Front door (sql/87, kiosk.html): members check themselves in by
+     scanning the kiosk's code ("Check In at the Door" / their phone's own
+     camera, which opens the app with ?checkin=…), or by phone number and
+     the Check-in PIN they set here. The server decides who gets in.
    QR libraries load from the CDN only when one of these screens opens.
    ========================================================================= */
 (function(){
@@ -121,9 +125,11 @@
     if (!row || !u || row.querySelector('#usr-qr-btn')) return;
     row.insertAdjacentHTML('beforeend',
       '<button class="btn2 small" type="button" id="usr-qr-btn">My Check-in Code</button>' +
+      '<button class="btn2 small" type="button" id="usr-pin-btn">Check-in PIN</button>' +
       '<button class="btn2 small" type="button" id="usr-freeze-btn" style="display:none;">Freeze Membership</button>');
     row.insertAdjacentHTML('afterend', '<div class="freeze-status-line" id="usr-freeze-status" style="display:none;"></div>');
     document.getElementById('usr-qr-btn').onclick = () => openMyCode(u);
+    document.getElementById('usr-pin-btn').onclick = () => openPin(users().getSelf() || u);
     document.getElementById('usr-freeze-btn').onclick = () => openFreeze(u);
     if (myFreezes) refreshProfileLine(u);
     loadMyFreezes(u).then(() => refreshProfileLine(u));
@@ -155,50 +161,23 @@
       (warnings.length ? '<div class="scan-warn">⚠ ' + warnings.map(esc).join(' · ') + '</div>' : '') + '</div></div>';
   }
 
-  async function openScanner(){
-    if (!staffSelf()){ UI().toast('Scanning check-ins is for staff accounts.'); return; }
-    let stream = null, raf = null, detector = null, paused = false, lastCode = '', lastAt = 0, stopped = false;
-    const m = UI().modal('Scan Check-in',
-      '<div class="scan-stage"><video playsinline muted></video><div class="scan-frame" aria-hidden="true"></div><div class="scan-cam-msg">Starting camera…</div></div>' +
-      '<div class="scan-out" aria-live="polite"></div>' +
-      '<div class="t-field" style="margin-top:14px;"><label>No code? Find the member</label><input type="text" data-scan-search placeholder="Type a name…" autocomplete="off"></div>' +
-      '<div class="scan-matches"></div>',
-      { onClose: stop });
-    const video = m.body.querySelector('video'), out = m.body.querySelector('.scan-out'), camMsg = m.body.querySelector('.scan-cam-msg');
+  /* ---------------- CAMERA QR READER ----------------
+     Starts the back camera in a .scan-stage (video + .scan-cam-msg) and
+     calls onCode(text) for every code it reads. Returns stop(). */
+  function startQrCamera(stage, onCode, fallback){
+    let stream = null, raf = null, detector = null, stopped = false, busy = false;
+    const video = stage.querySelector('video'), camMsg = stage.querySelector('.scan-cam-msg');
     const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
-
     function stop(){
       stopped = true;
       cancelAnimationFrame(raf);
       if (stream) stream.getTracks().forEach(t => t.stop());
     }
-    async function handle(member){
-      paused = true;
-      out.innerHTML = '<div class="field-hint">Checking in ' + esc(member.fullName) + '…</div>';
-      try {
-        const fresh = await checkIn(member);
-        out.innerHTML = resultHtml(member, fresh);
-        if (navigator.vibrate) navigator.vibrate(fresh ? 120 : [60, 60, 60]);
-      } catch(e){
-        out.innerHTML = '<div class="scan-result warn"><div>Could not check in: ' + esc(e.message || e) + '</div></div>';
-      }
-      setTimeout(() => { paused = false; }, 2000);
-    }
-    function onCode(text){
-      const now = Date.now();
-      if (text === lastCode && now - lastAt < 6000) return;
-      lastCode = text; lastAt = now;
-      const id = String(text || '').startsWith(PREFIX) ? text.slice(PREFIX.length) : '';
-      const member = isUuid(id) ? users().getById(id) : null;
-      if (!member){ out.innerHTML = '<div class="scan-result warn"><div>That isn\'t a Bells n Barz check-in code.</div></div>'; return; }
-      handle(member);
-    }
     async function frame(){
       if (stopped) return;
       raf = requestAnimationFrame(frame);
-      if (paused || video.readyState < 2) return;
-      if (frame.busy) return;
-      frame.busy = true;
+      if (busy || video.readyState < 2) return;
+      busy = true;
       try {
         if (detector){
           const codes = await detector.detect(video);
@@ -212,7 +191,63 @@
           if (code && code.data) onCode(code.data);
         }
       } catch(e){ /* a bad frame — try the next one */ }
-      frame.busy = false;
+      busy = false;
+    }
+    (async () => {
+      try {
+        if ('BarcodeDetector' in window){
+          try {
+            const formats = await window.BarcodeDetector.getSupportedFormats();
+            if (formats.includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          } catch(e){ detector = null; }
+        }
+        if (!detector) await UI().loadScript(QR_READ);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser can\'t use the camera here (it needs HTTPS).');
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        if (stopped){ stream.getTracks().forEach(t => t.stop()); return; }
+        video.srcObject = stream;
+        await video.play();
+        camMsg.style.display = 'none';
+        frame();
+      } catch(e){
+        camMsg.textContent = ((e && e.name === 'NotAllowedError') ? 'Camera blocked — allow camera access for this site.' : (e.message || 'No camera available.')) + ' ' + fallback;
+      }
+    })();
+    return stop;
+  }
+  const STAGE_HTML = '<div class="scan-stage"><video playsinline muted></video><div class="scan-frame" aria-hidden="true"></div><div class="scan-cam-msg">Starting camera…</div></div>';
+
+  function openScanner(){
+    if (!staffSelf()){ UI().toast('Scanning check-ins is for staff accounts.'); return; }
+    let paused = false, lastCode = '', lastAt = 0, stop = () => {};
+    const m = UI().modal('Scan Check-in', STAGE_HTML +
+      '<div class="scan-out" aria-live="polite"></div>' +
+      '<div class="t-field" style="margin-top:14px;"><label>No code? Find the member</label><input type="text" data-scan-search placeholder="Type a name…" autocomplete="off"></div>' +
+      '<div class="scan-matches"></div>',
+      { onClose: () => stop() });
+    const out = m.body.querySelector('.scan-out');
+
+    async function handle(member){
+      paused = true;
+      out.innerHTML = '<div class="field-hint">Checking in ' + esc(member.fullName) + '…</div>';
+      try {
+        const fresh = await checkIn(member);
+        out.innerHTML = resultHtml(member, fresh);
+        if (navigator.vibrate) navigator.vibrate(fresh ? 120 : [60, 60, 60]);
+      } catch(e){
+        out.innerHTML = '<div class="scan-result warn"><div>Could not check in: ' + esc(e.message || e) + '</div></div>';
+      }
+      setTimeout(() => { paused = false; }, 2000);
+    }
+    function onCode(text){
+      if (paused) return;
+      const now = Date.now();
+      if (text === lastCode && now - lastAt < 6000) return;
+      lastCode = text; lastAt = now;
+      const id = String(text || '').startsWith(PREFIX) ? text.slice(PREFIX.length) : '';
+      const member = isUuid(id) ? users().getById(id) : null;
+      if (!member){ out.innerHTML = '<div class="scan-result warn"><div>That isn\'t a Bells n Barz check-in code.</div></div>'; return; }
+      handle(member);
     }
 
     // Name search fallback.
@@ -225,26 +260,93 @@
       matches.querySelectorAll('[data-scan-id]').forEach(b => b.onclick = () => handle(users().getById(b.dataset.scanId)));
     };
 
-    try {
-      if ('BarcodeDetector' in window){
-        try {
-          const formats = await window.BarcodeDetector.getSupportedFormats();
-          if (formats.includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-        } catch(e){ detector = null; }
-      }
-      if (!detector) await UI().loadScript(QR_READ);
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser can\'t use the camera here (it needs HTTPS).');
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-      if (stopped){ stream.getTracks().forEach(t => t.stop()); return; }
-      video.srcObject = stream;
-      await video.play();
-      camMsg.style.display = 'none';
-      frame();
-    } catch(e){
-      camMsg.textContent = (e && e.name === 'NotAllowedError') ? 'Camera blocked — allow camera access for this site, or find the member by name below.' : (e.message || 'No camera available') + ' Find the member by name below.';
+    stop = startQrCamera(m.body.querySelector('.scan-stage'), onCode, 'Find the member by name below.');
+  }
+
+  /* ---------------- MEMBER: FRONT DOOR (sql/87, kiosk.html) ---------------- */
+  const DOOR_PARAM = 'checkin', DOOR_PENDING = 'bnb-door-token';
+  function doorTokenFrom(text){
+    try { return new URL(text).searchParams.get(DOOR_PARAM) || ''; } catch(e){ return ''; }
+  }
+  function doorResultHtml(r){
+    r = r || {};
+    const cls = !r.ok ? 'no' : r.message && !r.already ? 'nudge' : 'ok';
+    const title = r.ok ? 'Welcome, ' + (r.name || 'champ') : r.expired ? 'Code expired' : 'Please see the front desk';
+    return '<div class="door-result ' + cls + '"><div class="door-icon">' + (r.ok ? '✓' : '✕') + '</div>' +
+      '<div class="door-title">' + esc(title) + '</div>' + (r.message ? '<div class="door-msg">' + esc(r.message) + '</div>' : '') + '</div>';
+  }
+  async function doorCheckin(token, m){
+    m = m || UI().modal('Check In', '');
+    m.body.innerHTML = '<div class="field-hint">Checking you in…</div>';
+    const { data, error } = await bnbClient.rpc('qr_checkin', { p_token: token });
+    if (error){
+      m.body.innerHTML = doorResultHtml({ ok: false, message: isMissingTable(error) ? 'Front door check-in isn\'t set up yet.' : error.message });
+      return;
+    }
+    m.body.innerHTML = doorResultHtml(data);
+    if (navigator.vibrate) navigator.vibrate(data && data.ok ? 120 : [60, 60, 60]);
+    if (data && data.ok){
+      const btn = document.getElementById('usr-self-checkin-btn');
+      if (btn){ btn.disabled = true; btn.textContent = 'Checked In Today ✓'; }
+      if (users().refreshCheckins) users().refreshCheckins();
     }
   }
-  window.BNB_CHECKIN = { openScanner, openMyCode };
+  function openDoorScan(){
+    let done = false, stop = () => {};
+    const m = UI().modal('Check In at the Door', STAGE_HTML +
+      '<div class="field-hint" style="margin-top:10px;">Point your camera at the code on the front door screen.</div>',
+      { onClose: () => stop() });
+    stop = startQrCamera(m.body.querySelector('.scan-stage'), text => {
+      const token = doorTokenFrom(text);
+      if (done || !token) return;
+      done = true;
+      stop();
+      doorCheckin(token, m);
+    }, 'You can also scan the door code with your phone\'s camera app, or use your number and PIN on the screen.');
+  }
+
+  function openPin(u){
+    const m = UI().modal('Check-in PIN',
+      '<div class="field-hint" style="margin-bottom:14px;">No phone on you? At the front door you can check in with your phone number and this PIN.</div>' +
+      (u.phone ? '' : '<div class="scan-warn" style="margin:0 0 12px;">Add your phone number under Edit Details first, or the door won\'t find you.</div>') +
+      '<div class="field-hint" data-pin-state></div>' +
+      '<div class="t-row2"><div class="t-field"><label>New PIN (4–6 digits)</label><input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" data-pin1></div>' +
+      '<div class="t-field"><label>Type it again</label><input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" data-pin2></div></div>' +
+      '<button type="button" class="btn2 primary" data-pin-save>Save PIN</button> <span class="field-hint" data-pin-msg></span>');
+    const state = m.body.querySelector('[data-pin-state]'), msg = m.body.querySelector('[data-pin-msg]');
+    bnbClient.rpc('has_checkin_pin').then(({ data, error }) => {
+      if (!error) state.textContent = data ? 'You have a PIN. Saving a new one replaces it.' : 'You haven\'t set a PIN yet.';
+    });
+    m.body.querySelector('[data-pin-save]').onclick = async () => {
+      const a = m.body.querySelector('[data-pin1]').value.trim(), b = m.body.querySelector('[data-pin2]').value.trim();
+      if (!/^\d{4,6}$/.test(a)){ msg.textContent = 'Use 4 to 6 digits.'; return; }
+      if (a !== b){ msg.textContent = 'The two PINs don\'t match.'; return; }
+      const { error } = await bnbClient.rpc('set_checkin_pin', { p_pin: a });
+      if (error){ msg.textContent = isMissingTable(error) ? 'PINs aren\'t set up yet — ask the front desk.' : error.message; return; }
+      m.close();
+      UI().toast('Check-in PIN saved.');
+    };
+  }
+
+  // Scanned the door code with the phone's own camera: the app opened with
+  // ?checkin=…. Hold on to it until we know who's signed in.
+  try {
+    const params = new URLSearchParams(location.search);
+    const token = params.get(DOOR_PARAM);
+    if (token){
+      sessionStorage.setItem(DOOR_PENDING, token);
+      params.delete(DOOR_PARAM);
+      history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash);
+      setTimeout(() => { if (!(users() && users().getSelf())) UI().toast('Log in to finish checking in.'); }, 3000);
+    }
+  } catch(e){ /* storage unavailable — scan from the app instead */ }
+  function runPendingDoor(){
+    let token = '';
+    try { token = sessionStorage.getItem(DOOR_PENDING) || ''; sessionStorage.removeItem(DOOR_PENDING); } catch(e){}
+    if (token) doorCheckin(token);
+  }
+
+  window.BNB_CHECKIN = { openScanner, openMyCode, openDoorScan };
   document.addEventListener('click', e => {
     const b = e.target.closest && e.target.closest('[data-open-checkin-scanner]');
     if (b){ e.preventDefault(); openScanner(); }
@@ -329,9 +431,10 @@
       renderFreezeAdmin();
       const me = users() && users().getSelf();
       if (me) window.bnbProfileExtras(me);
+      runPendingDoor();
     }
   });
   // My Profile was first drawn before this file loaded.
   const me = users() && users().getSelf && users().getSelf();
-  if (me) window.bnbProfileExtras(me);
+  if (me){ window.bnbProfileExtras(me); runPendingDoor(); }
 })();

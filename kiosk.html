@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- FRONT DOOR KIOSK — the tablet at the door (sql/87,
+     js/bells-n-barz-kiosk.js). Sign in once with a "Front Door Kiosk"
+     account (Admin > Users, role checkbox) or a staff account. -->
+<meta name="theme-color" content="#121210"/>
+<meta name="robots" content="noindex"/>
+<link rel="icon" href="favicon.ico" sizes="48x48"/>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
+<title>Front Door — Bell(e)s n' Barz</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="css/bells-n-barz.css?v=__BUILD__" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3"></script>
+<script>
+  // Same project and public key as the main app (see "Supabase connection"
+  // in "bells n barz (main file).html").
+  const BNB_SUPABASE_URL = 'https://orurnegmjqytuxbtoqkn.supabase.co';
+  const BNB_SUPABASE_ANON_KEY = 'sb_publishable_WK7bJzWl6RwTMH6gY4NaaQ_RuhBWSQb';
+  const bnbClient = supabase.createClient(BNB_SUPABASE_URL, BNB_SUPABASE_ANON_KEY);
+</script>
+</head>
+<body class="kiosk">
+
+<div class="k-login" id="k-login" hidden>
+  <form class="k-login-card" id="k-login-form">
+    <img src="icon.svg" alt="" class="k-login-logo"/>
+    <h1>Front Door Kiosk</h1>
+    <p class="field-hint">Sign in with the gym's Front Door Kiosk account (or a staff account). This tablet stays signed in.</p>
+    <div class="t-field"><label for="k-email">Email</label><input type="email" id="k-email" autocomplete="username" required/></div>
+    <div class="t-field"><label for="k-password">Password</label><input type="password" id="k-password" autocomplete="current-password" required/></div>
+    <button type="submit" class="btn2 primary">Start Kiosk</button>
+    <div class="k-login-msg" id="k-login-msg" aria-live="polite"></div>
+  </form>
+</div>
+
+<main class="k-main" id="k-main" hidden>
+  <header class="k-head">
+    <div class="k-brand" id="k-brand" title="Hold for 3 seconds for kiosk options"><img src="icon.svg" alt=""/> Bell(e)s n' Barz</div>
+    <div class="k-clock" id="k-clock"></div>
+  </header>
+  <div class="k-offline" id="k-offline" hidden>No internet connection. Check-in will work again once it's back.</div>
+  <div class="k-panels">
+    <section class="k-panel">
+      <h2>Scan with your phone</h2>
+      <div class="k-qr" id="k-qr">Loading…</div>
+      <div class="k-bar" aria-hidden="true"><span id="k-bar"></span></div>
+      <p class="k-note" id="k-qr-note">Use your camera, or tap <b>Check In at the Door</b> in the app.</p>
+    </section>
+    <div class="k-or"><span>or</span></div>
+    <section class="k-panel">
+      <h2 id="k-step-title">Enter your phone number</h2>
+      <div class="k-display" id="k-display">&nbsp;</div>
+      <div class="k-msg" id="k-msg" aria-live="polite"></div>
+      <div class="k-pad" id="k-pad">
+        <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+        <button type="button" data-key="back" aria-label="Delete">⌫</button><button type="button" data-key="0">0</button><button type="button" data-key="enter" class="k-go" id="k-go">Next</button>
+      </div>
+      <button type="button" class="k-cancel" id="k-cancel" hidden>Start over</button>
+    </section>
+  </div>
+</main>
+
+<div class="k-result" id="k-result" hidden>
+  <div class="k-result-icon" id="k-result-icon"></div>
+  <div class="k-result-title" id="k-result-title"></div>
+  <div class="k-result-msg" id="k-result-msg"></div>
+</div>
+
+<div class="k-exit" id="k-exit" hidden>
+  <div class="k-exit-card">
+    <h2>Kiosk options</h2>
+    <button type="button" class="btn2" id="k-fullscreen">Full screen</button>
+    <button type="button" class="btn2" id="k-signout">Sign out of the kiosk</button>
+    <button type="button" class="btn2 primary" id="k-exit-close">Back to check-in</button>
+  </div>
+</div>
+
+<script src="js/bells-n-barz-kiosk.js?v=__BUILD__"></script>
+</body>
+</html>
