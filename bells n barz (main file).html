@@ -3263,6 +3263,18 @@
       <input type="text" class="search-input" id="usr-search-input" placeholder="Search name or email…">
     </div>
     <div id="freeze-admin"></div>
+    <!-- Front door kiosk (kiosk.html, sql/87): how to set up the tablet. -->
+    <details class="freeze-admin kiosk-help">
+      <summary>Front Door Kiosk — setup</summary>
+      <ol>
+        <li><b>Sign up the tablet account.</b> In a private/incognito window, open this app and tap Sign Up. Use an email you control, e.g. <code>you+frontdoor@gmail.com</code> (the <code>+frontdoor</code> part still reaches your normal inbox). Pick a strong password and keep it safe: staff need it to sign the tablet back in.</li>
+        <li><b>Give it the kiosk role.</b> Here in Members, open the new account, tick <b>Front Door Kiosk</b>, untick <b>Member</b>, and Save. It can only run the door: no staff access.</li>
+        <li><b>Sign in on the tablet.</b> Open <a href="kiosk.html" target="_blank" rel="noopener">kiosk.html</a> on the tablet and sign in with that account. It stays signed in.</li>
+        <li><b>Lock it to the screen.</b> Hold the logo for 3 seconds and choose Full screen. On Android, turn on <i>Screen pinning</i> (Settings &gt; Security) so nobody can leave the page, and set the screen timeout to the longest option.</li>
+        <li><b>Tell members.</b> They scan the code with their phone, or set a <b>Check-in PIN</b> on My Profile and use their phone number + PIN. Their phone number must be on their profile.</li>
+      </ol>
+      <p class="field-hint">Who gets in: suspended, cancelled, not-set-up, frozen or ended memberships are sent to the front desk. Overdue members are let in twice with a reminder, then blocked until they pay. Staff can always check someone in by hand with Scan Check-in.</p>
+    </details>
     <div class="admin-toolbar">
       <div class="role-filter" id="usr-role-filter"></div>
       <div class="layout-toggle" id="usr-layout-toggle">
