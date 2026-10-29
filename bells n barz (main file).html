@@ -3333,6 +3333,19 @@
 
 <section class="admin-section" id="tab-parking">
   <div class="day-head"><h2>Parking — Cars In &amp; Out</h2><span class="day-sub">The guard parks cars in by plate; the desk checks them out: M-Pesa, cash, or free for members who checked in</span></div>
+  <!-- How to run parking day to day (sql/88, js/bells-n-barz-parking.js). -->
+  <details class="freeze-admin kiosk-help">
+    <summary>Parking — setup</summary>
+    <ol>
+      <li><b>Set the paybill.</b> Open <b>Parking settings</b> at the bottom of this page and enter the gym's M-Pesa paybill number. The rate is KES 20 per hour to start; change it there too. Only an admin can.</li>
+      <li><b>Give the guard and desk accounts.</b> Each needs a staff account: in Users, tick <b>Front-Desk Staff</b> on their account. They open Admin &gt; Parking on a phone or tablet.</li>
+      <li><b>At the gate:</b> the guard types the plate under <b>Car In</b> and taps Park In.</li>
+      <li><b>At the desk:</b> type the plate under <b>Car Out</b> (or tap the car in Parked Now). Read out the fee, paybill and account (the plate). When the M-Pesa SMS arrives, tap <b>Paid by M-Pesa</b> (add the code if you like), or <b>Paid cash</b>.</li>
+      <li><b>Members park free</b> when their plate is under <b>My Car Plates</b> on their profile and they checked in at the door that day: a green Exempt button appears. Forgot to check in? Check them in with Scan Check-in in Users first.</li>
+      <li><b>Print your Lipa na M-Pesa QR</b> from Safaricom and stick it at the desk, so drivers can scan it instead of typing the paybill.</li>
+    </ol>
+    <p class="field-hint">Fees count every started hour (1h10m = 2 hours). A plate typed wrong at the gate can be removed from its checkout window.</p>
+  </details>
   <div id="parking-body"></div>
 </section>
 
