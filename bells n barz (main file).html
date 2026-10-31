@@ -160,7 +160,9 @@
     // fallback (shows an empty unpaid-invoices list instead of failing),
     // but loading Billing alongside it avoids that degraded state for
     // the common case of a staff member using both together anyway.
-    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing', 'bodyfat', 'vitals'] },
+    bookingCoach: { file: 'js/bells-n-barz-booking-coach.js', deps: ['billing', 'bodyfat', 'vitals', 'screening'] },
+    // Me > Screening, the booking gate, and the coach's view of it.
+    screening:    { file: 'js/bells-n-barz-screening.js' },
     billing:      { file: 'js/bells-n-barz-billing.js' },
     migrate:      { file: 'js/bells-n-barz-migrate.js' },
     accountability: { file: 'js/bells-n-barz-accountability.js' },
@@ -1704,6 +1706,7 @@
   <button data-me-section="period"><span class="plate-title">Period</span><span class="plate-desc">Cycle tracking and next-start prediction</span></button>
   <button data-me-section="track"><span class="plate-title">Track</span><span class="plate-desc">Hepburn progression for your Block A lifts</span></button>
   <button data-me-section="nutrition"><span class="plate-title">Food Log</span><span class="plate-desc">What you ate each day</span></button>
+  <button data-me-section="screening" data-feature="pre-session-screening"><span class="plate-title">Screening</span><span class="plate-desc">Health check and waiver before your first 1-on-1</span></button>
   <button data-me-section="mealplan"><span class="plate-title">Meal Plan</span><span class="plate-desc">The plan your coach made for you</span></button>
   <button data-me-section="fasting"><span class="plate-title">Fasting</span><span class="plate-desc">Daily eating window or 5:2 weekly</span></button>
   <button data-me-section="recipes"><span class="plate-title">Recipes</span><span class="plate-desc">Smoothies, porridge, soups and snacks</span></button>
@@ -1714,6 +1717,11 @@
 <section class="me-section" id="tab-photos">
 <div class="day-head"><h2>Progress Photos</h2></div>
 <div id="photos-body"></div>
+</section>
+
+<!-- ================= PRE-SESSION SCREENING (js/bells-n-barz-screening.js; coach side is Users > Assessment) ================= -->
+<section class="me-section" id="tab-screening">
+<div id="screening-body"></div>
 </section>
 
 <!-- ================= MEAL PLAN (member side; coach side is Coach > Meal Plans) ================= -->
@@ -3509,6 +3517,7 @@
     <button data-coach-section="workouts"><span class="plate-title">Workouts to Try</span><span class="plate-desc">Save workouts you find, try them in Live Session</span></button>
     <button data-coach-section="messages"><span class="plate-title">Messages</span><span class="plate-desc">Shared inbox for coaches and admins</span></button>
     <button data-coach-section="mealplans"><span class="plate-title">Meal Plans</span><span class="plate-desc">Questionnaires, plans and check-ins</span></button>
+    <button data-coach-section="assessguide"><span class="plate-title">Assessment Guide</span><span class="plate-desc">Cheat sheet for every test in an assessment</span></button>
   </div>
 
   <div class="coach-section active" id="coach-section-dashboard">
@@ -3639,6 +3648,161 @@
     <div class="admin-notice">Questionnaires, plans and check-ins for your own clients (members whose coach is you). Health answers are private — only the member, their coach, and admins can see them.</div>
     <div id="coach-mealplans-body"></div>
   </div>
+
+  <!-- ASSESSMENT GUIDE: the coach's cheat sheet for the Initial Assessment /
+       Reassessment tests (Users > Assessment). The same cards are copied
+       into the Log Assessment form's "Test cheat sheet" (users.js). -->
+  <div class="coach-section" id="coach-section-assessguide">
+    <div class="ag-head">
+      <div class="admin-notice" style="margin:0;">How to run every test in the Initial Assessment, in order, and what to do with the numbers. Log the results in Users &gt; member &gt; Assessment. The same sheet opens inside the Log Assessment form.</div>
+      <button type="button" class="btn2" id="ag-print-btn">Print</button>
+    </div>
+    <div class="ag-guide" id="ag-guide-cards">
+
+      <div class="ag-card ag-wide">
+        <h3><span class="ag-num">0</span>Run sheet: about 45 minutes</h3>
+        <ol class="ag-steps ag-cols">
+          <li><b>Screening:</b> read it before they arrive. Sort out any clearance first (card 1).</li>
+          <li><b>Waiver:</b> check it's signed (shown on the screening).</li>
+          <li><b>Resting heart rate and blood pressure:</b> first, before any movement (cards 2–3).</li>
+          <li><b>Weight, height, tape measurements</b> (cards 4–5).</li>
+          <li><b>Posture</b> (card 6).</li>
+          <li><b>Movement screen</b> (card 7).</li>
+          <li><b>Talk:</b> goals, training history, sleep, stress, food, availability. Most of it is already on the screening; confirm it.</li>
+          <li><b>Log it</b> and mark the screening reviewed (card 9).</li>
+        </ol>
+        <p class="ag-note">Reassessments: the same tests, same order, same scale and tape, and the same time of day if you can, so the numbers compare.</p>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">1</span>Screening: go / no-go</h3>
+        <ul class="ag-steps">
+          <li><b>Chest pain, fainting or dizziness, or "supervised exercise only":</b> no training until they bring a doctor's note.</li>
+          <li><b>Pregnant or gave birth in the last year:</b> get the go-ahead from their doctor or midwife before new or heavy training.</li>
+          <li><b>Any other yes</b> (heart/BP, a long-term condition, medication, joint problem): ask whether it's under control and whether their doctor knows they're starting. If you're unsure, ask for clearance.</li>
+          <li><b>Pain or injury now:</b> train around it, don't test into it. If it's sharp, swollen or getting worse, refer them to a physio or doctor.</li>
+        </ul>
+        <p class="ag-note">You're not diagnosing. If in doubt, get clearance.</p>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">2</span>Resting heart rate</h3>
+        <ol class="ag-steps">
+          <li>Sit them down for 5 minutes, quiet, feet flat. Ideally no coffee, smoking or exercise in the 30 minutes before.</li>
+          <li>Two fingers (not your thumb) on the thumb side of the inner wrist.</li>
+          <li>Count beats for 30 seconds and double it. Or use the reading from the BP monitor.</li>
+          <li>Log in <b>Resting HR (bpm)</b>.</li>
+        </ol>
+        <table class="ag-table">
+          <tr><td>60–100</td><td>Normal. Fit people can be in the 40s–50s.</td></tr>
+          <tr><td>Over 100</td><td>Rest 5 more minutes and recount. Still over 100: easy session only, and suggest they see a doctor.</td></tr>
+          <tr><td>Under 50, not fit</td><td>Ask about dizziness or tiredness. If they have symptoms, refer.</td></tr>
+        </table>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">3</span>Blood pressure</h3>
+        <ol class="ag-steps">
+          <li>Automatic upper-arm cuff, the right cuff size for their arm.</li>
+          <li>Seated with back supported, feet flat, legs uncrossed. Bare arm resting on the table at heart height.</li>
+          <li>Cuff 2–3 cm above the elbow crease. No talking while it reads.</li>
+          <li>Take 2 readings 1–2 minutes apart and log the average, e.g. <b>128/82</b>.</li>
+        </ol>
+        <table class="ag-table">
+          <tr><td>Under 120/80</td><td>Normal.</td></tr>
+          <tr><td>120–139 / 80–89</td><td>Train as normal. Note it.</td></tr>
+          <tr><td>140–159 / 90–99</td><td>Train at moderate effort. Suggest they get it checked.</td></tr>
+          <tr><td>160+ / 100+</td><td>No hard training until a doctor clears them.</td></tr>
+          <tr class="ag-danger"><td>Over 180 / 120</td><td>Don't train. Re-measure after 5 minutes. Still that high, or headache, chest pain or blurred vision: get medical help now.</td></tr>
+        </table>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">4</span>Weight and height</h3>
+        <ol class="ag-steps">
+          <li>Same scale every time, on a hard flat floor.</li>
+          <li>Shoes off, light clothes, pockets empty.</li>
+          <li>Read to 0.1 kg and note the time of day. Log in <b>Weight (kg)</b>.</li>
+          <li>Height: barefoot, heels, back and head against the wall, looking straight ahead. Flat object on the head, mark the wall, measure to 0.5 cm. Update their profile if it's changed.</li>
+        </ol>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">5</span>Body fat (tape)</h3>
+        <p class="ag-note" style="margin-top:0;">The app uses the US Navy tape method, and falls back to RFM (waist and height only) if there's no neck measurement.</p>
+        <ol class="ag-steps">
+          <li>Flexible tape that doesn't stretch, on skin or thin clothing. Snug, not digging in, level all the way round.</li>
+          <li><b>Waist:</b> at the navel, relaxed, at the end of a normal breath out.</li>
+          <li><b>Neck:</b> just below the Adam's apple, tape sloping slightly down at the front.</li>
+          <li><b>Hips (women):</b> the widest point of the buttocks, feet together.</li>
+          <li>Measure each site twice. If the two differ by more than 0.5 cm, take a third, then use the average.</li>
+          <li>Put the numbers into <b>Tools &gt; Body Calculators</b> and log the % in <b>Body Fat (%)</b>.</li>
+        </ol>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">6</span>Posture</h3>
+        <p class="ag-note" style="margin-top:0;">Relaxed standing, feet hip-width, shoes off. Look from the front, side and back for about 30 seconds each.</p>
+        <ul class="ag-steps">
+          <li><b>Front:</b> head tilted, one shoulder or hip higher, knees in or out, feet turned out or flat.</li>
+          <li><b>Side:</b> head forward of the shoulders, rounded shoulders, big low-back arch or flat back, knees locked back.</li>
+          <li><b>Back:</b> shoulder blades sticking out, a shift to one side, heels rolling in.</li>
+        </ul>
+        <p class="ag-note">Write down what you see, not a diagnosis: "head forward, L shoulder high".</p>
+      </div>
+
+      <div class="ag-card ag-wide">
+        <h3><span class="ag-num">7</span>Movement screen</h3>
+        <p class="ag-note" style="margin-top:0;">Show each one first. Stop if it hurts and note where. Watch from the front and the side.</p>
+        <div class="ag-cols">
+          <div>
+            <h4>a. Overhead squat: 5 reps</h4>
+            <p>Feet shoulder-width, arms straight up by the ears, squat as low as is comfortable.</p>
+            <ul class="ag-steps"><li>Feet turn out, heels lift</li><li>Knees cave in or push out</li><li>Leans far forward, arms drop forward</li><li>Low back arches or rounds</li><li>Shifts to one side</li></ul>
+          </div>
+          <div>
+            <h4>b. Single-leg balance: 30 s each side</h4>
+            <p>Hands on hips, lift one foot, eyes open.</p>
+            <ul class="ag-steps"><li>Wobbles or puts the foot down (note how many seconds)</li><li>Hip drops on the lifted side</li><li>Standing knee caves in</li></ul>
+          </div>
+          <div>
+            <h4>c. Hip hinge with a dowel: 5 reps</h4>
+            <p>Dowel along the back, touching the head, upper back and tailbone. Push the hips back, soft knees, then stand.</p>
+            <ul class="ag-steps"><li>Dowel leaves the head or tailbone (back is rounding)</li><li>Squats it instead of hinging</li><li>Can't feel the hamstrings</li></ul>
+          </div>
+          <div>
+            <h4>d. Push-up: up to 5 good reps</h4>
+            <p>Floor, knees or hands on a bench: use the hardest version they can do well, and note which.</p>
+            <ul class="ag-steps"><li>Hips sag or pike</li><li>Elbows flare wide</li><li>Head drops, no full lockout</li></ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="ag-card ag-stop">
+        <h3><span class="ag-num">8</span>Stop any test if…</h3>
+        <ul class="ag-steps">
+          <li>Chest pain, pressure or tightness</li>
+          <li>Dizzy, faint, confused, or pale and clammy</li>
+          <li>Much more out of breath than the effort should cause</li>
+          <li>Feeling sick, or a sharp or growing joint pain</li>
+        </ul>
+        <p class="ag-note">Sit or lie them down, stay with them, and recheck pulse and BP. If chest pain doesn't go away, or they faint: call <b>999 or 112</b>.</p>
+      </div>
+
+      <div class="ag-card">
+        <h3><span class="ag-num">9</span>Log it</h3>
+        <ol class="ag-steps">
+          <li>Users &gt; the member &gt; <b>Assessment</b> &gt; <b>+ Log New Assessment</b>.</li>
+          <li>The first one is pre-filled from their screening. Check every field with them.</li>
+          <li>Enter weight, body fat %, resting HR and BP.</li>
+          <li><b>Movement / Posture notes</b>, short: "OHS knees cave L&gt;R, heels lift · hinge OK · push-up on knees, hips sag · head forward".</li>
+          <li>Turn on <b>Waiver signed</b> if it is, then <b>Save Assessment</b>.</li>
+          <li>Press <b>Mark reviewed</b> on their screening.</li>
+        </ol>
+      </div>
+
+    </div>
+  </div>
   </div>
 </section>
 
@@ -3666,6 +3830,18 @@
       <div class="panel-actions">
         <button class="btn2" id="sched-ptbook-cancel">Cancel</button>
         <button class="btn2 primary" id="sched-ptbook-save">Book</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pre-session screening before a first 1-on-1 (js/bells-n-barz-screening.js fills it) -->
+  <div class="panel-backdrop" id="scr-panel-backdrop">
+    <div class="panel scr-panel">
+      <h2>Before your first session</h2>
+      <div class="field-hint" id="scr-panel-sub"></div>
+      <div id="scr-panel-body" style="margin-top:14px;"></div>
+      <div class="panel-actions">
+        <button class="btn2" id="scr-panel-cancel">Not now</button>
       </div>
     </div>
   </div>
@@ -3863,6 +4039,7 @@
 
     <!-- ASSESSMENT TAB (repeating log — Initial Assessment, then Reassessments) -->
     <div class="tab-pane" id="usr-tab-assessment">
+      <div id="usr-screening-panel"></div>
       <div class="checkin-btn-row">
         <button class="btn2 primary small" id="usr-new-assessment-btn">+ Log New Assessment</button>
         <span class="field-hint" style="margin:0;">First entry is auto-labeled Initial Assessment; later entries are Reassessments.</span>
@@ -3943,6 +4120,7 @@
   <div class="panel">
     <h2 id="usr-assessment-panel-title">Log Assessment</h2>
     <div class="panel-sub" id="usr-assessment-panel-sub"></div>
+    <details class="ag-inline"><summary>Test cheat sheet: how to run each test</summary><div class="ag-guide" id="usr-ag-inline"></div></details>
 
     <div class="fieldset-label">Session Info</div>
     <div class="field-row2">

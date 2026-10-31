@@ -493,7 +493,17 @@
     day (checked on the server). Admins set the rate and paybill in
     `parking_settings`. Run after 41 and 87. Safe to re-run.
 
-81. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
+81. **89-pre-session-screening.sql** — Me > Screening: the member's
+    health check (PAR-Q style), goals, lifestyle, emergency contact and
+    typed-name waiver signature, one `screenings` row each. Readable by
+    the member, their coach (`is_coach_for`) and admins, not front desk.
+    `parq_yes` and the timestamps are set by a trigger; a coach marks it
+    reviewed with `review_screening()`; saving it notifies the coach (or
+    the admins). Adds the `pre-session-screening` switch, **off** — turn
+    it on in Admin > Switchboard after running this. Run after 45, 49
+    and 75. Safe to re-run.
+
+82. **02-rls-audit-diagnostic.sql** — not a setup step, a read-only check.
     For a one-row pass/fail summary (RLS, the staff-column trigger,
     `programs` policies, `period_log`), run **check-security.sql**.
     Run any time to see what RLS state actually looks like.

@@ -429,8 +429,16 @@ let previousLocation = null;
     session: document.getElementById('coach-section-session'),
     workouts: document.getElementById('coach-section-workouts'),
     messages: document.getElementById('coach-section-messages'),
-    mealplans: document.getElementById('coach-section-mealplans')
+    mealplans: document.getElementById('coach-section-mealplans'),
+    assessguide: document.getElementById('coach-section-assessguide')
   };
+  // Assessment Guide > Print: just the cheat sheet (see .ag-printing in the CSS).
+  const agPrint = document.getElementById('ag-print-btn');
+  if (agPrint) agPrint.addEventListener('click', ()=>{
+    document.body.classList.add('ag-printing');
+    window.addEventListener('afterprint', ()=> document.body.classList.remove('ag-printing'), { once: true });
+    window.print();
+  });
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-coach-section');
@@ -496,10 +504,11 @@ let previousLocation = null;
     nutrition: document.getElementById('tab-nutrition'),
     fasting: document.getElementById('tab-fasting'),
     mealplan: document.getElementById('tab-mealplan'),
+    screening: document.getElementById('tab-screening'),
     recipes: document.getElementById('tab-recipes'),
     photos: document.getElementById('tab-photos')
   };
-  const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan', photos: 'engage' };
+  const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan', screening: 'screening', photos: 'engage' };
   btns.forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const key = btn.getAttribute('data-me-section');
@@ -509,6 +518,7 @@ let previousLocation = null;
           // coach just saved shows up without a reload.
           if (key === 'mealplan' && typeof window.bnbMealPlanOnTabShown === 'function') window.bnbMealPlanOnTabShown();
           if (key === 'photos' && typeof window.bnbPhotosOnShown === 'function') window.bnbPhotosOnShown();
+          if (key === 'screening' && typeof window.bnbScreeningOnShown === 'function') window.bnbScreeningOnShown();
         }).catch(err => {
           console.error(err);
           const t = document.getElementById('t-toast');

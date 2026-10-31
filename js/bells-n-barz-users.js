@@ -1594,9 +1594,33 @@
   });
 
   /* ---------------- ASSESSMENT LOG ---------------- */
+  // The member's pre-session screening (sql/89, js/bells-n-barz-screening.js)
+  // above the log. Only coaches and admins can read it (RLS), so
+  // front-desk staff don't get the panel at all.
+  function canSeeScreenings(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf();
+    return !!(me && me.roles && (me.roles.includes('admin') || me.roles.includes('trainer')));
+  }
+  function renderScreeningPanel(){
+    const box = document.getElementById('usr-screening-panel');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!editingId || !canSeeScreenings() || typeof window.bnbLoadModule !== 'function') return;
+    const id = editingId;
+    window.bnbLoadModule('screening').then(()=>{
+      const S = window.BNB_SCREENING;
+      if (!S.on()) return;
+      return S.loadFor(id).then(()=>{
+        if (editingId !== id) return;
+        box.innerHTML = S.coachPanelHtml(id);
+        S.wireCoachPanel(box, id, renderScreeningPanel);
+      });
+    }).catch(err=> console.error(err));
+  }
   function renderAssessmentTab(){
     const list = document.getElementById('usr-assessment-list');
     const newBtn = document.getElementById('usr-new-assessment-btn');
+    renderScreeningPanel();
     if (!editingId){
       list.innerHTML = '<div class="field-hint">Save this new member first — assessments can be logged once the account exists.</div>';
       newBtn.disabled = true;
@@ -1657,6 +1681,28 @@
     document.getElementById('usr-a-nutrition').value = '';
     document.getElementById('usr-a-availability').value = '';
     document.getElementById('usr-a-waiver').checked = false;
+    // The coach's cheat sheet (Coach > Assessment Guide), folded up.
+    const agInline = document.getElementById('usr-ag-inline'), agSrc = document.getElementById('ag-guide-cards');
+    if (agInline && agSrc && !agInline.innerHTML) agInline.innerHTML = agSrc.innerHTML;
+    if (agInline) agInline.parentNode.open = false;
+    // An Initial Assessment starts from what the member put in their
+    // screening; the coach checks and edits it during the session.
+    const fromScreening = priorCount === 0 && window.BNB_SCREENING && window.BNB_SCREENING.on() && window.BNB_SCREENING.assessmentPrefill(editingId);
+    if (fromScreening){
+      document.getElementById('usr-a-parq-cardio').checked = fromScreening.parqCardio;
+      document.getElementById('usr-a-parq-joint').checked = fromScreening.parqJoint;
+      document.getElementById('usr-a-parq-clearance').checked = fromScreening.parqClearance;
+      document.getElementById('usr-a-medical').value = fromScreening.medical;
+      document.getElementById('usr-a-goals').value = fromScreening.goals;
+      document.getElementById('usr-a-history').value = fromScreening.history;
+      if (fromScreening.occActivity) document.getElementById('usr-a-occ-activity').value = fromScreening.occActivity;
+      document.getElementById('usr-a-sleep').value = fromScreening.sleep;
+      if (fromScreening.stress) document.getElementById('usr-a-stress').value = fromScreening.stress;
+      document.getElementById('usr-a-nutrition').value = fromScreening.nutrition;
+      document.getElementById('usr-a-availability').value = fromScreening.availability;
+      document.getElementById('usr-a-waiver').checked = fromScreening.waiver;
+      document.getElementById('usr-assessment-panel-sub').textContent += ' Pre-filled from their pre-session screening — check it with them.';
+    }
     assessmentBackdrop.classList.add('show');
   });
   document.getElementById('usr-assessment-cancel').addEventListener('click', ()=> assessmentBackdrop.classList.remove('show'));

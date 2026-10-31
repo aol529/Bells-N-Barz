@@ -22,6 +22,8 @@
       desc: 'New sign-ups get a one-time $0.50 Registration invoice, and the sign-up form mentions it. Off: no invoice, no mention.' },
     { key: 'forgot-password', name: 'Forgot password', defaultOn: false,
       desc: 'Log In > "Forgot your password?": checks the email has an account, then offers a reset link, a one-time code, or asking an admin. Off: the link is replaced by "Ask at the front desk". Staff reset emails and admin temporary passwords work either way.' },
+    { key: 'pre-session-screening', name: 'Pre-session screening', defaultOn: false,
+      desc: 'Me > Screening: members fill in a health check (PAR-Q), goals, lifestyle and emergency contact, and sign the waiver. Booking a 1-on-1 without one asks for it first; coaches are told and see it in Users > Assessment, where it pre-fills the Initial Assessment. Needs sql/89. Off: none of it shows and booking works as before.' },
     { key: 'library', name: 'Library', defaultOn: false,
       desc: 'The Library page: the books that inspired Bells n Barz, with why each matters and short takeaways. Off: the Library link disappears from the menu.' }
   ];

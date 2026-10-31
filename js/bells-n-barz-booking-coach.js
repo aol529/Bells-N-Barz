@@ -1428,7 +1428,17 @@
 
   // ---- Book (with a note) ----
   let bookingSlotId = null, editingNoteFor = null, waitingSlotId = null;
-  function openWaitPanel(slotId){
+  // Pre-session screening (sql/89): a member booking or queueing for a
+  // 1-on-1 for themselves fills it in first. Staff booking as someone
+  // else aren't asked.
+  async function screeningGate(){
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!window.BNB_SCREENING || !me || me.id !== selfMemberId) return true;
+    return window.BNB_SCREENING.ensureBeforeBooking();
+  }
+  async function openWaitPanel(slotId){
+    if (!slots.find(x=>x.id===slotId)) return;
+    if (!(await screeningGate())) return;
     const sl = slots.find(x=>x.id===slotId); if (!sl) return;
     bookingSlotId = null; editingNoteFor = null; waitingSlotId = slotId;
     const w = ptWaitCounts[slotId] || { waiting: 0 };
@@ -1449,7 +1459,7 @@
     toast('Removed from the waitlist.');
     refreshPtWaitlist();
   }
-  function memberBookSlot(slotId){
+  async function memberBookSlot(slotId){
     const sl = slots.find(x=>x.id===slotId); if (!sl || sl.status !== 'open') { toast('That slot is no longer available.'); return; }
     const start = timeToMinutes(sl.startTime), end = start + Number(sl.duration);
     const overlap = ptBookings.some(p=>{
@@ -1462,6 +1472,8 @@
     if (overlap){ toast('You already have a 1-on-1 session that overlaps this time.'); return; }
     const credits = window.BNB_USERS ? window.BNB_USERS.getCredits(selfMemberId) : 0;
     if (credits <= 0){ toast('No session credits left. Buy a package or redeem points to book.'); return; }
+    if (!(await screeningGate())) return;
+    if (sl.status !== 'open'){ toast('That slot is no longer available.'); return; }
     bookingSlotId = slotId; editingNoteFor = null; waitingSlotId = null;
     document.getElementById('sched-ptbook-title').textContent = 'Book a 1-on-1';
     document.getElementById('sched-ptbook-when').textContent = trainerName(sl.trainerId) + ' · ' + fmtDate(sl.date) + ', ' + fmtTime(sl.startTime) + ' · ' + sl.duration + ' min';
@@ -1973,9 +1985,39 @@
           meta: sessionConfirmedCount(s.id) + '/' + sessionCapacity(s) + ' booked' };
       });
     const ptRows = ptSessionsForTrainer(trainerId).filter(x=> x.sl.date===TODAY)
-      .map(x=> ({ type:'pt', time:x.sl.startTime, label: memberName(x.p.userId), meta: x.sl.duration + ' min · 1-on-1' }));
+      .map(x=> ({ type:'pt', time:x.sl.startTime, userId:x.p.userId, label: memberName(x.p.userId), meta: x.sl.duration + ' min · 1-on-1' }));
     return classRows.concat(ptRows).sort((a,b)=> a.time < b.time ? -1 : (a.time > b.time ? 1 : 0));
   }
+  // Pre-session screening (sql/89) for the dashboard: '' while the
+  // switch is off or screenings haven't loaded, else BNB_SCREENING.status.
+  function screeningStatus(userId){
+    const S = window.BNB_SCREENING;
+    return S && S.on() && S.visibleLoaded() ? S.status(userId) : '';
+  }
+  const SCREENING_BADGE = {
+    none: '<span class="scr-badge warn">No screening</span>',
+    flag: '<span class="scr-badge warn">Screening: health flag</span>',
+    new: '<span class="scr-badge">Screening not reviewed</span>',
+    ok: ''
+  };
+  // This trainer's clients with a 1-on-1 in the next 7 days whose
+  // screening is missing or has an unreviewed health flag.
+  function screeningAttentionForTrainer(trainerId){
+    const end = addDays(TODAY, 7), seen = {};
+    return ptSessionsForTrainer(trainerId)
+      .filter(x=> x.sl.date >= TODAY && x.sl.date <= end)
+      .sort((a,b)=> (a.sl.date + a.sl.startTime).localeCompare(b.sl.date + b.sl.startTime))
+      .filter(x=>{
+        const st = screeningStatus(x.p.userId);
+        if (seen[x.p.userId] || (st !== 'none' && st !== 'flag')) return false;
+        return (seen[x.p.userId] = st);
+      })
+      .map(x=> ({ userId:x.p.userId, date:x.sl.date, status:seen[x.p.userId] }));
+  }
+  let screeningsRequested = false;
+  document.addEventListener('bnb-screening-change', ()=> renderCoachDashboard());
+  document.addEventListener('bnb-auth-changed', ()=>{ screeningsRequested = false; });
+  document.addEventListener('bnb-features-change', ()=>{ if (window.BNB_SCREENING && window.BNB_SCREENING.on() && !screeningsRequested) renderCoachDashboard(); });
   function weeklyStatsForTrainer(trainerId){
     const wk = weekRange(TODAY);
     const classesWeek = sessions.filter(s=>s.instructorId===trainerId && s.status==='scheduled' && s.date>=wk.start && s.date<=wk.end).length;
@@ -2530,6 +2572,7 @@
     const noShows = recentNoShowsForTrainer(selfTrainerId);
     const stale = staleClientsForTrainer(selfTrainerId);
     const unpaid = unpaidForTrainerClients(selfTrainerId);
+    const unscreened = screeningAttentionForTrainer(selfTrainerId);
 
     // A person's page replaces the dashboard until "All clients" is hit.
     const people = progressPeopleIds();
@@ -2557,15 +2600,20 @@
     } else {
       html += '<table class="admin-table"><tr><th>Time</th><th>Type</th><th>With</th><th>Detail</th><th></th></tr>';
       agenda.forEach(row=>{
-        html += '<tr><td>'+fmtTime(row.time)+'</td><td>'+(row.type==='class'?'Class':'1-on-1')+'</td><td>'+esc(row.label)+'</td><td>'+esc(row.meta)+'</td><td>';
+        html += '<tr><td>'+fmtTime(row.time)+'</td><td>'+(row.type==='class'?'Class':'1-on-1')+'</td><td>'+esc(row.label)+'</td><td>'+esc(row.meta)+
+          (row.userId ? ' ' + (SCREENING_BADGE[screeningStatus(row.userId)] || '') : '')+'</td><td>';
         html += row.type==='class' ? '<button class="btn2" data-action="dash-open-roster" data-id="'+row.sessionId+'">View Roster</button>' : '<span class="field-hint">—</span>';
         html += '</td></tr>';
       });
       html += '</table>';
     }
 
-    if (noShows.length || stale.length || unpaid.length){
+    if (noShows.length || stale.length || unpaid.length || unscreened.length){
       html += '<div class="section-sub-head"><h3>Needs Attention</h3></div>';
+      if (unscreened.length){
+        html += '<div class="admin-notice">' + unscreened.length + ' client' + (unscreened.length===1?'':'s') + ' coming in this week need' + (unscreened.length===1?'s':'') + ' a look at their pre-session screening (Users &gt; Assessment): ' +
+          unscreened.map(x=> esc(memberName(x.userId)) + ' (' + fmtDate(x.date) + ', ' + (x.status === 'none' ? 'not sent yet' : 'answered yes to a health question') + ')').join(', ') + '</div>';
+      }
       if (noShows.length){
         html += '<div class="admin-notice">' + noShows.length + ' no-show' + (noShows.length===1?'':'s') + ' in the last week: ' +
           noShows.map(x=> esc(memberName(x.userId)) + ' (' + fmtDate(x.date) + ', ' + esc(x.className) + ')').join(', ') + '</div>';
@@ -2597,6 +2645,11 @@
       chartW = Math.max(300, Math.round((w - 16 * (cols - 1)) / cols - 42));
     }
     body.innerHTML = coachDashboardHtml();
+    // Screenings load once; the bnb-screening-change listener redraws.
+    if (!screeningsRequested && window.BNB_SCREENING && window.BNB_SCREENING.on()){
+      screeningsRequested = true;
+      window.BNB_SCREENING.loadVisible();
+    }
 
     wireClientProgressPanel();
     const addSlotBtn = document.getElementById('dash-add-slot-btn');

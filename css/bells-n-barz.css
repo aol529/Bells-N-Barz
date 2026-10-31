@@ -3715,3 +3715,66 @@ body.kiosk{min-height:100vh;min-height:100dvh;font-family:'IBM Plex Sans',sans-s
 .park-co-actions{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;}
 .park-co-actions .btn2{flex:1;}
 .park-co-remove{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:12.5px;cursor:pointer;margin-top:12px;padding:0;}
+
+/* ---------- PRE-SESSION SCREENING (js/bells-n-barz-screening.js) ---------- */
+.scr-badge{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:2px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.04em; background:var(--surface-2); border:1px solid var(--line); color:var(--muted); white-space:nowrap;}
+.scr-badge.ok{background:rgba(var(--accent-3-rgb),.15); border-color:var(--accent-3); color:var(--accent-3);}
+.scr-badge.warn{color:var(--accent-2); border-color:var(--accent-2);}
+.scr-req{color:var(--accent-2);}
+.scr-status{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin:4px 0 14px;}
+.scr-parq-note{border-left-color:var(--accent-2);}
+.sched-scope .scr-form .mp-q.scr-missing{border-left:3px solid var(--accent-2); padding-left:10px;}
+.sched-scope .scr-form .mp-q.scr-missing .mp-q-label{color:var(--accent-2);}
+.scr-waiver{background:var(--bg); border:1px solid var(--line-soft); padding:12px 14px; max-height:220px; overflow-y:auto; font-size:13px; line-height:1.55; color:var(--muted);}
+.scr-waiver p{margin:0 0 8px;}
+.scr-waiver p:last-child{margin-bottom:0;}
+.scr-agree{display:flex; align-items:flex-start; gap:8px; margin:12px 0 14px; font-size:13.5px; color:var(--text); cursor:pointer;}
+.scr-agree input{width:auto; margin-top:3px; accent-color:var(--accent);}
+.scr-error{color:var(--accent-2); font-size:13px; margin-top:10px;}
+.sched-scope .panel.scr-panel{max-width:760px;}
+.scr-panel .panel-actions{margin-top:8px;}
+.sched-scope .mp-a.scr-yes .mp-a-val{color:var(--accent-2); font-weight:600;}
+.scr-coach{background:var(--bg); border:1px solid var(--line-soft); border-radius:2px; padding:12px 14px; margin-bottom:14px;}
+.scr-coach-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px; font-size:13.5px; color:var(--text);}
+.scr-coach .a-flags{margin:0 0 8px;}
+.scr-coach-note{font-size:12.5px; color:var(--accent-2); margin-bottom:8px;}
+.scr-coach-actions{display:flex; gap:8px; flex-wrap:wrap;}
+.scr-coach-answers{margin-top:12px; max-height:360px; overflow-y:auto; border-top:1px solid var(--line-soft); padding-top:10px;}
+
+/* ---------- ASSESSMENT GUIDE (Coach > Assessment Guide, and inside Log Assessment) ---------- */
+.ag-head{display:flex; gap:12px; align-items:flex-start; margin-bottom:16px;}
+.ag-head .admin-notice{flex:1;}
+.ag-guide{display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:14px;}
+.ag-card{background:var(--surface); border:1px solid var(--line-soft); border-radius:2px; padding:14px 16px; font-size:13.5px; line-height:1.5; color:var(--text);}
+.ag-card.ag-wide{grid-column:1 / -1;}
+.ag-card h3{display:flex; align-items:center; gap:10px; margin:0 0 10px; font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.04em; font-size:15px; color:var(--accent);}
+.ag-card h4{margin:0 0 4px; font-size:13px; color:var(--text);}
+.ag-card p{margin:0 0 6px; color:var(--muted);}
+.ag-num{display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--on-accent); font-family:'IBM Plex Mono',monospace; font-size:12px; flex:0 0 auto;}
+.ag-steps{margin:0; padding-left:20px;}
+.ag-steps li{margin:3px 0;}
+.ag-steps b{color:var(--text);}
+.ag-cols{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:6px 22px;}
+ol.ag-cols{padding-left:20px;}
+.ag-note{font-size:12.5px; color:var(--muted); margin:8px 0 0;}
+.ag-table{width:100%; border-collapse:collapse; margin-top:10px; font-size:12.5px;}
+.ag-table td{border-top:1px solid var(--line-soft); padding:5px 6px; vertical-align:top; color:var(--muted);}
+.ag-table td:first-child{font-family:'IBM Plex Mono',monospace; color:var(--text); white-space:nowrap; width:1%;}
+.ag-table tr.ag-danger td{color:var(--accent-2); font-weight:600;}
+.ag-card.ag-stop{border-left:3px solid var(--accent-2);}
+.ag-card.ag-stop h3{color:var(--accent-2);}
+.ag-card.ag-stop .ag-num{background:var(--accent-2); color:#fff;}
+.ag-inline{margin:4px 0 14px; border:1px solid var(--line-soft); background:var(--bg); padding:8px 12px;}
+.ag-inline summary{cursor:pointer; font-size:13px; color:var(--accent);}
+.ag-inline[open] summary{margin-bottom:12px;}
+.ag-inline .ag-guide{grid-template-columns:1fr; max-height:420px; overflow-y:auto;}
+@media (max-width:640px){ .ag-head{flex-direction:column;} .ag-guide{grid-template-columns:1fr;} }
+@media print{
+  body.ag-printing *{visibility:hidden !important;}
+  body.ag-printing #ag-guide-cards, body.ag-printing #ag-guide-cards *{visibility:visible !important;}
+  body.ag-printing #ag-guide-cards{position:absolute; left:0; top:0; width:100%; grid-template-columns:1fr 1fr; gap:8px;}
+  body.ag-printing .ag-card{break-inside:avoid; background:#fff; color:#000; border-color:#999; font-size:11px; padding:8px 10px;}
+  body.ag-printing .ag-card p, body.ag-printing .ag-card td, body.ag-printing .ag-note, body.ag-printing .ag-steps b, body.ag-printing .ag-card h4{color:#000;}
+  body.ag-printing .ag-card h3{color:#000; font-size:12px;}
+  body.ag-printing .ag-num{background:#000; color:#fff;}
+}

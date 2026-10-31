@@ -30,7 +30,7 @@
     (pt.data || []).forEach(b => {
       const s = b.slots;
       const coach = window.BNB_USERS && window.BNB_USERS.getName(b.trainer_id);
-      if (s) items.push({ date: s.date, time: (s.start_time || '').slice(0, 5), label: '1-on-1' + (coach ? ' with ' + coach.split(' ')[0] : '') });
+      if (s) items.push({ date: s.date, time: (s.start_time || '').slice(0, 5), pt: true, label: '1-on-1' + (coach ? ' with ' + coach.split(' ')[0] : '') });
     });
     return items.filter(x => x.date > t || (x.date === t && x.time >= nowTime))
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0] || null;
@@ -69,9 +69,12 @@
     const code = box.querySelector('[data-today-code]');
     if (code) code.onclick = () => window.BNB_CHECKIN && window.BNB_CHECKIN.openMyCode(me);
 
-    const [ledger, next] = await Promise.all([
+    // Pre-session screening (sql/89): nudge before a 1-on-1 if there isn't one.
+    const screeningOn = window.BNB_FEATURES && window.BNB_FEATURES.on('pre-session-screening');
+    const [ledger, next, screening] = await Promise.all([
       bnbClient.from('points_ledger').select('delta').eq('user_id', me.id),
-      nextBooking(me.id).catch(() => null)
+      nextBooking(me.id).catch(() => null),
+      screeningOn ? bnbClient.from('screenings').select('member_id').eq('member_id', me.id).maybeSingle() : null
     ]);
     if (run !== drawing) return;
     const pts = box.querySelector('[data-today-points]');
@@ -79,11 +82,21 @@
     const nx = box.querySelector('[data-today-next]');
     if (nx) nx.innerHTML = next ? esc(next.label) + '<div class="field-hint">' + esc(when(next.date, next.time)) + '</div>'
       : 'Nothing booked <button type="button" class="btn2 small" data-today-book>Book</button>';
+    if (nx && next && next.pt && screening && !screening.error && !screening.data){
+      nx.insertAdjacentHTML('beforeend', '<div class="field-hint">Fill in your screening before this session.</div><button type="button" class="btn2 primary small" data-today-screening>Fill in screening</button>');
+      nx.querySelector('[data-today-screening]').onclick = () => {
+        if (!window.switchTab) return;
+        window.switchTab('me');
+        const b = document.querySelector('#me-section-switch [data-me-section="screening"]');
+        if (b) b.click();
+      };
+    }
     const book = box.querySelector('[data-today-book]');
     if (book) book.onclick = () => window.switchTab && window.switchTab('schedule');
   }
 
   window.bnbMemberTodayRender = render;
   document.addEventListener('bnb-auth-changed', render);
+  document.addEventListener('bnb-screening-change', render);
   render();
 })();
