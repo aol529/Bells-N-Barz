@@ -33,6 +33,7 @@ jobs:
           cp "bells n barz (main file).html" _site/index.html
           # Front door check-in tablet (sql/87).
           cp kiosk.html _site/kiosk.html
+          cp privacy.html _site/privacy.html
           cp -r css _site/css
           cp -r js _site/js
           # Favicons, PWA manifest + icon (Add to Home Screen), the service worker the
