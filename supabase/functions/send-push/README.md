@@ -46,3 +46,24 @@ If the private key is ever lost or leaked, make a new pair, e.g.
 `npx web-push generate-vapid-keys`. Put the public one in
 `js/bells-n-barz-push.js` and both in the secrets. Devices then have to turn
 alerts on again.
+
+## Android app
+
+The same function also sends each notification to the Android app
+(github.com/aol529/bells-n-barz-android) through Firebase Cloud Messaging.
+Until the secret below is set it simply skips that part.
+
+1. **Run the SQL**: `sql/90-app-push.sql` (the `app_push_tokens` table the
+   app writes its token to after sign-in).
+2. **Firebase project**: console.firebase.google.com → Add project (Google
+   Analytics not needed). Add an **Android app** with package name
+   `io.github.aol529.bellsnbarz` and download `google-services.json`. It goes
+   in the app repo at `app/google-services.json` (it holds only public
+   identifiers; the app reads it at build time).
+3. **Service account key**: Firebase → Project settings → Service accounts →
+   Generate new private key. Paste the **whole JSON file** as the Edge
+   Function secret `FCM_SERVICE_ACCOUNT`. Keep the file out of every repo.
+4. **Redeploy** `send-push` with the new `index.ts` (JWT verification still off).
+
+Check: sign in on the phone, then from another account send that member a
+message. The function log shows `"app":{"sent":1,...}`.
