@@ -1099,6 +1099,17 @@ if (notifBellBtn){
       notifBellBtn.setAttribute('aria-expanded', 'false');
     }
   });
+  // Delete read notifications (sql/91 lets a person delete their own).
+  const deleteReadBtn = document.getElementById('notif-delete-read-btn');
+  if (deleteReadBtn) deleteReadBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    if (!me) return;
+    const { error } = await bnbClient.from('notifications').delete().eq('user_id', me.id).eq('read', true);
+    if (error) console.warn('Supabase delete read notifications failed:', error);
+    await refreshUnreadCount();
+    await loadNotificationList();
+  });
   const markAllBtn = document.getElementById('notif-mark-all-btn');
   if (markAllBtn) markAllBtn.addEventListener('click', async (e) => {
     e.stopPropagation();

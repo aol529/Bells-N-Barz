@@ -79,12 +79,26 @@
       const mine = m.sender_id === meId;
       const who = mine ? 'You' : nameOf(m.sender_id);
       return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}" data-msg-id="${escAttr(m.id)}">
-        <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))}</div>
+        <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))} &middot; <button type="button" data-msg-hide="${escAttr(m.id)}" title="Delete for me" style="background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;">Delete</button></div>
         ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
         ${m.attachment && window.bnbAttach ? window.bnbAttach.bubbleHtml(m.attachment) : ''}
         ${reactions && window.bnbReactions ? window.bnbReactions.bubbleExtrasHtml(reactions[m.id], meId) : ''}
       </div>`;
     }).join('');
+  }
+  // Messages this person deleted for themselves (sql/96). Empty before that file is run.
+  async function hiddenMessageIds(kind, meId){
+    const { data, error } = await bnbClient.from('message_hides').select('message_id').eq('user_id', meId).eq('kind', kind);
+    return new Set(error ? [] : (data || []).map(r => r.message_id));
+  }
+  async function hideMessages(ids){
+    const kind = sel && sel.kind === 'group' ? 'group' : 'dm';
+    const { error } = await bnbClient.rpc('hide_messages', { p_kind: kind, p_ids: ids });
+    if (error) { console.error('Supabase hide_messages failed:', error); return; }
+    renderInbox();
+  }
+  function clearChatHtml(ids){
+    return ids.length ? `<div style="text-align:right;margin-bottom:6px;"><button type="button" class="btn2" id="inbox-clear-chat" data-ids="${escAttr(ids.join(','))}">Clear chat</button></div>` : '';
   }
   async function loadReactions(table, ids){
     if (!ids.length) return {};
@@ -199,7 +213,9 @@
         const { data, error } = await bnbClient.from('dm_messages').select('*').eq('thread_id', sel.threadId).order('created_at', { ascending: true });
         if (error){ console.error('Supabase load dm_messages failed:', error); return; }
         if (seq !== renderSeq) return;
-        messages = data || [];
+        const hidden = await hiddenMessageIds('dm', me.id);
+        if (seq !== renderSeq) return;
+        messages = (data || []).filter(m => !hidden.has(m.id));
         reactions = await loadReactions(REACTION_TABLE.dm, messages.map(m => m.id));
         if (seq !== renderSeq) return;
         const open = dmCache.find(x => x.thread_id === sel.threadId);
@@ -214,6 +230,7 @@
       }
       const otherName = sel.name;
       detailHtml = `
+        ${clearChatHtml(messages.map(m => m.id))}
         <div class="msg-thread" id="inbox-thread">${messageListHtml(messages, me.id, () => otherName, reactions)}</div>
         ${receiptLineHtml('inbox-receipt')}
         ${typingLineHtml('inbox-typing')}
@@ -226,7 +243,9 @@
       ]);
       if (msgs.error){ console.error('Supabase load chat_group_messages failed:', msgs.error); return; }
       if (seq !== renderSeq) return;
-      const messages = msgs.data || [];
+      const hiddenGroup = await hiddenMessageIds('group', me.id);
+      if (seq !== renderSeq) return;
+      const messages = (msgs.data || []).filter(m => !hiddenGroup.has(m.id));
       members = mem.error ? [] : (mem.data || []);
       reactions = await loadReactions(REACTION_TABLE.group, messages.filter(m => m.sender_id).map(m => m.id));
       if (seq !== renderSeq) return;
@@ -241,6 +260,7 @@
       }
       detailHtml = `
         ${groupHeaderHtml(me, keepRename)}
+        ${clearChatHtml(messages.map(m => m.id))}
         <div class="msg-thread" id="inbox-thread">${messageListHtml(messages, me.id, memberName, reactions)}</div>
         ${receiptLineHtml('inbox-receipt')}
         ${typingLineHtml('inbox-typing')}
@@ -563,6 +583,16 @@
     if (dms.error) return;
     if (signatureOf(dms.data || [], groups.error ? [] : (groups.data || [])) !== lastSignature) renderInbox();
   }, 15 * 1000);
+
+  // Delete for me (sql/96): one message, or everything in this chat.
+  body.addEventListener('click', e => {
+    const one = e.target.closest('[data-msg-hide]');
+    if (one) { hideMessages([one.getAttribute('data-msg-hide')]); return; }
+    const all = e.target.closest('#inbox-clear-chat');
+    if (all && window.confirm('Clear this chat? It only goes from your view; the other person keeps their copy.')) {
+      hideMessages(all.getAttribute('data-ids').split(','));
+    }
+  });
 
   // Reaction clicks on any bubble (one listener on the Inbox, which stays
   // put across re-renders). The RPC depends on the open conversation.

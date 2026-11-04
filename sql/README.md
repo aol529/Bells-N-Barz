@@ -531,6 +531,7 @@ what you'd expect.
 - **94-mpesa-claims.sql**: M-Pesa codes sent in by members, checked and confirmed by staff.
 - **95-scheduled-reminders.sql**: lunar and birthday reminders from the server every 15 minutes (pg_cron).
   `lunar_calendar` runs to the end of 2029; `tools/export-lunar-sql.mjs` makes more rows.
+- **96-delete-messages.sql**: lets a person delete messages from their own view.
 
 ## Already applied elsewhere, not part of this folder
 

@@ -143,7 +143,11 @@
         .from('messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true });
       if (error) { console.error('Supabase load messages failed:', error); return; }
       if (seq !== memberRenderSeq) return;
-      messages = data || [];
+      // Deleted for this member only (sql/96); staff keep the thread.
+      const hides = await bnbClient.from('message_hides').select('message_id').eq('user_id', me.id).eq('kind', 'coach');
+      if (seq !== memberRenderSeq) return;
+      const hidden = new Set(hides.error ? [] : (hides.data || []).map(r => r.message_id));
+      messages = (data || []).filter(m => !hidden.has(m.id));
       memberReactions = await loadReactions(messages.map(m => m.id));
       if (seq !== memberRenderSeq) return;
       const last = messages[messages.length - 1];
@@ -158,6 +162,7 @@
     memberBody.innerHTML = `
       <div class="day-head"><h2>Messages — Staff</h2></div>
       <div class="day-focus">A direct line to your coaches and admin — any staff member can see and reply here.</div>
+      ${messages.length ? '<div style="text-align:right;margin-bottom:6px;"><button type="button" class="btn2" id="msg-member-clear">Clear chat</button></div>' : ''}
       <div class="msg-thread" id="msg-member-thread">${messageListHtml(messages, false, memberReactions, me.id)}</div>
       ${receiptLineHtml('msg-member-receipt')}
       ${typingLineHtml('msg-member-typing')}
@@ -173,6 +178,24 @@
     const sendBtn = document.getElementById('msg-member-send');
     const threadEl = document.getElementById('msg-member-thread');
     threadEl.scrollTop = threadEl.scrollHeight;
+    const hideFor = async ids => {
+      const { error } = await bnbClient.rpc('hide_messages', { p_kind: 'coach', p_ids: ids });
+      if (error) { console.error('Supabase hide_messages failed:', error); return; }
+      renderMemberView();
+    };
+    threadEl.querySelectorAll('.msg-bubble[data-msg-id]').forEach(b => {
+      const meta = b.querySelector('.msg-meta');
+      if (!meta) return;
+      const del = document.createElement('button');
+      del.type = 'button'; del.textContent = 'Delete'; del.title = 'Delete for me';
+      del.style.cssText = 'background:none;border:0;padding:0 0 0 8px;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;';
+      del.addEventListener('click', () => hideFor([b.getAttribute('data-msg-id')]));
+      meta.appendChild(del);
+    });
+    const clearBtn = document.getElementById('msg-member-clear');
+    if (clearBtn) clearBtn.addEventListener('click', () => {
+      if (window.confirm('Clear this chat? It only goes from your view; staff keep their copy.')) hideFor(messages.map(m => m.id));
+    });
     // Staff stay anonymous here ("Staff"), same as the message labels.
     if (memberTyping) memberTyping.join(thread ? 'msg:' + thread.id : null, me.id,
       who => showTyping('msg-member-typing', who ? 'Staff is typing' : ''),
