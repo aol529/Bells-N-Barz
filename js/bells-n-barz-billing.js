@@ -240,6 +240,73 @@
   }
 
   /* ============================================================
+     M-PESA PAYBILL (sql/94). The member pays by Paybill, then sends the
+     code from their SMS. Nothing counts as paid until staff match that
+     code to the statement and confirm it.
+     ============================================================ */
+  const MPESA_PAYBILL = '880100', MPESA_ACCOUNT = '800742';
+  let mpesaClaims = [];
+  async function refreshMpesaClaims(){
+    const { data, error } = await bnbClient.from('mpesa_claims').select('*, users!mpesa_claims_user_id_fkey(full_name)').order('created_at', { ascending:false }).limit(200);
+    if (error) { console.warn('Supabase load mpesa_claims failed:', error); return; } // before sql/94
+    mpesaClaims = data || [];
+    renderBody();
+  }
+  function kesFor(usd){ return Math.round(usd * ((window.BNB_CURRENCY && window.BNB_CURRENCY.rate()) || 129)); }
+  function owedOn(i){ return Math.max(0, Number(i.amount||0) - paidTowardInvoice(i.id)); }
+  function mpesaCellHtml(i){
+    const st = invoiceStatus(i);
+    if (st !== 'unpaid' && st !== 'overdue') return '';
+    const c = mpesaClaims.find(x => x.invoice_id === i.id && x.status === 'pending');
+    if (c) return '<div class="field-hint">Code ' + escapeHtml(c.code) + ' is being checked</div>';
+    return '<div><button type="button" class="btn2" data-action="mpesa-pay" data-id="' + i.id + '">Pay by M-Pesa</button></div>';
+  }
+  function openMpesaPay(id){
+    const i = invoices.find(x => x.id === id); if (!i) return;
+    const kes = kesFor(owedOn(i));
+    const m = window.BNB_UI.modal('Pay by M-Pesa',
+      '<p>Amount: <b>KSh ' + kes.toLocaleString('en-US') + '</b></p>' +
+      '<p>Lipa na M-PESA, Pay Bill<br>Business number: <b>' + MPESA_PAYBILL + '</b><br>Account number: <b>' + MPESA_ACCOUNT + '</b></p>' +
+      '<div class="field"><label>M-Pesa code from your SMS</label><input id="bill-mpesa-code" maxlength="12" autocomplete="off" style="text-transform:uppercase"></div>' +
+      '<div class="field-hint" id="bill-mpesa-msg"></div>' +
+      '<button type="button" class="btn2 primary" id="bill-mpesa-send">Send code</button> ' +
+      '<a href="pay.html" target="_blank" rel="noopener">Payment page and QR code</a>');
+    m.body.querySelector('#bill-mpesa-send').addEventListener('click', async function(){
+      const code = m.body.querySelector('#bill-mpesa-code').value;
+      this.disabled = true;
+      const { error } = await bnbClient.rpc('submit_mpesa_claim', { p_invoice: i.id, p_order: null, p_kes: kes, p_code: code });
+      this.disabled = false;
+      if (error) { m.body.querySelector('#bill-mpesa-msg').textContent = error.message; return; }
+      m.close();
+      showToast('Code sent. We will confirm it once it matches the statement.');
+      refreshMpesaClaims();
+    });
+  }
+  function mpesaQueueHtml(){
+    const list = mpesaClaims.filter(c => c.status === 'pending');
+    if (!list.length) return '';
+    let html = '<div class="weight-card" style="margin-bottom:20px;"><h3>M-Pesa payments to check</h3>' +
+      '<div class="field-hint">Match each code and amount to the bank or M-Pesa statement before confirming.</div>' +
+      '<table class="weight-history-table"><thead><tr><th>Member</th><th>Code</th><th>Amount</th><th>Sent</th><th></th></tr></thead><tbody>';
+    list.forEach(c => {
+      html += '<tr><td>' + escapeHtml((c.users && c.users.full_name) || 'Member') + '</td><td class="mono">' + escapeHtml(c.code) + '</td>' +
+        '<td class="mono">KSh ' + Number(c.amount_kes).toLocaleString('en-US') + ' (' + money(c.amount_usd) + ')</td>' +
+        '<td>' + String(c.created_at).slice(0, 10) + '</td><td>' +
+        '<button type="button" data-action="mpesa-ok" data-id="' + c.id + '">Confirm</button> ' +
+        '<button type="button" data-action="mpesa-no" class="del" data-id="' + c.id + '">Reject</button></td></tr>';
+    });
+    return html + '</tbody></table></div>';
+  }
+  async function reviewMpesa(id, approve){
+    const c = mpesaClaims.find(x => x.id === id); if (!c) return;
+    const { error } = await bnbClient.rpc('review_mpesa_claim', { p_id: id, p_approve: approve, p_note: null });
+    if (error) { showToast(error.message); return; }
+    showToast(approve ? 'Payment confirmed.' : 'Payment rejected. The member has been told.');
+    await Promise.all([refreshInvoicesFromSupabase(), refreshPaymentsFromSupabase()]);
+    refreshMpesaClaims();
+  }
+
+  /* ============================================================
      MEMBER VIEW — read-only statement for whoever's selected above
      ============================================================ */
   function memberViewHtml(){
@@ -260,7 +327,7 @@
     } else {
       html += '<table class="weight-history-table"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Due</th><th>Status</th></tr></thead><tbody>';
       inv.forEach(i=>{
-        html += '<tr><td>' + i.issuedDate + '</td><td>' + (TYPE_LABELS[i.type]||i.type) + '</td><td class="mono">' + money(i.amount) + '</td><td>' + i.dueDate + '</td><td>' + statusPillHtml(invoiceStatus(i)) + '</td></tr>';
+        html += '<tr><td>' + i.issuedDate + '</td><td>' + (TYPE_LABELS[i.type]||i.type) + '</td><td class="mono">' + money(i.amount) + '</td><td>' + i.dueDate + '</td><td>' + statusPillHtml(invoiceStatus(i)) + mpesaCellHtml(i) + '</td></tr>';
       });
       html += '</tbody></table>';
     }
@@ -282,7 +349,7 @@
      ADMIN VIEW
      ============================================================ */
   function adminViewHtml(){
-    let html = '<div class="form-inline" style="margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">';
+    let html = mpesaQueueHtml() + '<div class="form-inline" style="margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">';
     html += '<button class="btn2 primary" id="bill-add-invoice-btn" type="button">+ Add Invoice</button>';
     html += '<div class="field" style="margin-bottom:0;"><label>Member</label><select id="bill-filter-member"><option value="all">All members</option>';
     getBillMembers().forEach(m=> html += '<option value="' + m.id + '"' + (memberFilter===m.id?' selected':'') + '>' + escapeHtml(m.name) + '</option>');
@@ -339,7 +406,10 @@
   function bodyClickHandler(e){
     const btn = e.target.closest('[data-action]'); if (!btn) return;
     const action = btn.getAttribute('data-action'), id = btn.getAttribute('data-id');
-    if (action === 'edit') openInvoicePanel(id);
+    if (action === 'mpesa-pay') openMpesaPay(id);
+    else if (action === 'mpesa-ok') reviewMpesa(id, true);
+    else if (action === 'mpesa-no') reviewMpesa(id, false);
+    else if (action === 'edit') openInvoicePanel(id);
     else if (action === 'pay') openPaymentPanel(id);
     else if (action === 'statement') openStatement(id);
     else if (action === 'void') voidInvoice(id);
@@ -562,5 +632,6 @@
   syncAllBalances();
   renderIdentityRow();
   renderBody();
+  refreshMpesaClaims();
 
 })();
