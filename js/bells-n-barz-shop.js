@@ -23,7 +23,7 @@
       id: (p.id && p.id.length === 36) ? p.id : undefined,
       type: p.type, name: p.name, description: p.desc, price: p.price,
       credits: p.credits || null, stock: (p.stock === undefined ? null : p.stock),
-      checkout_url: p.checkoutUrl || null, file_url: p.fileUrl || null,
+      checkout_url: p.checkoutUrl || null,
       active: p.active !== false
     };
   }
@@ -31,7 +31,7 @@
     return {
       id: r.id, type: r.type, name: r.name, desc: r.description, price: r.price,
       credits: r.credits, stock: r.stock, checkoutUrl: r.checkout_url||'',
-      fileUrl: r.file_url||'', active: r.active
+      fileUrl: '', active: r.active
     };
   }
 
@@ -62,9 +62,21 @@
     if (data && data.length) {
       products = data.map(rowToProduct);
       productsSync.reset(products.filter(p => p.id && p.id.length === 36).map(productToRow));
+      await loadProductFiles();
       if (typeof renderAdmin === 'function') renderAdmin();
       if (typeof renderCatalog === 'function') renderCatalog();
     }
+  }
+  // Download links are private to staff (sql/98); buyers get theirs after paying.
+  async function loadProductFiles(){
+    const { data, error } = await bnbClient.from('product_files').select('product_id, file_url');
+    if (error) return;
+    products.forEach(function(p){ const f = (data || []).find(function(x){ return x.product_id === p.id; }); p.fileUrl = f ? f.file_url : ''; });
+  }
+  async function saveProductFile(id, url){
+    const { error } = url ? await bnbClient.from('product_files').upsert({ product_id: id, file_url: url, updated_at: new Date().toISOString() })
+      : await bnbClient.from('product_files').delete().eq('product_id', id);
+    if (error) shopToast('The download link could not be saved: ' + error.message);
   }
   // Sends only changed products and deletes removed ones (bnbTableSync,
   // main HTML) — deleting a product used to vanish locally only.
@@ -188,16 +200,13 @@
       : '<span class="shop-stock">' + stock + ' in stock</span>';
 
     if (p.type === 'digital'){
-      const hasLink = !!(p.fileUrl && p.fileUrl.trim());
       return '<div class="shop-card">' +
         '<div class="shop-card-img">&#9733;</div>' +
         '<div class="shop-card-body">' +
           '<div class="shop-card-name">' + esc(p.name) + '</div>' +
           '<div class="shop-card-desc">' + esc(p.desc) + '</div>' +
-          '<div class="shop-card-foot"><div class="shop-price">' + money(p.price) + '</div><span class="shop-stock">Instant download</span></div>' +
-          (hasLink
-            ? '<a class="shop-buy-btn checkout" href="' + esc(p.fileUrl) + '" target="_blank" rel="noopener">Download</a>'
-            : '<button class="shop-buy-btn checkout" disabled>Link not set</button>') +
+          '<div class="shop-card-foot"><div class="shop-price">' + money(p.price) + '</div><span class="shop-stock">Download after payment</span></div>' +
+          '<button class="shop-buy-btn checkout" data-buy="' + p.id + '">Buy Now</button>' +
         '</div>' +
       '</div>';
     }
@@ -210,9 +219,7 @@
         '<div class="shop-card-foot"><div class="shop-price">' + money(p.price) + '</div>' + stockHtml + '</div>' +
         (stock<=0
           ? '<button class="shop-buy-btn checkout" disabled>Sold Out</button>'
-          : (p.checkoutUrl && p.checkoutUrl.trim())
-            ? '<button class="shop-buy-btn checkout" data-buy="' + p.id + '">Buy Now</button>'
-            : '<button class="shop-buy-btn checkout" disabled>Checkout Not Set</button>') +
+          : '<button class="shop-buy-btn checkout" data-buy="' + p.id + '">Buy Now</button>') +
       '</div>' +
     '</div>';
   }
@@ -253,47 +260,50 @@
   }
 
   /* ---------------- ORDERS (merch/supplement) ---------------- */
-  const ORDERS_KEY = 'bnb-shop-orders-v1';
-  function orderToRow(o){
-    return {
-      id: (o.id && o.id.length === 36) ? o.id : undefined,
-      product_id: (o.productId && o.productId.length === 36) ? o.productId : null,
-      product_name: o.productName, product_type: o.productType,
-      buyer_name: o.buyerName, buyer_email: o.buyerEmail,
-      shipping_address: o.shippingAddress, quantity: o.qty,
-      unit_price: o.unitPrice, amount: o.total, status: o.status
-    };
-  }
+  // One orders table for the website and app: names come from the member and product it points to.
   function rowToOrder(r){
     return {
-      id: r.id, productId: r.product_id, productName: r.product_name,
-      productType: r.product_type, buyerName: r.buyer_name, buyerEmail: r.buyer_email,
-      shippingAddress: r.shipping_address, qty: r.quantity, unitPrice: r.unit_price,
-      total: r.amount, status: r.status, createdAt: r.created_at
+      id: r.id, userId: r.user_id, productId: r.product_id,
+      productName: (r.products && r.products.name) || 'Product', productType: (r.products && r.products.type) || '',
+      buyerName: (r.users && r.users.full_name) || 'Member', buyerEmail: (r.users && r.users.email) || '',
+      qty: r.quantity, total: r.amount, status: r.status || 'pending', createdAt: r.created_at,
+      fulfilment: r.fulfilment || 'pickup', zone: r.delivery_zone || '', fee: Number(r.delivery_fee || 0),
+      address: r.delivery_address || '', phone: r.delivery_phone || ''
     };
   }
-
-  function loadOrders(){
-    // Orders start empty locally too, same as before; real rows load in
-    // once Supabase responds (see refreshOrdersFromSupabase below).
-    return [];
-  }
   async function refreshOrdersFromSupabase(){
-    const { data, error } = await bnbClient.from('orders').select('*').order('created_at', {ascending:false});
+    const { data, error } = await bnbClient.from('orders').select('*, products(name,type), users(full_name,email)').order('created_at', {ascending:false});
     if (error) { console.error('Supabase load orders failed:', error); return; }
-    if (data) {
-      orders = data.map(rowToOrder);
-      ordersSync.reset(orders.filter(o => o.id && o.id.length === 36).map(orderToRow));
-      if (typeof renderAdmin === 'function') renderAdmin();
-    }
+    orders = (data || []).map(rowToOrder);
+    if (typeof renderAdmin === 'function') renderAdmin();
+    renderMyOrders();
   }
-  // Same as products: only changed orders, and cancelled ones really go.
-  const ordersSync = bnbTableSync('orders');
-  function saveOrders(){
-    return ordersSync.save(orders.filter(o => o.id && o.id.length === 36).map(orderToRow));
+  async function setOrderStatus(o, status){
+    const { error } = await bnbClient.from('orders').update({ status: status }).eq('id', o.id);
+    if (error) { shopToast(error.message || 'Could not update that order.'); return false; }
+    o.status = status;
+    return true;
   }
-  let orders = loadOrders();
-  refreshOrdersFromSupabase(); // async — replaces local (empty) start with real rows once Supabase responds
+  let orders = [];
+
+  /* ---------------- DELIVERY ZONES (sql/97) ---------------- */
+  let zones = [];
+  async function refreshZones(){
+    const { data, error } = await bnbClient.from('delivery_zones').select('*').order('sort_order').order('name');
+    if (error) { console.warn('Supabase load delivery_zones failed:', error); return; }
+    zones = data || [];
+    renderZonesTable();
+  }
+  function selectedZone(){
+    const on = document.getElementById('shop-fulfil-delivery').checked;
+    return on ? zones.find(function(z){ return z.id === document.getElementById('shop-order-zone').value; }) || null : null;
+  }
+  function syncFulfilment(){
+    const delivery = document.getElementById('shop-fulfil-delivery').checked;
+    document.getElementById('shop-order-delivery-fields').style.display = delivery ? '' : 'none';
+    updateOrderTotal();
+  }
+  function isPhysical(p){ return p.type !== 'digital' && p.type !== 'package'; }
 
   let orderPanelProduct = null;
 
@@ -302,15 +312,23 @@
     document.getElementById('shop-order-product-summary').textContent = p.name + ' — ' + moneyText(p.price) + ' each';
   }
   function openOrderPanel(p){
+    if (!(window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf())){ shopToast('Please log in to order.'); return; }
     orderPanelProduct = p;
     renderOrderSummary();
-    document.getElementById('shop-order-name').value = '';
-    document.getElementById('shop-order-email').value = '';
-    document.getElementById('shop-order-address').value = '';
+    const physical = isPhysical(p), live = zones.filter(function(z){ return z.active; });
     const qtyInput = document.getElementById('shop-order-qty');
     qtyInput.value = 1;
-    qtyInput.max = Number(p.stock || 0);
-    updateOrderTotal();
+    qtyInput.max = physical ? Number(p.stock || 0) : 1;
+    document.getElementById('shop-order-qty-field').style.display = physical ? '' : 'none';
+    document.getElementById('shop-order-fulfil').style.display = physical ? '' : 'none';
+    document.getElementById('shop-fulfil-delivery-row').style.display = physical && live.length ? '' : 'none';
+    document.getElementById('shop-fulfil-pickup').checked = true;
+    document.getElementById('shop-order-zone').innerHTML = live.map(function(z){
+      return '<option value="' + esc(z.id) + '">' + esc(z.name) + ' (' + esc(moneyText(z.fee)) + ')</option>';
+    }).join('');
+    document.getElementById('shop-order-address').value = '';
+    document.getElementById('shop-order-phone').value = '';
+    syncFulfilment();
     document.getElementById('shop-order-panel-backdrop').classList.add('show');
   }
   function closeOrderPanel(){ document.getElementById('shop-order-panel-backdrop').classList.remove('show'); orderPanelProduct = null; }
@@ -318,9 +336,13 @@
   function updateOrderTotal(){
     if (!orderPanelProduct) return;
     const qty = Math.max(1, Number(document.getElementById('shop-order-qty').value) || 1);
-    document.getElementById('shop-order-total').textContent = moneyText(orderPanelProduct.price * qty);
+    const z = selectedZone();
+    document.getElementById('shop-order-total').textContent = moneyText(orderPanelProduct.price * qty + (z ? Number(z.fee) : 0));
   }
   document.getElementById('shop-order-qty').addEventListener('input', updateOrderTotal);
+  document.getElementById('shop-order-zone').addEventListener('change', updateOrderTotal);
+  document.getElementById('shop-fulfil-pickup').addEventListener('change', syncFulfilment);
+  document.getElementById('shop-fulfil-delivery').addEventListener('change', syncFulfilment);
   // USD/KES switch flipped while a checkout panel is open.
   document.addEventListener('bnb-currency-change', ()=>{
     if (orderPanelProduct){ renderOrderSummary(); updateOrderTotal(); }
@@ -329,45 +351,69 @@
   document.getElementById('shop-order-cancel').addEventListener('click', closeOrderPanel);
   document.getElementById('shop-order-panel-backdrop').addEventListener('click', function(e){ if (e.target.id==='shop-order-panel-backdrop') closeOrderPanel(); });
 
-  document.getElementById('shop-order-submit').addEventListener('click', function(){
+  document.getElementById('shop-order-submit').addEventListener('click', async function(){
     const p = orderPanelProduct;
     if (!p) return;
-    const name = document.getElementById('shop-order-name').value.trim();
-    const email = document.getElementById('shop-order-email').value.trim();
+    const physical = isPhysical(p), z = physical ? selectedZone() : null;
+    const delivery = document.getElementById('shop-fulfil-delivery').checked;
     const address = document.getElementById('shop-order-address').value.trim();
-    const stock = Number(p.stock || 0);
-    let qty = Math.max(1, Number(document.getElementById('shop-order-qty').value) || 1);
-    if (qty > stock) qty = stock;
+    const phone = document.getElementById('shop-order-phone').value.trim();
+    const qty = physical ? Math.max(1, Number(document.getElementById('shop-order-qty').value) || 1) : 1;
+    if (physical && qty > Number(p.stock || 0)){ alert('Only ' + Number(p.stock || 0) + ' left in stock.'); return; }
+    if (physical && delivery && !z){ alert('Choose a delivery area.'); return; }
+    if (z && !address){ alert('Enter your delivery address.'); return; }
+    if (z && !phone){ alert('Enter a phone number for delivery.'); return; }
 
-    if (!name){ alert('Enter your name.'); return; }
-    if (!email){ alert('Enter your email.'); return; }
-    if (!address){ alert('Enter a shipping address.'); return; }
-    if (stock <= 0){ alert('Sorry — this just sold out.'); closeOrderPanel(); renderCatalog(); return; }
-
-    const order = {
-      id: window.BNB_UUID(),
-      productId: p.id,
-      productName: p.name,
-      productType: p.type,
-      buyerName: name,
-      buyerEmail: email,
-      shippingAddress: address,
-      qty: qty,
-      unitPrice: p.price,
-      total: p.price * qty,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-    orders.push(order);
-    saveOrders();
+    this.disabled = true;
+    // The database works out the total, so what's shown here can't decide the price.
+    const { data: id, error } = await bnbClient.rpc('place_shop_order', {
+      p_product: p.id, p_qty: qty, p_zone: z ? z.id : null, p_address: z ? address : null, p_phone: z ? phone : null
+    });
+    this.disabled = false;
+    if (error){ alert(error.message || 'Could not place that order.'); return; }
     closeOrderPanel();
-
-    const checkoutUrl = p.checkoutUrl;
-    if (checkoutUrl && checkoutUrl.trim()){
-      window.open(checkoutUrl.trim(), '_blank', 'noopener');
+    await refreshOrdersFromSupabase();
+    const o = orders.find(function(x){ return x.id === id; });
+    if (p.checkoutUrl && p.checkoutUrl.trim()){
+      window.open(p.checkoutUrl.trim(), '_blank', 'noopener');
+      shopToast('Order placed. We\'ll mark it paid once payment lands.');
+    } else if (window.BNB_BILLING && window.BNB_BILLING.payOrder && o){
+      window.BNB_BILLING.payOrder(o.id, o.total, p.name);
+    } else {
+      shopToast('Order placed. Pay at the front desk.');
     }
-    shopToast('Order placed — redirecting to checkout. We\'ll mark it paid once payment lands.');
   });
+
+  /* ---------------- MY ORDERS ---------------- */
+  function renderMyOrders(){
+    const box = document.getElementById('shop-my-orders');
+    if (!box) return;
+    const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+    const mine = me ? orders.filter(function(o){ return o.userId === me.id; }) : [];
+    box.innerHTML = !mine.length ? '' : '<div class="shop-section-label">Your orders</div>' + mine.map(function(o){
+      const paid = o.status === 'paid' || o.status === 'fulfilled';
+      return '<div class="shop-pkg-card"><div class="shop-pkg-left"><div><div class="shop-pkg-name">' + esc(o.productName) + ' × ' + o.qty + '</div>' +
+        '<div class="shop-pkg-desc">' + esc(fulfilmentText(o)) + ' · ' + (ORDER_STATUS_LABELS[o.status] || esc(o.status)) + '</div></div></div>' +
+        '<div class="shop-pkg-right"><div class="shop-pkg-price">' + money(o.total) + '</div>' +
+        (o.status === 'pending' ? '<button class="shop-buy-btn invoice" style="margin-top:8px;" data-my-pay="' + o.id + '">Pay by M-Pesa</button>' : '') +
+        (paid && o.productType === 'digital' ? '<button class="shop-buy-btn invoice" style="margin-top:8px;" data-my-file="' + o.id + '">Download</button>' : '') +
+        '</div></div>';
+    }).join('');
+    box.querySelectorAll('[data-my-pay]').forEach(function(b){ b.addEventListener('click', function(){
+      const o = orders.find(function(x){ return x.id === b.dataset.myPay; });
+      if (o && window.BNB_BILLING.payOrder) window.BNB_BILLING.payOrder(o.id, o.total, o.productName);
+    }); });
+    box.querySelectorAll('[data-my-file]').forEach(function(b){ b.addEventListener('click', async function(){
+      const { data, error } = await bnbClient.rpc('my_digital_link', { p_order: b.dataset.myFile });
+      if (error || !data){ shopToast((error && error.message) || 'That file isn\'t ready yet. Please ask the front desk.'); return; }
+      window.open(data, '_blank', 'noopener');
+    }); });
+  }
+  function fulfilmentText(o){
+    if (o.productType === 'digital') return 'Download';
+    if (o.productType === 'package') return 'Session credits';
+    return o.fulfilment === 'delivery' ? 'Delivery to ' + o.zone : 'Pick up at the gym';
+  }
 
   /* ---------------- PACKAGE CHECKOUT (session credits) ---------------- */
   let pkgPanelProduct = null;
@@ -519,7 +565,8 @@
     } else {
       products.push(Object.assign({ id: window.BNB_UUID() }, data));
     }
-    saveProducts();
+    const saved = editingProductId ? products.find(function(x){ return x.id===editingProductId; }) : products[products.length - 1];
+    Promise.resolve(saveProducts()).then(function(){ if (type === 'digital') saveProductFile(saved.id, data.fileUrl); });
     closeProductPanel();
     renderAdminTable();
     renderCatalog();
@@ -568,7 +615,8 @@
       }
       return '<tr>' +
         '<td>' + esc(o.buyerName) + '<div class="field-hint">' + esc(o.buyerEmail) + '</div></td>' +
-        '<td>' + esc(o.productName) + '</td>' +
+        '<td>' + esc(o.productName) + '<div class="field-hint">' + esc(fulfilmentText(o)) +
+          (o.fulfilment === 'delivery' ? ' · fee ' + moneyText(o.fee) + '<br>' + esc(o.address) + '<br>' + esc(o.phone) : '') + '</div></td>' +
         '<td>' + o.qty + '</td>' +
         '<td class="mono">' + money(o.total) + '</td>' +
         '<td>' + orderStatusPillHtml(o.status) + '</td>' +
@@ -605,30 +653,31 @@
     if (!o) return;
     const p = products.find(function(x){ return x.id===o.productId; });
     if (p && p.type !== 'package' && p.type !== 'digital') await takeStock(p, o.qty);
-    o.status = 'paid';
-    saveOrders();
+    if (!await setOrderStatus(o, 'paid')) return;
     renderOrdersTable();
+    renderMyOrders();
     renderAdminTable();
     renderCatalog();
     shopToast('Marked paid — stock updated.');
   }
 
-  function markOrderFulfilled(id){
+  async function markOrderFulfilled(id){
     const o = orders.find(function(x){ return x.id===id; });
     if (!o) return;
-    o.status = 'fulfilled';
-    saveOrders();
+    if (!await setOrderStatus(o, 'fulfilled')) return;
     renderOrdersTable();
     shopToast('Marked fulfilled.');
   }
 
-  function cancelOrder(id){
+  async function cancelOrder(id){
     const o = orders.find(function(x){ return x.id===id; });
     if (!o) return;
     if (!confirm('Cancel this order for ' + o.buyerName + '? Stock was never reserved, so nothing needs restoring.')) return;
+    const { error } = await bnbClient.from('orders').delete().eq('id', id);
+    if (error){ shopToast(error.message || 'Could not cancel that order.'); return; }
     orders = orders.filter(function(x){ return x.id !== id; });
-    saveOrders();
     renderOrdersTable();
+    renderMyOrders();
   }
 
   // Counts on the Admin Products / Orders cards.
@@ -643,15 +692,77 @@
   adminSubtabs.querySelectorAll('button').forEach(function(btn){
     btn.addEventListener('click', function(){
       adminSubtabs.querySelectorAll('button').forEach(function(b){ b.classList.toggle('active', b===btn); });
-      const isProducts = btn.dataset.adminTab === 'products';
-      document.getElementById('shop-admin-products-panel').style.display = isProducts ? '' : 'none';
-      document.getElementById('shop-admin-orders-panel').style.display = isProducts ? 'none' : '';
-      if (!isProducts) renderOrdersTable();
-      scrollBelowHeaders(document.getElementById(isProducts ? 'shop-admin-products-panel' : 'shop-admin-orders-panel'));
+      const tab = btn.dataset.adminTab;
+      ['products', 'orders', 'delivery'].forEach(function(t){
+        document.getElementById('shop-admin-' + t + '-panel').style.display = t === tab ? '' : 'none';
+      });
+      if (tab === 'orders') renderOrdersTable();
+      if (tab === 'delivery') renderZonesTable();
+      scrollBelowHeaders(document.getElementById('shop-admin-' + tab + '-panel'));
     });
   });
 
+  /* ---------------- DELIVERY ZONES ADMIN ---------------- */
+  function renderZonesTable(){
+    const tbody = document.getElementById('shop-zones-tbody');
+    if (!tbody) return;
+    const admin = isAdmin();
+    document.getElementById('shop-zone-form').style.display = admin ? '' : 'none';
+    tbody.innerHTML = !zones.length ? '<tr><td colspan="4" style="text-align:center; padding:30px 0; color:var(--muted);">No delivery areas yet. Until you add one, buyers can only pick up at the gym.</td></tr>' :
+      zones.map(function(z){
+        return '<tr><td>' + esc(z.name) + '</td><td class="mono">' + money(z.fee) + '</td><td>' + statusPillHtml(z.active) + '</td><td><div class="row-actions">' + (admin ?
+          '<button data-zone-edit="' + z.id + '">Edit</button><button data-zone-toggle="' + z.id + '">' + (z.active ? 'Hide' : 'Show') + '</button><button data-zone-del="' + z.id + '">Delete</button>' : '') +
+          '</div></td></tr>';
+      }).join('');
+    tbody.querySelectorAll('[data-zone-edit]').forEach(function(b){ b.addEventListener('click', function(){
+      const z = zones.find(function(x){ return x.id === b.dataset.zoneEdit; });
+      editingZoneId = z.id;
+      document.getElementById('shop-zone-name').value = z.name;
+      document.getElementById('shop-zone-fee').value = z.fee;
+      syncZoneKes();
+      document.getElementById('shop-zone-save').textContent = 'Save changes';
+    }); });
+    tbody.querySelectorAll('[data-zone-toggle]').forEach(function(b){ b.addEventListener('click', async function(){
+      const z = zones.find(function(x){ return x.id === b.dataset.zoneToggle; });
+      const { error } = await bnbClient.from('delivery_zones').update({ active: !z.active }).eq('id', z.id);
+      if (error){ shopToast(error.message); return; }
+      refreshZones();
+    }); });
+    tbody.querySelectorAll('[data-zone-del]').forEach(function(b){ b.addEventListener('click', async function(){
+      const z = zones.find(function(x){ return x.id === b.dataset.zoneDel; });
+      if (!confirm('Delete "' + z.name + '"? Past orders keep their area and fee.')) return;
+      const { error } = await bnbClient.from('delivery_zones').delete().eq('id', z.id);
+      if (error){ shopToast(error.message); return; }
+      refreshZones();
+    }); });
+  }
+  let editingZoneId = null;
+  function syncZoneKes(){
+    const usd = Number(document.getElementById('shop-zone-fee').value) || 0;
+    const rate = (window.BNB_CURRENCY && window.BNB_CURRENCY.rate()) || 129;
+    document.getElementById('shop-zone-kes').textContent = 'About KSh ' + Math.round(usd * rate).toLocaleString('en-US');
+  }
+  document.getElementById('shop-zone-fee').addEventListener('input', syncZoneKes);
+  document.getElementById('shop-zone-save').addEventListener('click', async function(){
+    const name = document.getElementById('shop-zone-name').value.trim();
+    const fee = Number(document.getElementById('shop-zone-fee').value);
+    if (!name){ alert('Name the delivery area.'); return; }
+    if (!(fee >= 0)){ alert('Enter the fee in dollars.'); return; }
+    const row = { name: name, fee: fee };
+    const { error } = editingZoneId ? await bnbClient.from('delivery_zones').update(row).eq('id', editingZoneId)
+      : await bnbClient.from('delivery_zones').insert([row]);
+    if (error){ shopToast(error.message); return; }
+    editingZoneId = null;
+    document.getElementById('shop-zone-name').value = '';
+    document.getElementById('shop-zone-fee').value = '';
+    syncZoneKes();
+    this.textContent = 'Add area';
+    refreshZones();
+  });
+
   /* ---------------- INIT ---------------- */
+  refreshOrdersFromSupabase();
+  refreshZones();
   renderTypeTabs();
   renderCatalog();
 

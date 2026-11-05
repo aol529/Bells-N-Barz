@@ -780,6 +780,7 @@
     <button class="shop-back-btn" id="shop-back-btn" type="button">&larr; Back to Shop</button>
     <div class="shop-type-tabs chip-filter cat-cards" id="shop-type-tabs"></div>
     <div id="shop-catalog-body"></div>
+    <div id="shop-my-orders"></div>
     <div class="shop-empty" id="shop-empty-msg" style="display:none;">Nothing here yet — check back soon.</div>
   </div>
 </section>
@@ -791,6 +792,7 @@
     <div class="shop-type-tabs chip-filter cat-cards" id="shop-admin-subtabs">
       <button type="button" class="cat-card active" data-admin-tab="products"><span class="cat-card-icon" aria-hidden="true">📦</span><span class="cat-card-name">Products</span><span class="cat-card-desc">Add, edit and hide shop items</span><span class="cat-card-count" id="shop-admin-products-count"></span></button>
       <button type="button" class="cat-card" data-admin-tab="orders"><span class="cat-card-icon" aria-hidden="true">🧾</span><span class="cat-card-name">Orders</span><span class="cat-card-desc">Review and update customer orders</span><span class="cat-card-count" id="shop-admin-orders-count"></span></button>
+      <button type="button" class="cat-card" data-admin-tab="delivery"><span class="cat-card-icon" aria-hidden="true">🚚</span><span class="cat-card-name">Delivery</span><span class="cat-card-desc">Areas and fees</span></button>
     </div>
 
     <div id="shop-admin-products-panel">
@@ -803,6 +805,22 @@
           <tr><th>Name</th><th>Type</th><th>Price</th><th>Stock / Credits</th><th>Status</th><th></th></tr>
         </thead>
         <tbody id="shop-admin-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="shop-admin-delivery-panel" style="display:none;">
+      <div class="admin-notice">Set an area and fee for each delivery distance. Fees are in dollars, like other prices. Past orders keep the fee they were placed with.</div>
+      <div class="admin-toolbar" id="shop-zone-form">
+        <input type="text" id="shop-zone-name" maxlength="80" placeholder="Area, e.g. Within 5 km" aria-label="Delivery area name">
+        <input type="number" id="shop-zone-fee" min="0" step="0.01" placeholder="Fee in $" aria-label="Delivery fee in dollars">
+        <span class="field-hint" id="shop-zone-kes"></span>
+        <button class="btn2 primary" id="shop-zone-save">Add area</button>
+      </div>
+      <table class="admin-grid-table">
+        <thead>
+          <tr><th>Area</th><th>Fee</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="shop-zones-tbody"></tbody>
       </table>
     </div>
 
@@ -828,17 +846,7 @@
       <div id="shop-order-product-summary" style="font-size:14px; color:var(--text); font-weight:600;"></div>
     </div>
     <div class="field-row2">
-      <div class="field">
-        <label>Your Name</label>
-        <input type="text" id="shop-order-name" placeholder="Full name">
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="shop-order-email" placeholder="you@example.com">
-      </div>
-    </div>
-    <div class="field-row2">
-      <div class="field">
+      <div class="field" id="shop-order-qty-field">
         <label>Quantity</label>
         <input type="number" id="shop-order-qty" min="1" value="1">
       </div>
@@ -847,14 +855,31 @@
         <div id="shop-order-total" style="padding:9px 0; font-size:15px; font-weight:700; color:var(--text);"></div>
       </div>
     </div>
-    <div class="field">
-      <label>Shipping Address</label>
-      <textarea id="shop-order-address" rows="3" placeholder="Where should this ship?"></textarea>
+    <div id="shop-order-fulfil">
+      <div class="field">
+        <label>How would you like to get it?</label>
+        <div><label><input type="radio" name="shop-fulfil" id="shop-fulfil-pickup" checked> Pick up at the gym (free)</label></div>
+        <div id="shop-fulfil-delivery-row"><label><input type="radio" name="shop-fulfil" id="shop-fulfil-delivery"> Deliver to me</label></div>
+      </div>
+      <div id="shop-order-delivery-fields" style="display:none;">
+        <div class="field">
+          <label for="shop-order-zone">Delivery area</label>
+          <select id="shop-order-zone"></select>
+        </div>
+        <div class="field">
+          <label for="shop-order-address">Delivery address</label>
+          <textarea id="shop-order-address" rows="3" placeholder="Building, street and any directions"></textarea>
+        </div>
+        <div class="field">
+          <label for="shop-order-phone">Phone number</label>
+          <input type="tel" id="shop-order-phone" placeholder="07XX XXX XXX">
+        </div>
+      </div>
     </div>
-    <div class="field-hint" style="margin-bottom:10px;">Submitting takes you to checkout to pay. Your order is recorded now and marked paid once payment's confirmed.</div>
+    <div class="field-hint" style="margin-bottom:10px;">Your order is recorded now and marked paid once payment is confirmed.</div>
     <div class="panel-actions">
       <button class="btn2" id="shop-order-cancel">Cancel</button>
-      <button class="btn2 primary" id="shop-order-submit">Continue to Checkout</button>
+      <button class="btn2 primary" id="shop-order-submit">Place Order</button>
     </div>
   </div>
 </div>

@@ -263,7 +263,11 @@
   }
   function openMpesaPay(id){
     const i = invoices.find(x => x.id === id); if (!i) return;
-    const kes = kesFor(owedOn(i));
+    mpesaModal(owedOn(i), i.id, null);
+  }
+  // An invoice or a shop order: the claim points at one of them.
+  function mpesaModal(usd, invoiceId, orderId){
+    const kes = kesFor(usd);
     const m = window.BNB_UI.modal('Pay by M-Pesa',
       '<p>Amount: <b>KSh ' + kes.toLocaleString('en-US') + '</b></p>' +
       '<p>Lipa na M-PESA, Pay Bill<br>Business number: <b>' + MPESA_PAYBILL + '</b><br>Account number: <b>' + MPESA_ACCOUNT + '</b></p>' +
@@ -274,7 +278,7 @@
     m.body.querySelector('#bill-mpesa-send').addEventListener('click', async function(){
       const code = m.body.querySelector('#bill-mpesa-code').value;
       this.disabled = true;
-      const { error } = await bnbClient.rpc('submit_mpesa_claim', { p_invoice: i.id, p_order: null, p_kes: kes, p_code: code });
+      const { error } = await bnbClient.rpc('submit_mpesa_claim', { p_invoice: invoiceId, p_order: orderId, p_kes: kes, p_code: code });
       this.disabled = false;
       if (error) { m.body.querySelector('#bill-mpesa-msg').textContent = error.message; return; }
       m.close();
@@ -589,6 +593,7 @@
   // unpaid invoice through the same engine Billing itself uses, rather
   // than poking the invoices store directly from another module.
   window.BNB_BILLING = {
+    payOrder: function(orderId, usd){ mpesaModal(Number(usd) || 0, null, orderId); },
     createInvoice: function(data){
       const inv = {
         id: window.BNB_UUID(),
