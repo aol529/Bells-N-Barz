@@ -1001,6 +1001,87 @@ async function refreshUnreadCount(){
   else { notifBellCount.style.display = 'none'; }
 }
 
+/* ---- Swipe left to delete (touch screens) ----
+   Drag a row left and a Delete button slides in from its right edge. Tapping
+   the button deletes; tapping the row, or swiping another one, closes it.
+   Listens on root, which outlives re-renders, so it's attached once.
+   The row needs position:relative and an ancestor with overflow-x:hidden. */
+window.bnbSwipeDelete = function(root, selector, onDelete){
+  const WIDTH = 80; // the button, plus its gap (.swipe-del in the CSS)
+  let row = null, startX = 0, startY = 0, base = 0, x = 0, dragging = false, opened = null;
+
+  const place = (el, px) => { el.style.transform = px ? `translateX(${px}px)` : ''; };
+  const shut = el => {
+    if (!el) return;
+    el.classList.remove('swipe-dragging');
+    place(el, 0);
+    const btn = el.querySelector(':scope > .swipe-del');
+    if (btn) btn.remove();
+    if (opened === el) opened = null;
+  };
+
+  root.addEventListener('touchstart', e => {
+    row = e.touches.length === 1 ? e.target.closest(selector) : null;
+    dragging = false;
+    if (!row || !root.contains(row)) { row = null; return; }
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    base = row === opened ? -WIDTH : 0;
+    x = base;
+  }, { passive: true });
+
+  root.addEventListener('touchmove', e => {
+    if (!row) return;
+    const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+    if (!dragging){
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      // Scrolling, or a right swipe on a closed row: leave it to the browser.
+      if (Math.abs(dy) >= Math.abs(dx) || (dx > 0 && !base)) { row = null; return; }
+      if (opened && opened !== row) shut(opened);
+      dragging = true;
+      row.classList.add('swipe-dragging');
+      if (!row.querySelector(':scope > .swipe-del')){
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'swipe-del'; btn.textContent = 'Delete';
+        row.appendChild(btn);
+      }
+    }
+    x = Math.max(-WIDTH, Math.min(0, base + dx));
+    place(row, x);
+  }, { passive: true });
+
+  const settle = () => {
+    if (!row || !dragging) { row = null; return; }
+    row.classList.remove('swipe-dragging');
+    if (x < -WIDTH / 2){ place(row, -WIDTH); opened = row; }
+    else shut(row);
+    row = null; dragging = false;
+  };
+  root.addEventListener('touchend', settle);
+  root.addEventListener('touchcancel', settle);
+
+  // Capture, so an open row's tap doesn't also run the row's own click.
+  root.addEventListener('click', e => {
+    const btn = e.target.closest('.swipe-del');
+    if (btn){
+      e.preventDefault(); e.stopPropagation();
+      const el = btn.parentElement;
+      shut(el);
+      onDelete(el);
+    } else if (opened && opened.contains(e.target)){
+      e.preventDefault(); e.stopPropagation();
+      shut(opened);
+    } else if (opened) shut(opened);
+  }, true);
+};
+
+if (notifBellList) window.bnbSwipeDelete(notifBellList, '.notif-bell-item', async el => {
+  const { error } = await bnbClient.from('notifications').delete().eq('id', el.getAttribute('data-id'));
+  if (error) { console.warn('Supabase delete notification failed:', error); return; }
+  await refreshUnreadCount();
+  await loadNotificationList();
+});
+
 async function loadNotificationList(){
   const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
   if (!me || !notifBellList) return;

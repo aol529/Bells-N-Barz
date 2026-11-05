@@ -119,6 +119,14 @@
   let memberRenderSeq = 0;
   let memberSignature = '';
 
+  // Deleted for this member only (sql/96); staff keep the thread.
+  async function hideMemberMessages(ids){
+    const { error } = await bnbClient.rpc('hide_messages', { p_kind: 'coach', p_ids: ids });
+    if (error) { console.error('Supabase hide_messages failed:', error); return; }
+    renderMemberView();
+  }
+  if (memberBody && window.bnbSwipeDelete) window.bnbSwipeDelete(memberBody, '.msg-bubble[data-msg-id]', el => hideMemberMessages([el.getAttribute('data-msg-id')]));
+
   async function renderMemberView(){
     if (!memberBody) return;
     const seq = ++memberRenderSeq;
@@ -178,23 +186,17 @@
     const sendBtn = document.getElementById('msg-member-send');
     const threadEl = document.getElementById('msg-member-thread');
     threadEl.scrollTop = threadEl.scrollHeight;
-    const hideFor = async ids => {
-      const { error } = await bnbClient.rpc('hide_messages', { p_kind: 'coach', p_ids: ids });
-      if (error) { console.error('Supabase hide_messages failed:', error); return; }
-      renderMemberView();
-    };
     threadEl.querySelectorAll('.msg-bubble[data-msg-id]').forEach(b => {
       const meta = b.querySelector('.msg-meta');
       if (!meta) return;
       const del = document.createElement('button');
-      del.type = 'button'; del.textContent = 'Delete'; del.title = 'Delete for me';
-      del.style.cssText = 'background:none;border:0;padding:0 0 0 8px;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;';
-      del.addEventListener('click', () => hideFor([b.getAttribute('data-msg-id')]));
+      del.type = 'button'; del.className = 'msg-hide-link'; del.textContent = 'Delete'; del.title = 'Delete for me';
+      del.addEventListener('click', () => hideMemberMessages([b.getAttribute('data-msg-id')]));
       meta.appendChild(del);
     });
     const clearBtn = document.getElementById('msg-member-clear');
     if (clearBtn) clearBtn.addEventListener('click', () => {
-      if (window.confirm('Clear this chat? It only goes from your view; staff keep their copy.')) hideFor(messages.map(m => m.id));
+      if (window.confirm('Clear this chat? It only goes from your view; staff keep their copy.')) hideMemberMessages(messages.map(m => m.id));
     });
     // Staff stay anonymous here ("Staff"), same as the message labels.
     if (memberTyping) memberTyping.join(thread ? 'msg:' + thread.id : null, me.id,

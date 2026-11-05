@@ -79,7 +79,7 @@
       const mine = m.sender_id === meId;
       const who = mine ? 'You' : nameOf(m.sender_id);
       return `<div class="msg-bubble ${mine ? 'mine' : 'theirs'}" data-msg-id="${escAttr(m.id)}">
-        <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))} &middot; <button type="button" data-msg-hide="${escAttr(m.id)}" title="Delete for me" style="background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;">Delete</button></div>
+        <div class="msg-meta">${esc(who)} &middot; ${esc(fmtWhen(m.created_at))}<button type="button" class="msg-hide-link" data-msg-hide="${escAttr(m.id)}" title="Delete for me">Delete</button></div>
         ${m.body ? `<div class="msg-body">${esc(m.body)}</div>` : ''}
         ${m.attachment && window.bnbAttach ? window.bnbAttach.bubbleHtml(m.attachment) : ''}
         ${reactions && window.bnbReactions ? window.bnbReactions.bubbleExtrasHtml(reactions[m.id], meId) : ''}
@@ -593,6 +593,8 @@
       hideMessages(all.getAttribute('data-ids').split(','));
     }
   });
+
+  if (window.bnbSwipeDelete) window.bnbSwipeDelete(body, '.msg-bubble[data-msg-id]', el => hideMessages([el.getAttribute('data-msg-id')]));
 
   // Reaction clicks on any bubble (one listener on the Inbox, which stays
   // put across re-renders). The RPC depends on the open conversation.
