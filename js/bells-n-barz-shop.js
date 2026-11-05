@@ -289,7 +289,7 @@
   /* ---------------- DELIVERY ZONES (sql/97) ---------------- */
   let zones = [];
   async function refreshZones(){
-    const { data, error } = await bnbClient.from('delivery_zones').select('*').order('sort_order').order('name');
+    const { data, error } = await bnbClient.from('delivery_zones').select('*').order('fee').order('name'); // cheapest first
     if (error) { console.warn('Supabase load delivery_zones failed:', error); return; }
     zones = data || [];
     renderZonesTable();
