@@ -47,6 +47,7 @@
       .map(p=>({ p, sl: slots.find(x=>x.id===p.slotId) }))
       .filter(x=>x.sl);
   }
+  const classNames = {}; // user id -> name, filled by refreshClassNames()
   function memberName(id){
     if (window.BNB_USERS){ const n = window.BNB_USERS.getName(id); if (n) return n; }
     if (classNames[id]) return classNames[id];
@@ -280,7 +281,6 @@
   }
   // A coach can't read every member, so names on their own classes come
   // from session_names() (sql/100): names only.
-  const classNames = {};
   async function refreshClassNames(){
     const ids = Array.from(new Set(bookings.filter(isReal).map(b => b.sessionId))).filter(Boolean);
     if (!ids.length) return;
