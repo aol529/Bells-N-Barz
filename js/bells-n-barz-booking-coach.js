@@ -49,6 +49,7 @@
   }
   function memberName(id){
     if (window.BNB_USERS){ const n = window.BNB_USERS.getName(id); if (n) return n; }
+    if (classNames[id]) return classNames[id];
     const m = getSchedMembers().find(x=>x.id===id); return m ? m.name : 'Unknown Member';
   }
 
@@ -273,8 +274,19 @@
     if (data && data.length) {
       bookings = data.map(rowToBooking);
       bookingsSync.reset(bookings.filter(isReal).map(bookingToRow));
+      await refreshClassNames();
       if (typeof renderBody === 'function') renderBody();
     }
+  }
+  // A coach can't read every member, so names on their own classes come
+  // from session_names() (sql/100): names only.
+  const classNames = {};
+  async function refreshClassNames(){
+    const ids = Array.from(new Set(bookings.filter(isReal).map(b => b.sessionId))).filter(Boolean);
+    if (!ids.length) return;
+    const { data, error } = await bnbClient.rpc('session_names', { p_sessions: ids });
+    if (error) { console.warn('Supabase session_names failed:', error); return; } // before sql/100
+    (data || []).forEach(r => { classNames[r.user_id] = r.full_name; });
   }
   // How full each class is. Members can only read their own bookings,
   // so the counts come from class_session_counts() (sql/62), which also
