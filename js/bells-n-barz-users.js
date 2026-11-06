@@ -1487,6 +1487,9 @@
     const checkedRoles = u && Array.isArray(u.roles) ? u.roles : ['member'];
     document.querySelectorAll('#usr-f-roles input[type=checkbox]').forEach(cb=>{
       cb.checked = checkedRoles.includes(cb.value);
+      // Only admins can change roles (sql/99).
+      const self = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+      cb.disabled = !(self && self.roles && self.roles.includes('admin'));
     });
     document.getElementById('usr-f-status').value = u ? u.status : 'pending';
     document.getElementById('usr-f-password-reset-status').textContent = '';
