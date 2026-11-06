@@ -2125,10 +2125,11 @@
     };
   }
   function unpaidForTrainerClients(trainerId){
-    if (!window.BNB_BILLING || !window.BNB_BILLING.getOutstandingForUsers) return [];
     const clientIds = activeClientIdsForTrainer(trainerId);
-    if (!clientIds.length) return [];
-    return window.BNB_BILLING.getOutstandingForUsers(clientIds);
+    if (!clientIds.length || !window.BNB_USERS) return [];
+    // Coaches can't read invoices (sql/101), so this uses each client's balance.
+    return clientIds.map(id => window.BNB_USERS.getById(id)).filter(u => u && Number(u.balance) > 0)
+      .map(u => ({ id: u.id, userId: u.id, amount: Number(u.balance), status: 'unpaid', dueDate: null }));
   }
   function statCardHtml(num, label){
     return '<div class="stat-card"><div class="num">'+num+'</div><div class="lbl">'+label+'</div></div>';
@@ -2636,7 +2637,7 @@
       }
       if (unpaid.length){
         const total = unpaid.reduce((sum,i)=> sum + i.amount, 0);
-        html += '<div class="admin-notice">' + unpaid.length + ' unpaid invoice' + (unpaid.length===1?'':'s') + ' among your clients, totaling ' + BNB_CURRENCY.html(total) + ': ' +
+        html += '<div class="admin-notice">' + unpaid.length + ' client' + (unpaid.length===1?'':'s') + ' with a balance, totaling ' + BNB_CURRENCY.html(total) + ': ' +
           unpaid.map(i=> esc(memberName(i.userId)) + ' (' + BNB_CURRENCY.html(i.amount) + ', ' + esc(i.status) + ')').join(', ') + ' ' + BNB_CURRENCY.switchHtml('cur-switch-inline') + '</div>';
       }
     }
