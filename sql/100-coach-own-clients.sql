@@ -1,5 +1,5 @@
 -- ============================================================
--- COACHES SEE THEIR OWN CLIENTS, STAGE 1: THE MEMBER LIST
+-- COACHES SEE THEIR OWN CLIENTS, STAGE 1: THE MEMBER LIST (ran on live 2026-11-06)
 -- Run after 99-roles-and-orders-lockdown.sql. Safe to re-run.
 --
 -- Front office (admin or front desk 'staff' role) still sees everyone.
