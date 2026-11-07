@@ -94,6 +94,8 @@ document.querySelectorAll('table').forEach(t => {
     }
     links.forEach(l => l.classList.toggle('active', l.dataset.site === key));
     pages.forEach(p => p.classList.toggle('active', p.id === 'site-' + key));
+    // The backdrop's glow and plate follow the section (css: html[data-scene]).
+    document.documentElement.dataset.scene = key;
     // Shop always opens on its category cards (no-op until its module loads,
     // and a fresh load starts on the cards anyway).
     if (key === 'shop' && typeof window.bnbShopShowCards === 'function') window.bnbShopShowCards();
@@ -101,6 +103,7 @@ document.querySelectorAll('table').forEach(t => {
     window.scrollTo({top:0, behavior:'smooth'});
   }
   window.switchSite = switchSite;
+  { const first = document.querySelector('.site-page.active'); document.documentElement.dataset.scene = first ? first.id.replace('site-', '') : 'home'; }
   links.forEach(l => l.addEventListener('click', () => switchSite(l.dataset.site)));
   document.querySelectorAll('[data-site-jump]').forEach(b=>{
     b.addEventListener('click', ()=>{

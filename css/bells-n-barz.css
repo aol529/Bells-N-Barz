@@ -3825,3 +3825,41 @@ ol.ag-cols{padding-left:20px;}
 .wp-pics-edit button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer;}
 .wp-form .wp-addpic{display:inline-block;width:auto;margin:4px 0 8px;cursor:pointer;color:inherit;}
 .wp-form .wp-addpic input{display:none;}
+
+/* ---------------- BACKDROP (same look as the app) ----------------
+   A faint barbell-knurl texture across the top that fades out before the
+   reading area, a glow tinted for the section you're in, and on Home and
+   sign-in a large plate half off the top-right corner. All drawn in CSS,
+   behind the page; the kiosk keeps its plain background. */
+html{--scene-rgb:var(--accent-rgb);}
+html[data-scene="gym"]{--scene-rgb:224,112,58;}
+html[data-scene="blog"],html[data-scene="library"]{--scene-rgb:91,155,213;}
+html[data-scene="gallery"],html[data-scene="shop"]{--scene-rgb:var(--accent-3-rgb);}
+html[data-theme="light"][data-scene="gym"]{--scene-rgb:210,87,42;}
+html[data-theme="light"][data-scene="blog"],html[data-theme="light"][data-scene="library"]{--scene-rgb:46,127,184;}
+body:not(.kiosk)::before,body:not(.kiosk)::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;}
+body:not(.kiosk)::before{
+  background:
+    repeating-linear-gradient(45deg, color-mix(in srgb, var(--text) 4.5%, transparent) 0 1px, transparent 1px 13px),
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--text) 4.5%, transparent) 0 1px, transparent 1px 13px);
+  -webkit-mask-image:linear-gradient(to bottom, #000 0, rgba(0,0,0,.5) 23vh, transparent 42vh);
+          mask-image:linear-gradient(to bottom, #000 0, rgba(0,0,0,.5) 23vh, transparent 42vh);
+}
+body:not(.kiosk)::after{
+  background:
+    radial-gradient(circle at 100% 0, rgba(var(--scene-rgb),0.13), transparent min(110vw, 900px)),
+    radial-gradient(circle at 0 100%, rgba(var(--scene-rgb),0.08), transparent min(100vw, 800px));
+  transition:background .6s ease;
+}
+/* The plate: rim, two face rings and the collar hole, as a mask over the accent colour. */
+html[data-scene="home"] body:not(.kiosk) > .site-backdrop-plate,
+html[data-scene="users"] body:not(.kiosk) > .site-backdrop-plate{display:block;}
+.site-backdrop-plate{display:none;position:fixed;z-index:-1;pointer-events:none;
+  width:min(124vw, 1000px);aspect-ratio:1;top:calc(min(124vw, 1000px) / -2 + 6vh);right:calc(min(124vw, 1000px) / -2 + 4vw);
+  background:rgba(var(--accent-rgb),0.07);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' fill='none' stroke='%23000'%3E%3Ccircle cx='100' cy='100' r='92' stroke-width='14'/%3E%3Ccircle cx='100' cy='100' r='70' stroke-width='.9'/%3E%3Ccircle cx='100' cy='100' r='56' stroke-width='.9'/%3E%3Ccircle cx='100' cy='100' r='20' stroke-width='7'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' fill='none' stroke='%23000'%3E%3Ccircle cx='100' cy='100' r='92' stroke-width='14'/%3E%3Ccircle cx='100' cy='100' r='70' stroke-width='.9'/%3E%3Ccircle cx='100' cy='100' r='56' stroke-width='.9'/%3E%3Ccircle cx='100' cy='100' r='20' stroke-width='7'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+@media print{body::before,body::after,.site-backdrop-plate{display:none !important;}}
+/* Home's top banner lets the backdrop show through, like the app's see-through cards. */
+body:not(.kiosk) .home-moon-banner{background:color-mix(in srgb, var(--surface) 55%, transparent);}
