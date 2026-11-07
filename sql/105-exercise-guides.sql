@@ -1,5 +1,5 @@
 -- ============================================================
--- EXERCISE GUIDES (drafted 2026-11-07, not yet run)
+-- EXERCISE GUIDES (ran on live 2026-11-07: 51 guides, RLS on, no anon access)
 -- Run after gym.sql. Safe to re-run: the starter guides only fill
 -- in names that are missing, so a coach's edits are never overwritten.
 --
