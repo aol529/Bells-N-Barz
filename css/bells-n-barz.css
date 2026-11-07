@@ -3871,14 +3871,12 @@ body:not(.kiosk) .home-moon-banner{background:color-mix(in srgb, var(--surface) 
   background-size:cover;background-position:center 60%;opacity:.55;
   -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);
           mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);}
-html[data-theme="light"] .site-backdrop-photo{opacity:.22;}
-html.has-bd-home[data-scene="home"] body:not(.kiosk) > .site-backdrop-photo{display:block;background-image:var(--bd-home-wide);}
-html.has-bd-signin[data-scene="users"] body:not(.kiosk) > .site-backdrop-photo{display:block;background-image:var(--bd-signin-wide);}
-@media (max-width:700px){
-  html.has-bd-home[data-scene="home"] body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-home-tall);}
-  html.has-bd-signin[data-scene="users"] body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-signin-tall);}
-}
-html.has-bd-home[data-scene="home"] .site-backdrop-plate,html.has-bd-signin[data-scene="users"] .site-backdrop-plate{display:none !important;}
+/* js/bells-n-barz-backdrops.js works out the picture for the page (the member's wallpaper settings,
+   the gym default, or Home's picture) and how strong it is (--bd-op, fainter on busy pages). */
+html.has-bd body:not(.kiosk) > .site-backdrop-photo{display:block;background-image:var(--bd-wide);opacity:var(--bd-op,.55);}
+@media (max-width:700px){ html.has-bd body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-tall);} }
+html[data-theme="light"] .site-backdrop-photo{opacity:calc(var(--bd-op,.55) * .4) !important;}
+html.has-bd .site-backdrop-plate{display:none !important;}
 @media print{.site-backdrop-photo{display:none !important;}}
 
 /* Admin > Backgrounds */
@@ -3905,29 +3903,29 @@ html.has-bd-home[data-scene="home"] .site-backdrop-plate,html.has-bd-signin[data
 .backdrops-admin .bd-actions .btn2{padding:5px 10px;font-size:12px;}
 
 /* Member > Me > Wallpaper (js/bells-n-barz-backdrops.js) */
-#tab-wallpaper .wall-days{font-size:14px;color:var(--muted);max-width:70ch;}
-#tab-wallpaper .wall-days b{color:var(--accent);}
-#tab-wallpaper .wall-h{margin:22px 0 4px;font:600 18px 'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
-#tab-wallpaper .wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:12px;align-items:start;}
-#tab-wallpaper .wall-tile{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;color:var(--text);}
-#tab-wallpaper .wall-pick{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;margin:0;background:none;border:0;color:inherit;font:inherit;cursor:pointer;}
-#tab-wallpaper .wall-pick img,#tab-wallpaper .wall-none{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
-#tab-wallpaper .wall-tile.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
-#tab-wallpaper .wall-tile.locked .wall-pick{cursor:default;}
-#tab-wallpaper .wall-tile.locked img{filter:grayscale(1) brightness(.45);}
-#tab-wallpaper .wall-lock{position:absolute;top:8px;right:8px;font-size:18px;}
-#tab-wallpaper .wall-name{padding:8px 10px 0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-#tab-wallpaper .wall-hint{padding:2px 10px 9px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
-#tab-wallpaper .wall-tile.on .wall-hint{color:var(--accent);}
-#tab-wallpaper .wall-editbtn{margin:0 10px 10px;align-self:flex-start;background:none;border:1px solid var(--line);border-radius:4px;color:var(--text);font:500 12px inherit;padding:3px 10px;cursor:pointer;}
-#tab-wallpaper .wall-edit{display:flex;flex-direction:column;gap:6px;padding:0 8px 10px;}
-#tab-wallpaper .wall-edit input[type=text]{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 7px;font:inherit;min-width:0;}
-#tab-wallpaper .wall-edit-row{display:flex;flex-wrap:wrap;gap:4px;}
-#tab-wallpaper .wall-edit .btn2{padding:4px 8px;font-size:12px;cursor:pointer;}
-#tab-wallpaper .wall-add{cursor:pointer;border-style:dashed;}
-#tab-wallpaper .wall-add .wall-none span{font-size:34px;color:var(--accent);}
-#tab-wallpaper .wall-add.busy{opacity:.6;pointer-events:none;}
-#tab-wallpaper .wall-add .wall-name{padding-bottom:10px;}
+.wall-days{font-size:14px;color:var(--muted);max-width:70ch;}
+.wall-days b{color:var(--accent);}
+.wall-h{margin:22px 0 4px;font:600 18px 'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
+.wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:12px;align-items:start;}
+.wall-tile{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;color:var(--text);}
+.wall-pick{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;margin:0;background:none;border:0;color:inherit;font:inherit;cursor:pointer;}
+.wall-pick img,.wall-none{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
+.wall-tile.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
+.wall-tile.locked .wall-pick{cursor:default;}
+.wall-tile.locked img{filter:grayscale(1) brightness(.45);}
+.wall-lock{position:absolute;top:8px;right:8px;font-size:18px;}
+.wall-name{padding:8px 10px 0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.wall-hint{padding:2px 10px 9px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+.wall-tile.on .wall-hint{color:var(--accent);}
+.wall-editbtn{margin:0 10px 10px;align-self:flex-start;background:none;border:1px solid var(--line);border-radius:4px;color:var(--text);font:500 12px inherit;padding:3px 10px;cursor:pointer;}
+.wall-edit{display:flex;flex-direction:column;gap:6px;padding:0 8px 10px;}
+.wall-edit input[type=text]{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 7px;font:inherit;min-width:0;}
+.wall-edit-row{display:flex;flex-wrap:wrap;gap:4px;}
+.wall-edit .btn2{padding:4px 8px;font-size:12px;cursor:pointer;}
+.wall-add{cursor:pointer;border-style:dashed;}
+.wall-add .wall-none span{font-size:34px;color:var(--accent);}
+.wall-add.busy{opacity:.6;pointer-events:none;}
+.wall-add .wall-name{padding-bottom:10px;}
 #tab-wallpaper input[type=file]{display:none;}
 
 /* Admin > Backgrounds: add form, tags, move menu, preview */
@@ -3955,3 +3953,18 @@ html.has-bd-home[data-scene="home"] .site-backdrop-plate,html.has-bd-signin[data
 .bd-preview .bdp-hi{height:7%;width:45%;background:var(--text);opacity:.85;}
 .bd-preview .bdp-card{height:18%;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--line);}
 .bd-preview .bdp-card.short{height:9%;}
+
+/* The wallpaper settings (member page and the admin's gym default) */
+.wall-ed{max-width:900px;}
+.wall-ed h4{margin:16px 0 6px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.wall-seg{display:flex;flex-wrap:wrap;gap:6px;}
+.wall-seg button{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer;}
+.wall-seg button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent, #111);}
+.wall-pages button{display:flex;flex-direction:column;align-items:flex-start;border-radius:8px;padding:6px 12px;}
+.wall-pages button small{font-size:11px;opacity:.75;}
+.wall-follow{font-size:14px;margin:10px 0 0;}
+.linkish{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer;}
+.wall-tile.ticked{border-color:var(--accent);}
+.wall-check{position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#111;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+.wall-own img{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
+.wall-own .wall-name{padding-bottom:6px;}
