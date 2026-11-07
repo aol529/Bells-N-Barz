@@ -511,7 +511,8 @@ let previousLocation = null;
     mealplan: document.getElementById('tab-mealplan'),
     screening: document.getElementById('tab-screening'),
     recipes: document.getElementById('tab-recipes'),
-    photos: document.getElementById('tab-photos')
+    photos: document.getElementById('tab-photos'),
+    wallpaper: document.getElementById('tab-wallpaper')
   };
   const ME_SECTION_TO_MODULE = { weight: 'bmi', bp: 'vitals', steps: 'vitals', period: 'period', track: 'track', nutrition: 'nutrition', fasting: 'fasting', mealplan: 'mealplan', screening: 'screening', photos: 'engage' };
   btns.forEach(btn=>{
@@ -530,6 +531,7 @@ let previousLocation = null;
           if (t){ t.textContent = 'Failed to load this section — check your connection and try again.'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000); }
         });
       }
+      if (key === 'wallpaper' && typeof window.bnbWallpaperOnShown === 'function') window.bnbWallpaperOnShown();
       btns.forEach(b=> b.classList.toggle('active', b===btn));
       Object.keys(sections).forEach(k=> sections[k].classList.toggle('active', k===key));
       // Leave Me's card screen for this section (Back to Me returns).
