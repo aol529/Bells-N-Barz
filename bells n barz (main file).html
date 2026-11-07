@@ -223,6 +223,7 @@
 </script>
 </head>
 <body>
+<div aria-hidden="true" class="site-backdrop-photo"></div>
 <div aria-hidden="true" class="site-backdrop-plate"></div>
 
 <!-- ============================================================
@@ -3211,6 +3212,7 @@
     <button class="plate" data-tab="reports"><span class="plate-title">Reports</span><span class="plate-desc">Revenue, attendance and retention</span></button>
     <button class="plate" data-tab="content"><span class="plate-title">Content</span><span class="plate-desc">Blog, library, gallery and shop</span></button>
     <button class="plate" data-tab="switchboard"><span class="plate-title">Switchboard</span><span class="plate-desc">Turn app features on or off</span></button>
+    <button class="plate" data-tab="backdrops"><span class="plate-title">Backgrounds</span><span class="plate-desc">Pictures behind Home, sign-in and the wallpapers</span></button>
     <button class="plate" data-tab="parking"><span class="plate-title">Parking</span><span class="plate-desc">Cars in and out, fees and member exemptions</span></button>
   </div>
 
@@ -3366,6 +3368,11 @@
 <section class="admin-section" id="tab-switchboard">
   <div class="day-head"><h2>Switchboard — Feature Switches</h2><span class="day-sub">Turn a feature off and the app behaves as if it isn't there, for everyone, until it's turned back on</span></div>
   <div id="switchboard-body" class="switchboard"></div>
+</section>
+
+<section class="admin-section" id="tab-backdrops">
+  <div class="day-head"><h2>Backgrounds — App &amp; Website Pictures</h2><span class="day-sub">Replace the placeholder art with photos of the gym, in the app and on the website at once</span></div>
+  <div id="backdrops-body" class="backdrops-admin"></div>
 </section>
 
 <section class="admin-section" id="tab-parking">
@@ -4260,6 +4267,7 @@
 </section>
 <!-- ============= end #site-gym ============= -->
 <script src="js/bells-n-barz-features.js?v=__BUILD__"></script>
+<script src="js/bells-n-barz-backdrops.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-currency.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-users.js?v=__BUILD__"></script>
 <script src="js/bells-n-barz-shell.js?v=__BUILD__"></script>

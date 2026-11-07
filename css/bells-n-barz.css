@@ -3863,3 +3863,43 @@ html[data-scene="users"] body:not(.kiosk) > .site-backdrop-plate{display:block;}
 @media print{body::before,body::after,.site-backdrop-plate{display:none !important;}}
 /* Home's top banner lets the backdrop show through, like the app's see-through cards. */
 body:not(.kiosk) .home-moon-banner{background:color-mix(in srgb, var(--surface) 55%, transparent);}
+
+/* Home's and sign-in's picture (Admin > Backgrounds), across the top of the page, fading into the
+   background colour so text stays readable. Wide on a computer, tall on a phone. The drawn plate
+   is the fallback when there's no picture. */
+.site-backdrop-photo{display:none;position:fixed;z-index:-1;pointer-events:none;left:0;right:0;top:0;height:min(92vh, 900px);
+  background-size:cover;background-position:center 60%;opacity:.55;
+  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);
+          mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);}
+html[data-theme="light"] .site-backdrop-photo{opacity:.22;}
+html.has-bd-home[data-scene="home"] body:not(.kiosk) > .site-backdrop-photo{display:block;background-image:var(--bd-home-wide);}
+html.has-bd-signin[data-scene="users"] body:not(.kiosk) > .site-backdrop-photo{display:block;background-image:var(--bd-signin-wide);}
+@media (max-width:700px){
+  html.has-bd-home[data-scene="home"] body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-home-tall);}
+  html.has-bd-signin[data-scene="users"] body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-signin-tall);}
+}
+html.has-bd-home[data-scene="home"] .site-backdrop-plate,html.has-bd-signin[data-scene="users"] .site-backdrop-plate{display:none !important;}
+@media print{.site-backdrop-photo{display:none !important;}}
+
+/* Admin > Backgrounds */
+.backdrops-admin .bd-help{font-size:13px;color:var(--muted);max-width:75ch;}
+.backdrops-admin .bd-slot{margin:22px 0;}
+.backdrops-admin .bd-slot-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;margin-bottom:10px;}
+.backdrops-admin .bd-slot-head h3{margin:0;font:600 18px 'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
+.backdrops-admin .bd-slot-head span{flex:1 1 240px;font-size:13px;color:var(--muted);}
+.backdrops-admin label.btn2{cursor:pointer;}
+.backdrops-admin label.btn2.disabled{opacity:.5;pointer-events:none;}
+.backdrops-admin input[type=file]{display:none;}
+.backdrops-admin .bd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.backdrops-admin .bd-card{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface);}
+.backdrops-admin .bd-card.off{opacity:.55;}
+.backdrops-admin .bd-pics{display:flex;gap:4px;background:var(--surface-2);height:150px;}
+.backdrops-admin .bd-pics img{height:100%;width:auto;aspect-ratio:9/16;object-fit:cover;}
+.backdrops-admin .bd-pics img.wide{flex:1;min-width:0;aspect-ratio:auto;}
+.backdrops-admin .bd-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.backdrops-admin .bd-body input[type=text],.backdrops-admin .bd-body input[type=number]{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:6px 8px;font:inherit;}
+.backdrops-admin .bd-body input[type=number]{width:80px;}
+.backdrops-admin .bd-tag{align-self:flex-start;font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:1px 8px;}
+.backdrops-admin .bd-unlock{font-size:13px;color:var(--muted);}
+.backdrops-admin .bd-actions{display:flex;flex-wrap:wrap;gap:6px;}
+.backdrops-admin .bd-actions .btn2{padding:5px 10px;font-size:12px;}

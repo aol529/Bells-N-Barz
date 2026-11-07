@@ -176,7 +176,7 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
 const memberSectionTabs = ['session','me','leaderboard','accountability','messages','schedule'];
-const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard', 'parking'];
+const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard', 'backdrops', 'parking'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
@@ -400,6 +400,8 @@ function switchTab(rawTab, scrollTop){
   // Switchboard: a switch may have been flipped on another device.
   if (tab === 'switchboard' && typeof window.bnbSwitchboardOnTabShown === 'function') window.bnbSwitchboardOnTabShown();
   // Parking: cars come and go all day.
+  // Backgrounds: an admin may have swapped a picture on another device.
+  if (tab === 'backdrops' && typeof window.bnbBackdropsOnTabShown === 'function') window.bnbBackdropsOnTabShown();
   if (tab === 'parking' && typeof window.bnbParkingOnTabShown === 'function') window.bnbParkingOnTabShown();
   // Coach Dashboard's "unpaid invoices" line reads from Billing, which lives
   // in a separate module that doesn't call back here when a payment is
