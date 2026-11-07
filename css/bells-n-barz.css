@@ -3815,3 +3815,13 @@ ol.ag-cols{padding-left:20px;}
 .wp-form input,.wp-form textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;background:var(--surface-2);
   border:1px solid var(--line-soft);border-radius:6px;color:var(--text);font:14px 'IBM Plex Sans',sans-serif;}
 .wp-err{color:#e0736a;font-size:13px;}
+.wp-howto-pic{display:inline-flex;align-items:center;gap:6px;padding-left:3px;}
+.wp-howto-pic img{width:26px;height:26px;border-radius:50%;object-fit:cover;}
+.wp-pics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0 0 6px;}
+.wp-pics img{width:100%;aspect-ratio:3/2;object-fit:contain;border-radius:6px;background:var(--surface-2);}
+.wp-pics-edit{grid-template-columns:repeat(auto-fill,110px);}
+.wp-pics-edit img{aspect-ratio:1;object-fit:cover;}
+.wp-pics-edit span{position:relative;display:block;}
+.wp-pics-edit button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font-size:16px;line-height:1;cursor:pointer;}
+.wp-form .wp-addpic{display:inline-block;width:auto;margin:4px 0 8px;cursor:pointer;color:inherit;}
+.wp-form .wp-addpic input{display:none;}

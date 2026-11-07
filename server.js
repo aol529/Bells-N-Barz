@@ -6,7 +6,7 @@ const ROOT = __dirname;
 const INDEX_FILE = 'bells n barz (main file).html';
 const PORT = process.env.PORT || 3000;
 const PUBLIC_FILES = [INDEX_FILE, 'kiosk.html', 'manifest.json', 'icon.svg', 'favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'sw.js'];
-const PUBLIC_DIRS = ['css', 'js', 'docs'];
+const PUBLIC_DIRS = ['css', 'js', 'docs', 'img'];
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',

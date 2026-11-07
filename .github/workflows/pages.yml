@@ -43,6 +43,8 @@ jobs:
           # Pages serves this site under /Bells-N-Barz/, not the domain root.
           cp manifest.json icon.svg icon-192.png icon-512.png apple-touch-icon.png favicon.svg favicon.ico sw.js _site/
           cp -r docs _site/docs
+          # Exercise photos for the how-to guides (sql/106).
+          cp -r img _site/img
           # Cache-bust css/ and js/ links with this commit's id (the page
           # uses ?v=__BUILD__ as a placeholder).
           sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" _site/index.html _site/kiosk.html

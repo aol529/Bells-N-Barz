@@ -95,7 +95,7 @@
   // Loads once per page, then redraws the logger so the buttons appear.
   function loadGuides(redraw){
     if (loading || typeof bnbClient === 'undefined') return loading;
-    loading = bnbClient.from('exercise_guides').select('id,name,muscles,cues,mistakes,video_url').order('name').then(({ data, error }) => {
+    loading = bnbClient.from('exercise_guides').select('id,name,muscles,cues,mistakes,video_url,images').order('name').then(({ data, error }) => {
       if (error){ console.warn('Exercise guides not loaded:', error.message); return; }
       guides = index(data || []);
       try { localStorage.setItem(GUIDE_CACHE, JSON.stringify(data || [])); } catch(e){}
@@ -119,6 +119,9 @@
     b.type = 'button';
     b.className = 'wp-howto';
     b.textContent = g ? 'How to' : (canEdit() ? '+ Guide' : 'How to');
+    // The guide's first photo as a thumbnail, so the move is recognisable at a glance.
+    const pic = g && (g.images || [])[0];
+    if (pic){ const i = document.createElement('img'); i.src = pic; i.alt = ''; i.loading = 'lazy'; b.classList.add('wp-howto-pic'); b.prepend(i); }
     b.onclick = () => openGuide(name, redraw);
     exHead.appendChild(b);
   }
@@ -132,7 +135,9 @@
         '<p><a class="btn2" target="_blank" rel="noopener" href="' + esc(ytSearch(name)) + '">Search YouTube</a></p>';
     } else {
       const cues = String(g.cues || '').split('\n').map(c => c.trim()).filter(Boolean);
-      html = (g.muscles ? '<div class="wp-lbl">Works</div><p><b>' + esc(g.muscles) + '</b></p>' : '') +
+      const pics = (g.images || []).filter(Boolean);
+      html = (pics.length ? '<div class="wp-pics">' + pics.map(u => '<img loading="lazy" alt="" src="' + esc(u) + '">').join('') + '</div>' : '') +
+        (g.muscles ? '<div class="wp-lbl">Works</div><p><b>' + esc(g.muscles) + '</b></p>' : '') +
         (cues.length ? '<div class="wp-lbl">How to</div><ol class="wp-cues">' + cues.map(c => '<li>' + esc(c) + '</li>').join('') + '</ol>' : '') +
         (g.mistakes ? '<div class="wp-lbl">Watch out for</div><p class="wp-muted">' + esc(g.mistakes) + '</p>' : '') +
         '<p class="wp-actions">' + (g.video_url ? '<a class="btn2 primary" target="_blank" rel="noopener" href="' + esc(g.video_url) + '">Watch the video</a> ' :
@@ -144,6 +149,24 @@
     if (edit) edit.onclick = () => { m.close(); editGuide(name, g, redraw); };
   }
 
+  const MAX_PICS = 4, PIC_BUCKET = 'exercise-images';
+  // A phone photo, upright and at most 1600 px, as JPEG.
+  function shrinkPhoto(file){
+    return new Promise((resolve, reject) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that picture.')), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file isn\'t a picture.')); };
+      img.src = url;
+    });
+  }
+
   function editGuide(name, g, redraw){
     const clean = String(name).split(' — ')[0].split('(')[0].trim();
     const m = UI.modal(g ? 'Edit guide' : 'New guide',
@@ -153,6 +176,8 @@
       '<label>Cues, one per line<textarea data-f="cues" rows="5" maxlength="2000"></textarea></label>' +
       '<label>Common mistake<textarea data-f="mistakes" rows="2" maxlength="1000"></textarea></label>' +
       '<label>Video link (https://…)<input type="url" data-f="video_url"></label>' +
+      '<div class="wp-lbl">Photos (up to ' + MAX_PICS + ')</div><div class="wp-pics wp-pics-edit" data-pics></div>' +
+      '<label class="btn2 wp-addpic">Add a photo<input type="file" accept="image/*" data-addpic hidden></label>' +
       '<p class="wp-err" hidden></p>' +
       '<p class="wp-actions"><button type="button" class="btn2 primary" data-wp-save>Save guide</button> ' +
       (g ? '<button type="button" class="btn2 danger" data-wp-del>Delete</button>' : '') + '</p></div>');
@@ -161,10 +186,34 @@
     ['muscles', 'cues', 'mistakes', 'video_url'].forEach(k => f(k).value = (g && g[k]) || '');
     const err = m.body.querySelector('.wp-err');
     function fail(msg){ err.textContent = msg; err.hidden = false; }
+    // Photos: the guide's own, plus any the coach adds here (uploaded straight away, saved with the guide).
+    let pics = ((g && g.images) || []).slice();
+    const picsEl = m.body.querySelector('[data-pics]'), addEl = m.body.querySelector('[data-addpic]');
+    function drawPics(){
+      picsEl.innerHTML = pics.map((u, i) => '<span><img alt="" src="' + esc(u) + '"><button type="button" data-rm="' + i + '" aria-label="Remove photo">×</button></span>').join('') ||
+        '<p class="wp-muted">No photos yet.</p>';
+      picsEl.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { pics.splice(+b.dataset.rm, 1); drawPics(); });
+      addEl.parentElement.style.display = pics.length >= MAX_PICS ? 'none' : '';
+    }
+    drawPics();
+    addEl.onchange = async () => {
+      const file = addEl.files && addEl.files[0]; addEl.value = '';
+      if (!file) return;
+      err.hidden = true; addEl.parentElement.firstChild.textContent = 'Uploading…';
+      try {
+        const blob = await shrinkPhoto(file);
+        const path = 'guide/' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+        const { error } = await bnbClient.storage.from(PIC_BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
+        if (error) throw error;
+        pics.push(bnbClient.storage.from(PIC_BUCKET).getPublicUrl(path).data.publicUrl);
+        drawPics();
+      } catch(e){ fail('Couldn\'t upload: ' + (e.message || e)); }
+      addEl.parentElement.firstChild.textContent = 'Add a photo';
+    };
     async function done(){ loading = null; await loadGuides(); if (redraw) redraw(); m.close(); }
     m.body.querySelector('[data-wp-save]').onclick = async () => {
       const row = { name: f('name').value.trim(), muscles: f('muscles').value.trim(), cues: f('cues').value.trim(),
-        mistakes: f('mistakes').value.trim(), video_url: f('video_url').value.trim() || null };
+        mistakes: f('mistakes').value.trim(), video_url: f('video_url').value.trim() || null, images: pics };
       if (!row.name) return fail('Give the exercise a name.');
       if (row.video_url && !/^https:\/\//i.test(row.video_url)) return fail('The video link must start with https://');
       const q = g ? bnbClient.from('exercise_guides').update(row).eq('id', g.id) : bnbClient.from('exercise_guides').insert([row]);
