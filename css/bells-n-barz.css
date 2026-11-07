@@ -3907,13 +3907,50 @@ html.has-bd-home[data-scene="home"] .site-backdrop-plate,html.has-bd-signin[data
 /* Member > Me > Wallpaper (js/bells-n-barz-backdrops.js) */
 #tab-wallpaper .wall-days{font-size:14px;color:var(--muted);max-width:70ch;}
 #tab-wallpaper .wall-days b{color:var(--accent);}
-#tab-wallpaper .wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:12px;}
-#tab-wallpaper .wall-tile{position:relative;display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;color:var(--text);cursor:pointer;font:inherit;}
-#tab-wallpaper .wall-tile img,#tab-wallpaper .wall-none{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
+#tab-wallpaper .wall-h{margin:22px 0 4px;font:600 18px 'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.03em;}
+#tab-wallpaper .wall-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-top:12px;align-items:start;}
+#tab-wallpaper .wall-tile{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;color:var(--text);}
+#tab-wallpaper .wall-pick{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:0;margin:0;background:none;border:0;color:inherit;font:inherit;cursor:pointer;}
+#tab-wallpaper .wall-pick img,#tab-wallpaper .wall-none{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
 #tab-wallpaper .wall-tile.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent);}
-#tab-wallpaper .wall-tile.locked{cursor:default;}
+#tab-wallpaper .wall-tile.locked .wall-pick{cursor:default;}
 #tab-wallpaper .wall-tile.locked img{filter:grayscale(1) brightness(.45);}
 #tab-wallpaper .wall-lock{position:absolute;top:8px;right:8px;font-size:18px;}
-#tab-wallpaper .wall-name{padding:8px 10px 0;font-weight:600;font-size:14px;}
+#tab-wallpaper .wall-name{padding:8px 10px 0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #tab-wallpaper .wall-hint{padding:2px 10px 9px;font:500 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
 #tab-wallpaper .wall-tile.on .wall-hint{color:var(--accent);}
+#tab-wallpaper .wall-editbtn{margin:0 10px 10px;align-self:flex-start;background:none;border:1px solid var(--line);border-radius:4px;color:var(--text);font:500 12px inherit;padding:3px 10px;cursor:pointer;}
+#tab-wallpaper .wall-edit{display:flex;flex-direction:column;gap:6px;padding:0 8px 10px;}
+#tab-wallpaper .wall-edit input[type=text]{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 7px;font:inherit;min-width:0;}
+#tab-wallpaper .wall-edit-row{display:flex;flex-wrap:wrap;gap:4px;}
+#tab-wallpaper .wall-edit .btn2{padding:4px 8px;font-size:12px;cursor:pointer;}
+#tab-wallpaper .wall-add{cursor:pointer;border-style:dashed;}
+#tab-wallpaper .wall-add .wall-none span{font-size:34px;color:var(--accent);}
+#tab-wallpaper .wall-add.busy{opacity:.6;pointer-events:none;}
+#tab-wallpaper .wall-add .wall-name{padding-bottom:10px;}
+#tab-wallpaper input[type=file]{display:none;}
+
+/* Admin > Backgrounds: add form, tags, move menu, preview */
+.backdrops-admin .bd-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.backdrops-admin .bd-tags:empty{display:none;}
+.backdrops-admin .bd-actions select{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:4px 6px;font-size:12px;}
+.backdrops-admin .btn2[disabled]{opacity:.4;cursor:default;}
+.backdrops-admin .bd-add{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px;align-items:end;padding:14px;margin-bottom:12px;border:1px dashed var(--accent);border-radius:6px;background:var(--surface);}
+.backdrops-admin .bd-add label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);}
+.backdrops-admin .bd-add input[type=text],.backdrops-admin .bd-add input[type=number]{background:var(--surface-2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:6px 8px;font:inherit;}
+.backdrops-admin .bd-add input[type=file]{display:block;font-size:12px;color:var(--text);}
+.bd-preview{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;}
+.bd-preview .bdp-box{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;max-width:980px;width:100%;max-height:92vh;overflow:auto;}
+.bd-preview .bdp-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
+.bd-preview .bdp-frames{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;}
+.bd-preview figure{margin:0;}
+.bd-preview figcaption{font-size:12px;color:var(--muted);margin-top:6px;}
+.bd-preview .bdp-frame{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:6%;padding:8% 7%;box-sizing:border-box;}
+.bd-preview .bdp-frame::before{content:"";position:absolute;inset:0 0 18% 0;background:var(--bdp) center 55%/cover no-repeat;opacity:.55;-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.6),#000 35%,rgba(0,0,0,.55) 70%,transparent);mask-image:linear-gradient(to bottom,rgba(0,0,0,.6),#000 35%,rgba(0,0,0,.55) 70%,transparent);}
+:root[data-theme="light"] .bd-preview .bdp-frame::before{opacity:.24;}
+.bd-preview .bdp-frame.tall{width:200px;aspect-ratio:9/16;}
+.bd-preview .bdp-frame.wide{width:min(560px,100%);aspect-ratio:16/9;gap:5%;padding:4% 8%;}
+.bd-preview .bdp-frame > div{position:relative;border-radius:6px;}
+.bd-preview .bdp-hi{height:7%;width:45%;background:var(--text);opacity:.85;}
+.bd-preview .bdp-card{height:18%;background:color-mix(in srgb,var(--surface) 55%,transparent);border:1px solid var(--line);}
+.bd-preview .bdp-card.short{height:9%;}
