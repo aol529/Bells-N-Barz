@@ -250,7 +250,7 @@
       [String(s.exercises), 'Exercises'], [String(s.sets), 'Sets'], [kg(s.kg) + ' kg', 'Moved']].filter(Boolean);
   }
 
-  function finish(s, title, guest){
+  function finish(s, title, note){
     if (window.BNB_REST) window.BNB_REST.stop();
     sleep();
     if (!s.sets){
@@ -264,7 +264,7 @@
       '<div class="wp-stats">' + stats(s).map(([v, l]) => '<div><b>' + esc(v) + '</b><span>' + esc(l) + '</span></div>').join('') + '</div>' +
       (s.records.length ? '<div class="wp-lbl">Records</div><p>' + s.records.map(line).join('<br>') + '</p>' : '') +
       (others.length ? '<div class="wp-lbl">Top sets</div><p class="wp-muted">' + others.map(line).join('<br>') + '</p>' : '') +
-      '<p class="wp-muted">' + (guest ? 'Save a copy with the buttons below, or sign in to keep a history.' : 'Saved to your history. Eat, sleep, come back stronger.') + '</p>' +
+      '<p class="wp-muted">' + esc(note || 'Saved to your history. Eat, sleep, come back stronger.') + '</p>' +
       '<p class="wp-actions"><button type="button" class="btn2 primary" data-wp-share>Share</button></p>');
     m.body.querySelector('[data-wp-share]').onclick = () => share(s, title);
   }

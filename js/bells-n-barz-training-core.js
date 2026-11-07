@@ -2556,6 +2556,13 @@
           metaDiv.innerHTML = ml;
           exDiv.appendChild(metaDiv);
         }
+        // The trainee's last time, what to try, and the how-to (js/bells-n-barz-workout-plus.js).
+        const PLUS = window.BNB_PLUS, exName = programExName(ex, sessionStore[swapKey]);
+        if (PLUS) PLUS.howToButton(exHead, exName, renderSessionDay);
+        const sug = PLUS ? PLUS.extras(exDiv, exName, ex.reps, csPriorHistory(), liftKey, sg => {
+          for (let s = 0; s < nSets; s++) csFillFromSuggestion(sg, csKey(csSlot,csDay,bIdx,eIdx,s,'wt'), csKey(csSlot,csDay,bIdx,eIdx,s,'reps'));
+          saveSession(); renderSessionDay();
+        }) : null;
         const setsDiv = document.createElement('div');
         setsDiv.className = 'ls-sets';
         for(let s=0; s<nSets; s++){
@@ -2567,13 +2574,24 @@
           setDiv.innerHTML = `
             <input type="checkbox" ${sessionStore[doneKey] ? 'checked' : ''}>
             <span class="ls-set-label">S${s+1}</span>
-            <input type="text" inputmode="decimal" placeholder="wt" value="${esc(sessionStore[wtKey]||'')}">
+            <input type="text" inputmode="decimal" placeholder="${sug ? esc(window.BNB_LIFT.fmtKg(sug.wt)) : 'wt'}" value="${esc(sessionStore[wtKey]||'')}">
             <span class="ls-slash">/</span>
-            <input type="text" inputmode="numeric" placeholder="reps" value="${esc(sessionStore[repsKey]||'')}">
+            <input type="text" inputmode="numeric" placeholder="${sug && sug.reps ? sug.reps : 'reps'}" value="${esc(sessionStore[repsKey]||'')}">
           `;
           const cb = setDiv.querySelector('input[type=checkbox]');
           const inputs = setDiv.querySelectorAll('input[type=text]');
-          cb.onchange = ()=>{ sessionStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveSession(); if (cb.checked) startRest(ex, programExName(ex, sessionStore[swapKey])); };
+          cb.onchange = ()=>{
+            // Ticking an empty set means "did what was suggested".
+            if (cb.checked && sug){
+              csFillFromSuggestion(sug, wtKey, repsKey);
+              inputs[0].value = sessionStore[wtKey] || ''; inputs[1].value = sessionStore[repsKey] || '';
+            }
+            sessionStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveSession();
+            if (cb.checked){
+              if (PLUS) PLUS.markStart(csStartKey());
+              startRest(ex, programExName(ex, sessionStore[swapKey]));
+            }
+          };
           inputs[0].oninput = ()=>{ sessionStore[wtKey]=inputs[0].value; saveSession(); };
           inputs[1].oninput = ()=>{ sessionStore[repsKey]=inputs[1].value; saveSession(); };
           setsDiv.appendChild(setDiv);
@@ -2610,6 +2628,8 @@
       exHead.className = 'ls-ex-head cs-freeform-ex-head';
 
       buildFreeformNameRow(ex, exHead, ()=> saveFreeformExercises(csSlot, csDay, list));
+      const PLUS = window.BNB_PLUS;
+      if (PLUS) PLUS.howToButton(exHead, ex.name, renderSessionDay);
 
       const removeExBtn = document.createElement('button');
       removeExBtn.type = 'button';
@@ -2633,6 +2653,14 @@
         prescDiv.textContent = (ex.from === 'workout' ? 'Plan: ' : 'Program: ') + ex.presc;
         exDiv.appendChild(prescDiv);
       }
+      function fillSet(set, sg){
+        if (!String(set.wt || '').trim()) set.wt = window.BNB_LIFT.fmtKg(sg.wt);
+        if (!String(set.reps || '').trim() && sg.reps) set.reps = String(sg.reps);
+      }
+      const sug = PLUS ? PLUS.extras(exDiv, ex.name, String(ex.presc || '').split('×')[1] || '', csPriorHistory(), liftKey, sg => {
+        ex.sets.forEach(st => fillSet(st, sg));
+        saveFreeformExercises(csSlot, csDay, list); renderSessionDay();
+      }) : null;
 
       const setsDiv = document.createElement('div');
       setsDiv.className = 'ls-sets';
@@ -2642,13 +2670,17 @@
         setDiv.innerHTML = `
           <input type="checkbox" ${set.done ? 'checked' : ''}>
           <span class="ls-set-label">S${sIdx+1}</span>
-          <input type="text" inputmode="decimal" placeholder="wt" value="${esc(set.wt||'')}">
+          <input type="text" inputmode="decimal" placeholder="${sug ? esc(window.BNB_LIFT.fmtKg(sug.wt)) : 'wt'}" value="${esc(set.wt||'')}">
           <span class="ls-slash">/</span>
-          <input type="text" inputmode="numeric" placeholder="reps" value="${esc(set.reps||'')}">
+          <input type="text" inputmode="numeric" placeholder="${sug && sug.reps ? sug.reps : 'reps'}" value="${esc(set.reps||'')}">
         `;
         const cb = setDiv.querySelector('input[type=checkbox]');
         const inputs = setDiv.querySelectorAll('input[type=text]');
-        cb.onchange = ()=>{ set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveFreeformExercises(csSlot, csDay, list); if (cb.checked) startRest(null, ex.name); };
+        cb.onchange = ()=>{
+          if (cb.checked && sug){ fillSet(set, sug); inputs[0].value = set.wt || ''; inputs[1].value = set.reps || ''; }
+          set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveFreeformExercises(csSlot, csDay, list);
+          if (cb.checked){ if (PLUS) PLUS.markStart(csStartKey()); startRest(null, ex.name); }
+        };
         inputs[0].oninput = ()=>{ set.wt = inputs[0].value; saveFreeformExercises(csSlot, csDay, list); };
         inputs[1].oninput = ()=>{ set.reps = inputs[1].value; saveFreeformExercises(csSlot, csDay, list); };
 
@@ -2836,6 +2868,19 @@
     document.getElementById('cs-save-md').onclick = ()=> saveSessionAs('md');
     document.getElementById('cs-save-txt').onclick = ()=> saveSessionAs('txt');
     document.getElementById('cs-sync-member').onclick = ()=> syncFreeformToMemberLog(csSlot, csDay);
+    // A trainee picked or typed in full: their last times and suggestions.
+    traineeEl.addEventListener('change', ()=> renderSessionDay());
+    const csFinish = document.getElementById('cs-finish');
+    if (csFinish && window.BNB_PLUS) csFinish.onclick = ()=>{
+      const snap = snapshotSessionDay(csSlot, csDay);
+      const tName = slotTraineeName(csSlot).trim();
+      const m = memberByName(tName);
+      const bests = m ? bestsFrom(memberHistory(m), localIsoDate()) : {};
+      const sum = window.BNB_PLUS.summarize(snap.blocks.flatMap(b => b.exercises), bests, liftKey, window.BNB_PLUS.startedAt(csStartKey()));
+      window.BNB_PLUS.finish(sum, (tName ? tName + ' · ' : '') + (snap.title || csDay),
+        m ? 'Tap Sync to ' + tName + "'s Log to add it to their history." : 'Save a copy with the buttons below.');
+    };
+    if (window.BNB_PLUS) window.BNB_PLUS.loadGuides(renderSessionDay);
 
     document.getElementById('cs-mode-program').onclick = ()=>{
       setCsMode(csSlot, csDay, 'program');
@@ -3683,6 +3728,18 @@
     const todayIso = localIsoDate();
     return memberHistory(member).filter(h => h.dateIso < todayIso);
   }
+  // Coach Live Session: the trainee named in this slot, if they're a member.
+  function csPriorHistory(){
+    const m = memberByName(slotTraineeName(csSlot));
+    if (!m) return [];
+    const todayIso = localIsoDate();
+    return memberHistory(m).filter(h => h.dateIso < todayIso);
+  }
+  function csFillFromSuggestion(sg, wtKey, repsKey){
+    if (!String(sessionStore[wtKey] || '').trim()) sessionStore[wtKey] = window.BNB_LIFT.fmtKg(sg.wt);
+    if (!String(sessionStore[repsKey] || '').trim() && sg.reps) sessionStore[repsKey] = String(sg.reps);
+  }
+  function csStartKey(){ return 'cs' + csSlot + '-' + csDay; }
   function fillFromSuggestion(sg, wtKey, repsKey){
     if (!String(mlsStore[wtKey] || '').trim()) mlsStore[wtKey] = window.BNB_LIFT.fmtKg(sg.wt);
     if (!String(mlsStore[repsKey] || '').trim() && sg.reps) mlsStore[repsKey] = String(sg.reps);
@@ -3930,7 +3987,7 @@
       const member = mlsSignedInMember();
       const bests = member ? bestsFrom(memberHistory(member), localIsoDate()) : {};
       const sum = window.BNB_PLUS.summarize(snap.blocks.flatMap(b => b.exercises), bests, liftKey, window.BNB_PLUS.startedAt(mlsDay));
-      window.BNB_PLUS.finish(sum, snap.title || mlsDay, !member);
+      window.BNB_PLUS.finish(sum, snap.title || mlsDay, member ? null : 'Save a copy with the buttons below, or sign in to keep a history.');
     };
     if (window.BNB_PLUS) window.BNB_PLUS.loadGuides(renderMlsDay);
     document.getElementById('mls-save-md').onclick = ()=> saveMlsAs('md');
