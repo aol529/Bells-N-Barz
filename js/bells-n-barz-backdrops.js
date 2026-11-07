@@ -113,17 +113,25 @@
     }
     return undefined;
   }
-  // The member's settings, then the gym's default, then the standard (Home picture on Home only).
+  // The member's settings first. Where they leave a page on "the gym's choice", that's the gym's
+  // picture for the page (whatever the gym's own "where" says), and failing that the Home picture.
+  // Members following the gym get the gym's default as it stands.
   function effective(){ return (isMine() && mine.settings) || defaults || BUILTIN; }
   function resolve(page){
-    const layers = [];
-    if (isMine() && mine.settings) layers.push([mine.settings, true]);
-    if (defaults) layers.push([defaults, false]);
-    for (const [s, ownOk] of layers){
-      const r = resolvePick(pickOf(s, page), page, s, ownOk);
+    if (isMine() && mine.settings){
+      const m = mine.settings;
+      const r = resolvePick(pickOf(m, page), page, m, true);
       if (r !== undefined) return r;
+      if (defaults){
+        const g = defaults.where === 'pages' ? (defaults.pages || {})[page] : defaults.main;
+        const r2 = resolvePick(g, page, defaults, false);
+        if (r2 !== undefined) return r2;
+      }
+      return refPic('home');
     }
-    return page === 'home' ? refPic('home') : null;
+    const s = defaults || BUILTIN;
+    const r = resolvePick(pickOf(s, page), page, s, false);
+    return r !== undefined ? r : refPic('home');
   }
 
   function pageKey(){
@@ -250,7 +258,7 @@
     const modes = [['default', admin ? 'Standard' : 'The gym\'s choice'], ['fixed', 'One picture'], ['rotate', 'Changes on its own']];
     if (s.where !== 'home') modes.splice(1, 0, ['none', 'No picture']);
     h += seg('Mode', modes, target.mode || 'default', 'data-ed-mode');
-    if (target.mode === 'default') h += '<p class="wall-days">' + (admin ? 'The gym\'s Home picture on Home, and the plain texture everywhere else.' : 'Whatever the gym has set. It changes if the gym changes it.') + '</p>';
+    if (target.mode === 'default') h += '<p class="wall-days">' + (admin ? 'The gym\'s Home picture (Admin > Backgrounds, Home).' : 'The gym\'s picture for this page. It changes if the gym changes it.') + '</p>';
     if (target.mode === 'none') h += '<p class="wall-days">The plain texture and colour, no picture.</p>';
     if (target.mode === 'fixed' || target.mode === 'rotate'){
       const rot = target.mode === 'rotate';
