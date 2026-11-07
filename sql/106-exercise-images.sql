@@ -1,5 +1,5 @@
 -- ============================================================
--- EXERCISE GUIDE PICTURES
+-- EXERCISE GUIDE PICTURES (ran on live 2026-11-07: 47 of 51 guides got photos, bucket made)
 -- Run after 105-exercise-guides.sql. Safe to re-run: starter pictures
 -- only go on guides that have none, so a coach's photos are kept.
 --
