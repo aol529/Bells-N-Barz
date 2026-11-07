@@ -3790,3 +3790,28 @@ ol.ag-cols{padding-left:20px;}
 .msg-hide-link{background:none; border:0; padding:0 0 0 8px; color:inherit; font:inherit; text-decoration:underline; cursor:pointer;}
 @media (hover:none){ .msg-hide-link{display:none;} }
 @media (prefers-reduced-motion: reduce){ .notif-bell-item, .sched-scope .msg-bubble[data-msg-id]{transition:none;} }
+
+/* ===== WORKOUT PLUS (js/bells-n-barz-workout-plus.js): last time, suggestions, how-to, finish ===== */
+.wp-extras{margin:2px 0 6px;font-size:12px;}
+.wp-last{color:var(--muted);}
+.wp-try{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;}
+.wp-try b{display:block;color:var(--accent);font-size:13px;}
+.wp-try span{color:var(--muted);}
+.wp-try .wp-fill{flex:0 0 auto;padding:4px 10px;font-size:12px;}
+.wp-howto{order:2;flex:0 0 auto;background:none;border:1px solid var(--line-soft);border-radius:999px;color:var(--accent);
+  font:600 11.5px 'IBM Plex Sans',sans-serif;padding:2px 10px;cursor:pointer;}
+.wp-howto:hover{border-color:var(--accent);}
+.wp-finish{display:block;width:100%;margin:4px 0 12px;padding:12px;font-size:15px;}
+.wp-lbl{font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:12px 0 4px;}
+.wp-muted{color:var(--muted);}
+.wp-cues{margin:0;padding-left:22px;}
+.wp-cues li{margin:4px 0;}
+.wp-cues li::marker{color:var(--accent);font-weight:700;}
+.wp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.wp-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:12px;margin:10px 0;}
+.wp-stats b{display:block;font:600 24px 'Oswald',sans-serif;color:var(--accent);}
+.wp-stats span{font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
+.wp-form label{display:block;margin:8px 0;font-size:13px;color:var(--muted);}
+.wp-form input,.wp-form textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;background:var(--surface-2);
+  border:1px solid var(--line-soft);border-radius:6px;color:var(--text);font:14px 'IBM Plex Sans',sans-serif;}
+.wp-err{color:#e0736a;font-size:13px;}

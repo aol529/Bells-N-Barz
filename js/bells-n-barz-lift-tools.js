@@ -143,6 +143,7 @@
       clearInterval(tick); tick = null;
       beep();
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      if (window.BNB_PLUS) window.BNB_PLUS.restDone(label);
       setTimeout(() => { if (!tick) stop(); }, 6000);
     }
   }

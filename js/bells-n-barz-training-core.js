@@ -3320,6 +3320,13 @@
           metaDiv.innerHTML = ml;
           exDiv.appendChild(metaDiv);
         }
+        // Last time, what to try today, and the how-to (js/bells-n-barz-workout-plus.js).
+        const PLUS = window.BNB_PLUS, exName = programExName(ex, mlsStore[swapKey]);
+        if (PLUS) PLUS.howToButton(exHead, exName, renderMlsDay);
+        const sug = PLUS ? PLUS.extras(exDiv, exName, ex.reps, mlsPriorHistory(), liftKey, sg => {
+          for (let s = 0; s < nSets; s++) fillFromSuggestion(sg, mlsKey(day,bIdx,eIdx,s,'wt'), mlsKey(day,bIdx,eIdx,s,'reps'));
+          saveMlsStore(); renderMlsDay();
+        }) : null;
         const setsDiv = document.createElement('div');
         setsDiv.className = 'ls-sets';
         for(let s=0; s<nSets; s++){
@@ -3331,15 +3338,21 @@
           setDiv.innerHTML = `
             <input type="checkbox" ${mlsStore[doneKey] ? 'checked' : ''}>
             <span class="ls-set-label">S${s+1}</span>
-            <input type="text" inputmode="decimal" placeholder="wt or BW" value="${esc(mlsStore[wtKey]||'')}">
+            <input type="text" inputmode="decimal" placeholder="${sug ? esc(window.BNB_LIFT.fmtKg(sug.wt)) : 'wt or BW'}" value="${esc(mlsStore[wtKey]||'')}">
             <span class="ls-slash">/</span>
-            <input type="text" inputmode="numeric" placeholder="reps" value="${esc(mlsStore[repsKey]||'')}">
+            <input type="text" inputmode="numeric" placeholder="${sug && sug.reps ? sug.reps : 'reps'}" value="${esc(mlsStore[repsKey]||'')}">
           `;
           const cb = setDiv.querySelector('input[type=checkbox]');
           const inputs = setDiv.querySelectorAll('input[type=text]');
           cb.onchange = ()=>{
+            // Ticking an empty set means "did what was suggested".
+            if (cb.checked && sug){
+              fillFromSuggestion(sug, wtKey, repsKey);
+              inputs[0].value = mlsStore[wtKey] || ''; inputs[1].value = mlsStore[repsKey] || '';
+            }
             mlsStore[doneKey]=cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsStore();
             if (cb.checked){
+              if (window.BNB_PLUS) window.BNB_PLUS.markStart(mlsDay);
               const name = programExName(ex, mlsStore[swapKey]);
               startRest(ex, name);
               checkForPr(name, mlsStore[wtKey], mlsStore[repsKey]);
@@ -3377,6 +3390,8 @@
       exHead.className = 'ls-ex-head cs-freeform-ex-head';
 
       buildFreeformNameRow(ex, exHead, ()=> saveMlsFreeformExercises(day, list));
+      const PLUS = window.BNB_PLUS;
+      if (PLUS) PLUS.howToButton(exHead, ex.name, renderMlsDay);
 
       const removeExBtn = document.createElement('button');
       removeExBtn.type = 'button';
@@ -3400,6 +3415,14 @@
         prescDiv.textContent = (ex.from === 'workout' ? 'Plan: ' : 'Program: ') + ex.presc;
         exDiv.appendChild(prescDiv);
       }
+      function fillSet(set, sg){
+        if (!String(set.wt || '').trim()) set.wt = window.BNB_LIFT.fmtKg(sg.wt);
+        if (!String(set.reps || '').trim() && sg.reps) set.reps = String(sg.reps);
+      }
+      const sug = PLUS ? PLUS.extras(exDiv, ex.name, String(ex.presc || '').split('×')[1] || '', mlsPriorHistory(), liftKey, sg => {
+        ex.sets.forEach(st => fillSet(st, sg));
+        saveMlsFreeformExercises(day, list); renderMlsDay();
+      }) : null;
 
       const setsDiv = document.createElement('div');
       setsDiv.className = 'ls-sets';
@@ -3409,15 +3432,16 @@
         setDiv.innerHTML = `
           <input type="checkbox" ${set.done ? 'checked' : ''}>
           <span class="ls-set-label">S${sIdx+1}</span>
-          <input type="text" inputmode="decimal" placeholder="wt or BW" value="${esc(set.wt||'')}">
+          <input type="text" inputmode="decimal" placeholder="${sug ? esc(window.BNB_LIFT.fmtKg(sug.wt)) : 'wt or BW'}" value="${esc(set.wt||'')}">
           <span class="ls-slash">/</span>
-          <input type="text" inputmode="numeric" placeholder="reps" value="${esc(set.reps||'')}">
+          <input type="text" inputmode="numeric" placeholder="${sug && sug.reps ? sug.reps : 'reps'}" value="${esc(set.reps||'')}">
         `;
         const cb = setDiv.querySelector('input[type=checkbox]');
         const inputs = setDiv.querySelectorAll('input[type=text]');
         cb.onchange = ()=>{
+          if (cb.checked && sug){ fillSet(set, sug); inputs[0].value = set.wt || ''; inputs[1].value = set.reps || ''; }
           set.done = cb.checked; setDiv.classList.toggle('done', cb.checked); saveMlsFreeformExercises(day, list);
-          if (cb.checked){ startRest(null, ex.name); checkForPr(ex.name, set.wt, set.reps); }
+          if (cb.checked){ if (PLUS) PLUS.markStart(mlsDay); startRest(null, ex.name); checkForPr(ex.name, set.wt, set.reps); }
         };
         inputs[0].oninput = ()=>{ set.wt = inputs[0].value; saveMlsFreeformExercises(day, list); };
         inputs[1].oninput = ()=>{ set.reps = inputs[1].value; saveMlsFreeformExercises(day, list); };
@@ -3652,6 +3676,17 @@
      Sets logged as BW have no number and don't count. */
   function liftKey(name){ return splitAltFromName(name).name.toLowerCase().replace(/\s+/g, ' ').trim(); }
   function memberHistory(member){ return loadMlsHistory().filter(h => h.memberId === member.id); }
+  // The signed-in member's sessions before today, for "Last time" and suggestions.
+  function mlsPriorHistory(){
+    const member = mlsSignedInMember();
+    if (!member) return [];
+    const todayIso = localIsoDate();
+    return memberHistory(member).filter(h => h.dateIso < todayIso);
+  }
+  function fillFromSuggestion(sg, wtKey, repsKey){
+    if (!String(mlsStore[wtKey] || '').trim()) mlsStore[wtKey] = window.BNB_LIFT.fmtKg(sg.wt);
+    if (!String(mlsStore[repsKey] || '').trim() && sg.reps) mlsStore[repsKey] = String(sg.reps);
+  }
   function bestsFrom(history, beforeIso){
     const L = window.BNB_LIFT, bests = {};
     history.forEach(h => {
@@ -3889,6 +3924,15 @@
     };
 
     document.getElementById('mls-save-pdf').onclick = ()=> saveMlsAs('pdf');
+    const finishBtn = document.getElementById('mls-finish');
+    if (finishBtn && window.BNB_PLUS) finishBtn.onclick = ()=>{
+      const snap = snapshotMlsDay(mlsDay);
+      const member = mlsSignedInMember();
+      const bests = member ? bestsFrom(memberHistory(member), localIsoDate()) : {};
+      const sum = window.BNB_PLUS.summarize(snap.blocks.flatMap(b => b.exercises), bests, liftKey, window.BNB_PLUS.startedAt(mlsDay));
+      window.BNB_PLUS.finish(sum, snap.title || mlsDay, !member);
+    };
+    if (window.BNB_PLUS) window.BNB_PLUS.loadGuides(renderMlsDay);
     document.getElementById('mls-save-md').onclick = ()=> saveMlsAs('md');
     document.getElementById('mls-save-txt').onclick = ()=> saveMlsAs('txt');
 
