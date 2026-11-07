@@ -46,7 +46,7 @@
   // The signed-in member: { uid, settings, sessions, mineList: [{id, name, path, url, exp}] }.
   let mine = readJSON(MINE_KEY, {}) || {};
   if (!mine.uid) mine = {};
-  let ownEditing = null, ownBusy = false;
+  let ownEditing = null, ownBusy = false, ownProgress = '';
   const ui = { member: 'home', admin: 'home' };   // which page each editor is showing
   // Each visit counts once, for "each visit" rotation. Per device, like the app's.
   let opens = 0;
@@ -569,24 +569,34 @@
     if (error) throw error;
     return path;
   }
-  async function ownAdd(file){
+  // One photo goes straight up; several just join "Your photos" for them to tick or pick.
+  async function ownAdd(files){
     const me = self();
-    if (ownList().length >= OWN_MAX) return toast('You can keep ' + OWN_MAX + '. Delete one to add another.');
-    ownBusy = true; renderPicker(); toast('Uploading…');
-    let path = null;
-    try {
-      path = await ownUpload(file);
-      const { data, error } = await bnbClient.from('member_wallpapers').insert([{ member_id: me.id, name: nameFromFile(file) || 'My photo', path }]).select('id').single();
-      if (error) throw error;
-      ownBusy = false;
-      await loadMine();
-      await showOwn(data.id);
-      toast('Added, and showing now.');
-    } catch(e){
-      ownBusy = false;
-      if (path) bnbClient.storage.from(OWN_BUCKET).remove([path]).catch(() => {});
-      renderPicker(); toast('Couldn\'t add it: ' + (e.message || e));
+    const room = OWN_MAX - ownList().length;
+    if (room <= 0) return toast('You can keep ' + OWN_MAX + '. Delete one to add another.');
+    const take = files.slice(0, room), skipped = files.length - take.length;
+    ownBusy = true;
+    let added = 0, lastId = null, failed = '';
+    for (const file of take){
+      ownProgress = take.length > 1 ? 'Uploading ' + (added + 1) + ' of ' + take.length + '…' : 'Uploading…';
+      renderPicker();
+      let path = null;
+      try {
+        path = await ownUpload(file);
+        const { data, error } = await bnbClient.from('member_wallpapers').insert([{ member_id: me.id, name: nameFromFile(file) || 'My photo', path }]).select('id').single();
+        if (error) throw error;
+        added++; lastId = data.id;
+      } catch(e){
+        if (path) bnbClient.storage.from(OWN_BUCKET).remove([path]).catch(() => {});
+        failed = (e.message || String(e)); break;
+      }
     }
+    ownBusy = false; ownProgress = '';
+    await loadMine();
+    if (added === 1 && take.length === 1) await showOwn(lastId);
+    const extra = (skipped > 0 ? ' ' + skipped + ' left out: you can keep ' + OWN_MAX + '.' : '') + (failed ? ' Stopped: ' + failed : '');
+    if (!added) return toast('Couldn\'t add it: ' + failed);
+    toast((added === 1 && take.length === 1 ? 'Added, and showing now.' : 'Added ' + added + '. Tick them under "Changes on its own" to rotate them, or pick one.') + extra);
   }
   async function ownReplace(w, file){
     ownBusy = true; renderPicker(); toast('Uploading…');
@@ -629,7 +639,7 @@
       : 'You\'re following the gym\'s setting. Change anything below to make it yours.') + '</p>';
     html += editorHtml({ who: 'member', s });
 
-    html += '<h3 class="wall-h">Your photos</h3><p class="wall-days">Only you can see these. Portrait photos with calm space at the top work best. Up to ' + OWN_MAX + '.</p><div class="wall-grid">' +
+    html += '<h3 class="wall-h">Your photos</h3><p class="wall-days">Only you can see these. Portrait photos with calm space at the top work best. Add several at once if you like. Up to ' + OWN_MAX + '.</p><div class="wall-grid">' +
       own.map(w => {
         const edit = ownEditing === w.id
           ? '<div class="wall-edit"><input type="text" maxlength="60" value="' + esc(w.name) + '" data-own-name aria-label="Name">' +
@@ -640,8 +650,8 @@
           (w.url ? '<img alt="" loading="lazy" src="' + esc(w.url) + '">' : '<span class="wall-none"></span>') +
           '<span class="wall-name">' + esc(w.name) + '</span>' + edit + '</div>';
       }).join('') +
-      (own.length < OWN_MAX ? '<label class="wall-tile wall-add' + (ownBusy ? ' busy' : '') + '"><span class="wall-none"><span>＋</span></span><span class="wall-name">' + (ownBusy ? 'Uploading…' : 'Add your photo') + '</span>' +
-        '<input type="file" accept="image/*" data-own-add hidden' + (ownBusy ? ' disabled' : '') + '></label>' : '') +
+      (own.length < OWN_MAX ? '<label class="wall-tile wall-add' + (ownBusy ? ' busy' : '') + '"><span class="wall-none"><span>＋</span></span><span class="wall-name">' + (ownBusy ? esc(ownProgress || 'Uploading…') : 'Add photos') + '</span>' +
+        '<input type="file" accept="image/*" multiple data-own-add hidden' + (ownBusy ? ' disabled' : '') + '></label>' : '') +
       '</div>';
     body.innerHTML = html;
 
@@ -649,7 +659,7 @@
     const reset = body.querySelector('[data-wall-reset]');
     if (reset) reset.onclick = () => { saveMine(null); toast('Following the gym\'s setting again.'); };
     const add = body.querySelector('[data-own-add]');
-    if (add) add.onchange = () => { const f = add.files && add.files[0]; add.value = ''; if (f) ownAdd(f); };
+    if (add) add.onchange = () => { const fs = Array.from(add.files || []); add.value = ''; if (fs.length) ownAdd(fs); };
     body.querySelectorAll('[data-own]').forEach(el => {
       const w = own.find(x => x.id === el.dataset.own);
       const q = sel => el.querySelector(sel);
