@@ -905,12 +905,12 @@
   /* ---- Admin: send a real password reset email for whichever member is
      currently open in the edit panel, instead of the old fake text field
      that just wrote a cosmetic string and never touched real auth. ---- */
-  document.getElementById('usr-f-password-reset-btn').addEventListener('click', async ()=>{
-    const email = document.getElementById('usr-f-email').value.trim();
-    const statusEl = document.getElementById('usr-f-password-reset-status');
+  bnbEl('usr-f-password-reset-btn').addEventListener('click', async ()=>{
+    const email = bnbEl('usr-f-email').value.trim();
+    const statusEl = bnbEl('usr-f-password-reset-status');
     if (!email){ statusEl.textContent = 'Enter an email for this member first.'; statusEl.style.color = '#e0736a'; return; }
 
-    const btn = document.getElementById('usr-f-password-reset-btn');
+    const btn = bnbEl('usr-f-password-reset-btn');
     btn.disabled = true; btn.textContent = 'Sending…';
     statusEl.textContent = '';
 
@@ -932,22 +932,22 @@
   /* ---- Admin: set a temporary password (sql/76 admin_set_temp_password)
      for a member who can't get emails, e.g. after they asked for help
      from the Forgot Password screen. They must change it at next log-in. ---- */
-  document.getElementById('usr-f-temp-pw-btn').addEventListener('click', async ()=>{
-    const pw = document.getElementById('usr-f-temp-pw').value;
-    const statusEl = document.getElementById('usr-f-temp-pw-status');
+  bnbEl('usr-f-temp-pw-btn').addEventListener('click', async ()=>{
+    const pw = bnbEl('usr-f-temp-pw').value;
+    const statusEl = bnbEl('usr-f-temp-pw-status');
     const u = users.find(x => x.id === editingId);
     const fail = msg => { statusEl.textContent = msg; statusEl.style.color = '#e0736a'; };
     if (!u){ fail('Save this member first.'); return; }
     if (pw.length < 6){ fail('Password must be at least 6 characters.'); return; }
 
-    const btn = document.getElementById('usr-f-temp-pw-btn');
+    const btn = bnbEl('usr-f-temp-pw-btn');
     btn.disabled = true; btn.textContent = 'Setting…';
     const { error } = await bnbClient.rpc('admin_set_temp_password', { p_user_id: u.id, p_password: pw });
     btn.disabled = false; btn.textContent = 'Set';
 
     if (error){ fail(error.message || 'Could not set the password — try again.'); return; }
     u.tempPassword = true;
-    document.getElementById('usr-f-temp-pw').value = '';
+    bnbEl('usr-f-temp-pw').value = '';
     statusEl.textContent = 'Temporary password set for ' + (u.fullName || u.email) + '. Tell them in person; they\'ll choose their own at next log-in.';
     statusEl.style.color = 'var(--accent)';
   });
@@ -1465,7 +1465,7 @@
   });
 
   /* ---------------- ADMIN EDITOR PANEL ---------------- */
-  const backdrop = document.getElementById('usr-panel-backdrop');
+  const backdrop = bnbEl('usr-panel-backdrop');
 
   document.querySelectorAll('#usr-tab-bar button').forEach(b=>{
     b.addEventListener('click', ()=>{
@@ -1478,13 +1478,13 @@
   function openEditor(id){
     editingId = id || null;
     const u = id ? users.find(x=>x.id===id) : null;
-    document.getElementById('usr-panel-title').textContent = u ? 'Edit Member' : 'Add Member';
-    document.getElementById('usr-panel-sub').textContent = u ? ('ID: ' + u.id + ' · Joined ' + fmtDate(u.createdAt)) : 'New account';
+    bnbEl('usr-panel-title').textContent = u ? 'Edit Member' : 'Add Member';
+    bnbEl('usr-panel-sub').textContent = u ? ('ID: ' + u.id + ' · Joined ' + fmtDate(u.createdAt)) : 'New account';
 
-    document.getElementById('usr-tab-bar').querySelector('[data-tab="account"]').click();
+    bnbEl('usr-tab-bar').querySelector('[data-tab="account"]').click();
 
-    document.getElementById('usr-f-fullname').value = u ? u.fullName : '';
-    document.getElementById('usr-f-email').value = u ? u.email : '';
+    bnbEl('usr-f-fullname').value = u ? u.fullName : '';
+    bnbEl('usr-f-email').value = u ? u.email : '';
     const checkedRoles = u && Array.isArray(u.roles) ? u.roles : ['member'];
     document.querySelectorAll('#usr-f-roles input[type=checkbox]').forEach(cb=>{
       cb.checked = checkedRoles.includes(cb.value);
@@ -1492,28 +1492,28 @@
       const self = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
       cb.disabled = !(self && self.roles && self.roles.includes('admin'));
     });
-    document.getElementById('usr-f-status').value = u ? u.status : 'pending';
-    document.getElementById('usr-f-password-reset-status').textContent = '';
+    bnbEl('usr-f-status').value = u ? u.status : 'pending';
+    bnbEl('usr-f-password-reset-status').textContent = '';
     const me = users.find(x => x.id === selfId);
-    document.getElementById('usr-f-temp-pw-wrap').style.display =
+    bnbEl('usr-f-temp-pw-wrap').style.display =
       (u && u.authId && me && (me.roles || []).includes('admin')) ? '' : 'none';
-    document.getElementById('usr-f-temp-pw').value = '';
-    document.getElementById('usr-f-temp-pw-status').style.color = '';
-    document.getElementById('usr-f-avatar').value = u ? u.avatar : '';
+    bnbEl('usr-f-temp-pw').value = '';
+    bnbEl('usr-f-temp-pw-status').style.color = '';
+    bnbEl('usr-f-avatar').value = u ? u.avatar : '';
 
-    document.getElementById('usr-f-dob').value = u ? u.dob : '';
-    document.getElementById('usr-f-phone').value = u ? u.phone : '';
-    document.getElementById('usr-f-address').value = u ? u.address : '';
-    document.getElementById('usr-f-height').value = u ? u.height : '';
-    document.getElementById('usr-f-weight').value = u ? u.weight : '';
-    document.getElementById('usr-f-experience').value = u ? (u.experience||'beginner') : 'beginner';
-    document.getElementById('usr-f-goals').value = u ? u.goals : '';
-    document.getElementById('usr-f-injury').value = u ? u.injury : '';
-    document.getElementById('usr-f-ec-name').value = u ? u.ecName : '';
-    document.getElementById('usr-f-ec-phone').value = u ? u.ecPhone : '';
-    document.getElementById('usr-f-preftime').value = u ? u.prefTime : '';
+    bnbEl('usr-f-dob').value = u ? u.dob : '';
+    bnbEl('usr-f-phone').value = u ? u.phone : '';
+    bnbEl('usr-f-address').value = u ? u.address : '';
+    bnbEl('usr-f-height').value = u ? u.height : '';
+    bnbEl('usr-f-weight').value = u ? u.weight : '';
+    bnbEl('usr-f-experience').value = u ? (u.experience||'beginner') : 'beginner';
+    bnbEl('usr-f-goals').value = u ? u.goals : '';
+    bnbEl('usr-f-injury').value = u ? u.injury : '';
+    bnbEl('usr-f-ec-name').value = u ? u.ecName : '';
+    bnbEl('usr-f-ec-phone').value = u ? u.ecPhone : '';
+    bnbEl('usr-f-preftime').value = u ? u.prefTime : '';
     (function(){
-      const sel = document.getElementById('usr-f-trainer-id');
+      const sel = bnbEl('usr-f-trainer-id');
       const trainers = window.BNB_USERS ? window.BNB_USERS.getTrainers() : [];
       sel.innerHTML = '<option value="">Unassigned</option>' +
         trainers.map(t => '<option value="'+t.id+'">'+esc(t.fullName)+'</option>').join('');
@@ -1521,10 +1521,10 @@
     })();
 
     (function(){
-      const balanceEl = document.getElementById('usr-f-points-balance');
-      const deltaInput = document.getElementById('usr-f-points-delta');
-      const reasonInput = document.getElementById('usr-f-points-reason');
-      const applyBtn = document.getElementById('usr-f-points-apply');
+      const balanceEl = bnbEl('usr-f-points-balance');
+      const deltaInput = bnbEl('usr-f-points-delta');
+      const reasonInput = bnbEl('usr-f-points-reason');
+      const applyBtn = bnbEl('usr-f-points-apply');
       deltaInput.value = ''; reasonInput.value = '';
       if (!u){ balanceEl.textContent = '—'; applyBtn.disabled = true; return; }
       applyBtn.disabled = false;
@@ -1550,16 +1550,16 @@
       };
     })();
 
-    document.getElementById('usr-f-plan').value = u ? u.plan : '';
-    document.getElementById('usr-f-mstatus').value = u ? (u.mstatus||'active') : 'active';
-    document.getElementById('usr-f-contract-end').value = u ? u.contractEnd : '';
-    document.getElementById('usr-f-balance').value = u ? u.balance : 0;
-    document.getElementById('usr-f-comp').value = u ? (u.comp||'') : '';
-    document.getElementById('usr-f-autorenew').checked = u ? !!u.autoRenew : false;
+    bnbEl('usr-f-plan').value = u ? u.plan : '';
+    bnbEl('usr-f-mstatus').value = u ? (u.mstatus||'active') : 'active';
+    bnbEl('usr-f-contract-end').value = u ? u.contractEnd : '';
+    bnbEl('usr-f-balance').value = u ? u.balance : 0;
+    bnbEl('usr-f-comp').value = u ? (u.comp||'') : '';
+    bnbEl('usr-f-autorenew').checked = u ? !!u.autoRenew : false;
 
-    document.getElementById('usr-f-flag').value = u ? (u.flag||'green') : 'green';
-    document.getElementById('usr-f-leadsource').value = u ? u.leadSource : '';
-    document.getElementById('usr-f-internal-notes').value = u ? u.internalNotes : '';
+    bnbEl('usr-f-flag').value = u ? (u.flag||'green') : 'green';
+    bnbEl('usr-f-leadsource').value = u ? u.leadSource : '';
+    bnbEl('usr-f-internal-notes').value = u ? u.internalNotes : '';
 
     renderActivityTab();
     renderAssessmentTab();
@@ -1567,9 +1567,9 @@
   }
 
   function renderActivityTab(){
-    const summary = document.getElementById('usr-activity-summary');
-    const list = document.getElementById('usr-activity-list');
-    const logBtn = document.getElementById('usr-log-checkin-btn');
+    const summary = bnbEl('usr-activity-summary');
+    const list = bnbEl('usr-activity-list');
+    const logBtn = bnbEl('usr-log-checkin-btn');
     if (!editingId){
       summary.innerHTML = '<div class="field-hint">Save this new member first — check-ins can be logged once the account exists.</div>';
       list.innerHTML = '';
@@ -1591,7 +1591,7 @@
       : '<li class="empty-row">No check-ins logged yet.</li>';
   }
 
-  document.getElementById('usr-log-checkin-btn').addEventListener('click', ()=>{
+  bnbEl('usr-log-checkin-btn').addEventListener('click', ()=>{
     if (!editingId) return;
     if (logCheckin(editingId, TODAY)){ showToast('Check-in logged'); renderActivityTab(); }
     else showToast('Already checked in today');
@@ -1606,7 +1606,7 @@
     return !!(me && me.roles && (me.roles.includes('admin') || me.roles.includes('trainer')));
   }
   function renderScreeningPanel(){
-    const box = document.getElementById('usr-screening-panel');
+    const box = bnbEl('usr-screening-panel');
     if (!box) return;
     box.innerHTML = '';
     if (!editingId || !canSeeScreenings() || typeof window.bnbLoadModule !== 'function') return;
@@ -1622,8 +1622,8 @@
     }).catch(err=> console.error(err));
   }
   function renderAssessmentTab(){
-    const list = document.getElementById('usr-assessment-list');
-    const newBtn = document.getElementById('usr-new-assessment-btn');
+    const list = bnbEl('usr-assessment-list');
+    const newBtn = bnbEl('usr-new-assessment-btn');
     renderScreeningPanel();
     if (!editingId){
       list.innerHTML = '<div class="field-hint">Save this new member first — assessments can be logged once the account exists.</div>';
@@ -1657,87 +1657,87 @@
     }).join('');
   }
 
-  const assessmentBackdrop = document.getElementById('usr-assessment-backdrop');
-  document.getElementById('usr-new-assessment-btn').addEventListener('click', ()=>{
+  const assessmentBackdrop = bnbEl('usr-assessment-backdrop');
+  bnbEl('usr-new-assessment-btn').addEventListener('click', ()=>{
     if (!editingId) return;
     const priorCount = userAssessments(editingId).length;
     const nextType = priorCount === 0 ? 'Initial Assessment' : 'Reassessment';
-    document.getElementById('usr-assessment-panel-title').textContent = 'Log ' + nextType;
-    document.getElementById('usr-assessment-panel-sub').textContent = priorCount === 0
+    bnbEl('usr-assessment-panel-title').textContent = 'Log ' + nextType;
+    bnbEl('usr-assessment-panel-sub').textContent = priorCount === 0
       ? 'First assessment on file for this client.'
       : priorCount + ' prior assessment(s) on file.';
-    document.getElementById('usr-a-date').value = TODAY;
-    document.getElementById('usr-a-conductor').value = '';
-    document.getElementById('usr-a-parq-cardio').checked = false;
-    document.getElementById('usr-a-parq-joint').checked = false;
-    document.getElementById('usr-a-parq-clearance').checked = false;
-    document.getElementById('usr-a-medical').value = '';
-    document.getElementById('usr-a-weight').value = '';
-    document.getElementById('usr-a-bodyfat').value = '';
-    document.getElementById('usr-a-restinghr').value = '';
-    document.getElementById('usr-a-bp').value = '';
-    document.getElementById('usr-a-movement').value = '';
-    document.getElementById('usr-a-goals').value = '';
-    document.getElementById('usr-a-history').value = '';
-    document.getElementById('usr-a-occ-activity').value = 'sedentary';
-    document.getElementById('usr-a-sleep').value = '';
-    document.getElementById('usr-a-stress').value = 'moderate';
-    document.getElementById('usr-a-nutrition').value = '';
-    document.getElementById('usr-a-availability').value = '';
-    document.getElementById('usr-a-waiver').checked = false;
+    bnbEl('usr-a-date').value = TODAY;
+    bnbEl('usr-a-conductor').value = '';
+    bnbEl('usr-a-parq-cardio').checked = false;
+    bnbEl('usr-a-parq-joint').checked = false;
+    bnbEl('usr-a-parq-clearance').checked = false;
+    bnbEl('usr-a-medical').value = '';
+    bnbEl('usr-a-weight').value = '';
+    bnbEl('usr-a-bodyfat').value = '';
+    bnbEl('usr-a-restinghr').value = '';
+    bnbEl('usr-a-bp').value = '';
+    bnbEl('usr-a-movement').value = '';
+    bnbEl('usr-a-goals').value = '';
+    bnbEl('usr-a-history').value = '';
+    bnbEl('usr-a-occ-activity').value = 'sedentary';
+    bnbEl('usr-a-sleep').value = '';
+    bnbEl('usr-a-stress').value = 'moderate';
+    bnbEl('usr-a-nutrition').value = '';
+    bnbEl('usr-a-availability').value = '';
+    bnbEl('usr-a-waiver').checked = false;
     // The coach's cheat sheet (Coach > Assessment Guide), folded up.
-    const agInline = document.getElementById('usr-ag-inline'), agSrc = document.getElementById('ag-guide-cards');
+    const agInline = bnbEl('usr-ag-inline'), agSrc = document.getElementById('ag-guide-cards');
     if (agInline && agSrc && !agInline.innerHTML) agInline.innerHTML = agSrc.innerHTML;
     if (agInline) agInline.parentNode.open = false;
     // An Initial Assessment starts from what the member put in their
     // screening; the coach checks and edits it during the session.
     const fromScreening = priorCount === 0 && window.BNB_SCREENING && window.BNB_SCREENING.on() && window.BNB_SCREENING.assessmentPrefill(editingId);
     if (fromScreening){
-      document.getElementById('usr-a-parq-cardio').checked = fromScreening.parqCardio;
-      document.getElementById('usr-a-parq-joint').checked = fromScreening.parqJoint;
-      document.getElementById('usr-a-parq-clearance').checked = fromScreening.parqClearance;
-      document.getElementById('usr-a-medical').value = fromScreening.medical;
-      document.getElementById('usr-a-goals').value = fromScreening.goals;
-      document.getElementById('usr-a-history').value = fromScreening.history;
-      if (fromScreening.occActivity) document.getElementById('usr-a-occ-activity').value = fromScreening.occActivity;
-      document.getElementById('usr-a-sleep').value = fromScreening.sleep;
-      if (fromScreening.stress) document.getElementById('usr-a-stress').value = fromScreening.stress;
-      document.getElementById('usr-a-nutrition').value = fromScreening.nutrition;
-      document.getElementById('usr-a-availability').value = fromScreening.availability;
-      document.getElementById('usr-a-waiver').checked = fromScreening.waiver;
-      document.getElementById('usr-assessment-panel-sub').textContent += ' Pre-filled from their pre-session screening — check it with them.';
+      bnbEl('usr-a-parq-cardio').checked = fromScreening.parqCardio;
+      bnbEl('usr-a-parq-joint').checked = fromScreening.parqJoint;
+      bnbEl('usr-a-parq-clearance').checked = fromScreening.parqClearance;
+      bnbEl('usr-a-medical').value = fromScreening.medical;
+      bnbEl('usr-a-goals').value = fromScreening.goals;
+      bnbEl('usr-a-history').value = fromScreening.history;
+      if (fromScreening.occActivity) bnbEl('usr-a-occ-activity').value = fromScreening.occActivity;
+      bnbEl('usr-a-sleep').value = fromScreening.sleep;
+      if (fromScreening.stress) bnbEl('usr-a-stress').value = fromScreening.stress;
+      bnbEl('usr-a-nutrition').value = fromScreening.nutrition;
+      bnbEl('usr-a-availability').value = fromScreening.availability;
+      bnbEl('usr-a-waiver').checked = fromScreening.waiver;
+      bnbEl('usr-assessment-panel-sub').textContent += ' Pre-filled from their pre-session screening — check it with them.';
     }
     assessmentBackdrop.classList.add('show');
   });
-  document.getElementById('usr-assessment-cancel').addEventListener('click', ()=> assessmentBackdrop.classList.remove('show'));
+  bnbEl('usr-assessment-cancel').addEventListener('click', ()=> assessmentBackdrop.classList.remove('show'));
   assessmentBackdrop.addEventListener('click', (e)=>{ if (e.target === assessmentBackdrop) assessmentBackdrop.classList.remove('show'); });
 
-  document.getElementById('usr-assessment-save').addEventListener('click', ()=>{
+  bnbEl('usr-assessment-save').addEventListener('click', ()=>{
     if (!editingId) return;
     const priorCount = userAssessments(editingId).length;
     const entry = {
       id: window.BNB_UUID(),
       userId: editingId,
-      date: document.getElementById('usr-a-date').value || TODAY,
+      date: bnbEl('usr-a-date').value || TODAY,
       type: priorCount === 0 ? 'Initial Assessment' : 'Reassessment',
-      conductor: document.getElementById('usr-a-conductor').value.trim(),
-      parqCardio: document.getElementById('usr-a-parq-cardio').checked,
-      parqJoint: document.getElementById('usr-a-parq-joint').checked,
-      parqClearance: document.getElementById('usr-a-parq-clearance').checked,
-      medical: document.getElementById('usr-a-medical').value.trim(),
-      weight: document.getElementById('usr-a-weight').value,
-      bodyfat: document.getElementById('usr-a-bodyfat').value,
-      restingHr: document.getElementById('usr-a-restinghr').value,
-      bp: document.getElementById('usr-a-bp').value.trim(),
-      movement: document.getElementById('usr-a-movement').value.trim(),
-      goals: document.getElementById('usr-a-goals').value.trim(),
-      history: document.getElementById('usr-a-history').value.trim(),
-      occActivity: document.getElementById('usr-a-occ-activity').value,
-      sleep: document.getElementById('usr-a-sleep').value,
-      stress: document.getElementById('usr-a-stress').value,
-      nutrition: document.getElementById('usr-a-nutrition').value.trim(),
-      availability: document.getElementById('usr-a-availability').value.trim(),
-      waiver: document.getElementById('usr-a-waiver').checked
+      conductor: bnbEl('usr-a-conductor').value.trim(),
+      parqCardio: bnbEl('usr-a-parq-cardio').checked,
+      parqJoint: bnbEl('usr-a-parq-joint').checked,
+      parqClearance: bnbEl('usr-a-parq-clearance').checked,
+      medical: bnbEl('usr-a-medical').value.trim(),
+      weight: bnbEl('usr-a-weight').value,
+      bodyfat: bnbEl('usr-a-bodyfat').value,
+      restingHr: bnbEl('usr-a-restinghr').value,
+      bp: bnbEl('usr-a-bp').value.trim(),
+      movement: bnbEl('usr-a-movement').value.trim(),
+      goals: bnbEl('usr-a-goals').value.trim(),
+      history: bnbEl('usr-a-history').value.trim(),
+      occActivity: bnbEl('usr-a-occ-activity').value,
+      sleep: bnbEl('usr-a-sleep').value,
+      stress: bnbEl('usr-a-stress').value,
+      nutrition: bnbEl('usr-a-nutrition').value.trim(),
+      availability: bnbEl('usr-a-availability').value.trim(),
+      waiver: bnbEl('usr-a-waiver').checked
     };
     assessments.push(entry);
     saveAssessments();
@@ -1746,12 +1746,12 @@
     renderAssessmentTab();
   });
   bnbEl('usr-new-user-btn').addEventListener('click', ()=> openEditor(null));
-  document.getElementById('usr-panel-cancel').addEventListener('click', ()=> backdrop.classList.remove('show'));
+  bnbEl('usr-panel-cancel').addEventListener('click', ()=> backdrop.classList.remove('show'));
   backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) backdrop.classList.remove('show'); });
 
-  document.getElementById('usr-panel-save').addEventListener('click', ()=>{
-    const fullName = document.getElementById('usr-f-fullname').value.trim();
-    const email = document.getElementById('usr-f-email').value.trim();
+  bnbEl('usr-panel-save').addEventListener('click', ()=>{
+    const fullName = bnbEl('usr-f-fullname').value.trim();
+    const email = bnbEl('usr-f-email').value.trim();
     if (!fullName){ alert('Give the member a name first.'); return; }
     if (!email){ alert('Give the member an email first.'); return; }
 
@@ -1761,30 +1761,30 @@
     const data = {
       fullName, email,
       roles: selectedRoles,
-      status: document.getElementById('usr-f-status').value,
+      status: bnbEl('usr-f-status').value,
       password: '••••••••', // display-only placeholder — real auth lives in Supabase Auth, not this row; see the reset-email button above
-      avatar: document.getElementById('usr-f-avatar').value.trim() || 'https://i.pravatar.cc/150?u=' + encodeURIComponent(email),
-      dob: document.getElementById('usr-f-dob').value,
-      phone: document.getElementById('usr-f-phone').value.trim(),
-      address: document.getElementById('usr-f-address').value.trim(),
-      height: document.getElementById('usr-f-height').value,
-      weight: document.getElementById('usr-f-weight').value,
-      experience: document.getElementById('usr-f-experience').value,
-      goals: document.getElementById('usr-f-goals').value.trim(),
-      injury: document.getElementById('usr-f-injury').value.trim(),
-      ecName: document.getElementById('usr-f-ec-name').value.trim(),
-      ecPhone: document.getElementById('usr-f-ec-phone').value.trim(),
-      prefTime: document.getElementById('usr-f-preftime').value.trim(),
-      trainerId: document.getElementById('usr-f-trainer-id').value || null,
-      plan: document.getElementById('usr-f-plan').value.trim(),
-      mstatus: document.getElementById('usr-f-mstatus').value,
-      contractEnd: document.getElementById('usr-f-contract-end').value,
-      balance: Number(document.getElementById('usr-f-balance').value) || 0,
-      comp: document.getElementById('usr-f-comp').value,
-      autoRenew: document.getElementById('usr-f-autorenew').checked,
-      flag: document.getElementById('usr-f-flag').value,
-      leadSource: document.getElementById('usr-f-leadsource').value.trim(),
-      internalNotes: document.getElementById('usr-f-internal-notes').value.trim()
+      avatar: bnbEl('usr-f-avatar').value.trim() || 'https://i.pravatar.cc/150?u=' + encodeURIComponent(email),
+      dob: bnbEl('usr-f-dob').value,
+      phone: bnbEl('usr-f-phone').value.trim(),
+      address: bnbEl('usr-f-address').value.trim(),
+      height: bnbEl('usr-f-height').value,
+      weight: bnbEl('usr-f-weight').value,
+      experience: bnbEl('usr-f-experience').value,
+      goals: bnbEl('usr-f-goals').value.trim(),
+      injury: bnbEl('usr-f-injury').value.trim(),
+      ecName: bnbEl('usr-f-ec-name').value.trim(),
+      ecPhone: bnbEl('usr-f-ec-phone').value.trim(),
+      prefTime: bnbEl('usr-f-preftime').value.trim(),
+      trainerId: bnbEl('usr-f-trainer-id').value || null,
+      plan: bnbEl('usr-f-plan').value.trim(),
+      mstatus: bnbEl('usr-f-mstatus').value,
+      contractEnd: bnbEl('usr-f-contract-end').value,
+      balance: Number(bnbEl('usr-f-balance').value) || 0,
+      comp: bnbEl('usr-f-comp').value,
+      autoRenew: bnbEl('usr-f-autorenew').checked,
+      flag: bnbEl('usr-f-flag').value,
+      leadSource: bnbEl('usr-f-leadsource').value.trim(),
+      internalNotes: bnbEl('usr-f-internal-notes').value.trim()
     };
 
     if (editingId){

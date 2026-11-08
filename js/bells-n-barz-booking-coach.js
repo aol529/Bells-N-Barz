@@ -318,7 +318,7 @@
   async function afterBookingChange(){
     await Promise.all([refreshBookingsFromSupabase(), refreshSessionCounts(), refreshPtWaitlist()]);
     renderBody();
-    if (activeRosterSessionId && document.getElementById('sched-session-panel-backdrop').classList.contains('show')) renderRosterLists();
+    if (activeRosterSessionId && bnbEl('sched-session-panel-backdrop').classList.contains('show')) renderRosterLists();
   }
 
   async function refreshSlotsFromSupabase(){
@@ -569,10 +569,10 @@
   }
   function openSlotPanel(date, time){
     activeSlotFormTrainer = selfTrainerId;
-    document.getElementById('sched-slot-date').value = date || '';
-    document.getElementById('sched-slot-time').value = time || '';
-    document.getElementById('sched-slot-duration').value = 60;
-    document.getElementById('sched-slot-panel-backdrop').classList.add('show');
+    bnbEl('sched-slot-date').value = date || '';
+    bnbEl('sched-slot-time').value = time || '';
+    bnbEl('sched-slot-duration').value = 60;
+    bnbEl('sched-slot-panel-backdrop').classList.add('show');
     if (date) document.getElementById(time ? 'sched-slot-duration' : 'sched-slot-time').focus();
   }
 
@@ -2668,10 +2668,10 @@
     const addSlotBtn = document.getElementById('dash-add-slot-btn');
     if (addSlotBtn) addSlotBtn.addEventListener('click', ()=>{
       activeSlotFormTrainer = selfTrainerId;
-      document.getElementById('sched-slot-date').value = '';
-      document.getElementById('sched-slot-time').value = '';
-      document.getElementById('sched-slot-duration').value = 60;
-      document.getElementById('sched-slot-panel-backdrop').classList.add('show');
+      bnbEl('sched-slot-date').value = '';
+      bnbEl('sched-slot-time').value = '';
+      bnbEl('sched-slot-duration').value = 60;
+      bnbEl('sched-slot-panel-backdrop').classList.add('show');
     });
     const startSessionBtn = document.getElementById('dash-start-session-btn');
     if (startSessionBtn) startSessionBtn.addEventListener('click', ()=>{
@@ -2918,8 +2918,8 @@
     return Object.keys(byTime).map(t=> byTime[t].sort().map(d=>names[d-1]).join(', ') + ' at ' + fmtTime(t)).join('; ');
   }
   function renderRecurringPreview(){
-    const input = document.getElementById('sched-class-recurring');
-    const el = document.getElementById('sched-class-recurring-preview');
+    const input = bnbEl('sched-class-recurring');
+    const el = bnbEl('sched-class-recurring-preview');
     if (!input || !el) return;
     const text = input.value.trim();
     const desc = describeRecurring(text);
@@ -2930,16 +2930,16 @@
   }
 
   function saveClass(){
-    const name = document.getElementById('sched-class-name').value.trim();
+    const name = bnbEl('sched-class-name').value.trim();
     if (!name){ toast('Give the class a name.'); return; }
     const data = {
       name,
-      instructorId: document.getElementById('sched-class-instructor').value,
-      status: document.getElementById('sched-class-status').value,
-      capacity: Math.max(1, Number(document.getElementById('sched-class-capacity').value) || 1),
-      duration: Math.max(5, Number(document.getElementById('sched-class-duration').value) || 30),
-      recurring: document.getElementById('sched-class-recurring').value.trim(),
-      description: document.getElementById('sched-class-description').value.trim()
+      instructorId: bnbEl('sched-class-instructor').value,
+      status: bnbEl('sched-class-status').value,
+      capacity: Math.max(1, Number(bnbEl('sched-class-capacity').value) || 1),
+      duration: Math.max(5, Number(bnbEl('sched-class-duration').value) || 30),
+      recurring: bnbEl('sched-class-recurring').value.trim(),
+      description: bnbEl('sched-class-description').value.trim()
     };
     if (editingClassId){
       const idx = classes.findIndex(c=>c.id===editingClassId);
@@ -2955,21 +2955,21 @@
   function openClassPanel(id){
     editingClassId = id || null;
     const c = id ? getClass(id) : null;
-    document.getElementById('sched-class-panel-title').textContent = c ? 'Edit Class' : 'Add Class';
-    const instrSel = document.getElementById('sched-class-instructor');
+    bnbEl('sched-class-panel-title').textContent = c ? 'Edit Class' : 'Add Class';
+    const instrSel = bnbEl('sched-class-instructor');
     instrSel.innerHTML = '';
     getSchedTrainers().forEach(t=>{ const o = document.createElement('option'); o.value=t.id; o.textContent=t.name; instrSel.appendChild(o); });
-    document.getElementById('sched-class-name').value = c ? c.name : '';
+    bnbEl('sched-class-name').value = c ? c.name : '';
     instrSel.value = c ? c.instructorId : (getSchedTrainers()[0]||{}).id;
-    document.getElementById('sched-class-status').value = c ? c.status : 'active';
-    document.getElementById('sched-class-capacity').value = c ? c.capacity : 10;
-    document.getElementById('sched-class-duration').value = c ? c.duration : 45;
-    document.getElementById('sched-class-recurring').value = c ? c.recurring : '';
+    bnbEl('sched-class-status').value = c ? c.status : 'active';
+    bnbEl('sched-class-capacity').value = c ? c.capacity : 10;
+    bnbEl('sched-class-duration').value = c ? c.duration : 45;
+    bnbEl('sched-class-recurring').value = c ? c.recurring : '';
     renderRecurringPreview();
-    document.getElementById('sched-class-description').value = c ? c.description : '';
-    document.getElementById('sched-class-panel-backdrop').classList.add('show');
+    bnbEl('sched-class-description').value = c ? c.description : '';
+    bnbEl('sched-class-panel-backdrop').classList.add('show');
   }
-  function closeClassPanel(){ document.getElementById('sched-class-panel-backdrop').classList.remove('show'); editingClassId = null; }
+  function closeClassPanel(){ bnbEl('sched-class-panel-backdrop').classList.remove('show'); editingClassId = null; }
   function toggleArchiveClass(id){ const c = getClass(id); if (c){ c.status = c.status==='active' ? 'archived' : 'active'; saveClasses().then(ensureRecurringSessions); renderBody(); } }
   function deleteClass(id){
     if (!confirm('Delete this class? Existing sessions referencing it will remain but show as orphaned.')) return;
@@ -3011,17 +3011,17 @@
     const s = getSession(sessId); if (!s) return;
     const cls = getClass(s.classId);
     const cap = sessionCapacity(s);
-    document.getElementById('sched-roster-header').textContent = (cls?cls.name:'Session') + ' — ' + fmtDate(s.date) + ' ' + fmtTime(s.startTime) + ' · capacity ' + cap;
+    bnbEl('sched-roster-header').textContent = (cls?cls.name:'Session') + ' — ' + fmtDate(s.date) + ' ' + fmtTime(s.startTime) + ' · capacity ' + cap;
     renderRosterLists();
-    document.getElementById('sched-session-panel-backdrop').classList.add('show');
+    bnbEl('sched-session-panel-backdrop').classList.add('show');
   }
   function renderRosterLists(){
     const s = getSession(activeRosterSessionId); if (!s) return;
     const cap = sessionCapacity(s);
     const confirmedList = bookings.filter(b=>b.sessionId===activeRosterSessionId && b.status==='confirmed');
     const waitlist = sessionWaitlist(activeRosterSessionId);
-    const cEl = document.getElementById('sched-roster-confirmed');
-    const wEl = document.getElementById('sched-roster-waitlisted');
+    const cEl = bnbEl('sched-roster-confirmed');
+    const wEl = bnbEl('sched-roster-waitlisted');
     cEl.innerHTML = confirmedList.length ? confirmedList.map(b=>
       '<li><span>'+esc(memberName(b.userId))+'</span><div class="row-actions"><button data-action="mark-noshow" data-id="'+b.id+'">No-show</button><button class="del" data-action="roster-remove" data-id="'+b.id+'">Remove</button></div></li>'
     ).join('') : '<li class="empty-row">No confirmed bookings.</li>';
@@ -3152,18 +3152,18 @@
     const addSlotBtn = body.querySelector('#sched-add-slot-btn');
     if (addSlotBtn) addSlotBtn.addEventListener('click', ()=>{
       activeSlotFormTrainer = selfTrainerId;
-      document.getElementById('sched-slot-date').value = '';
-      document.getElementById('sched-slot-time').value = '';
-      document.getElementById('sched-slot-duration').value = 60;
-      document.getElementById('sched-slot-panel-backdrop').classList.add('show');
+      bnbEl('sched-slot-date').value = '';
+      bnbEl('sched-slot-time').value = '';
+      bnbEl('sched-slot-duration').value = 60;
+      bnbEl('sched-slot-panel-backdrop').classList.add('show');
     });
   }
 
   /* ---------------- STATIC PANEL WIRING (once) ---------------- */
-  document.getElementById('sched-class-cancel').addEventListener('click', closeClassPanel);
-  document.getElementById('sched-class-save').addEventListener('click', saveClass);
-  document.getElementById('sched-class-recurring').addEventListener('input', renderRecurringPreview);
-  document.getElementById('sched-class-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-class-panel-backdrop') closeClassPanel(); });
+  bnbEl('sched-class-cancel').addEventListener('click', closeClassPanel);
+  bnbEl('sched-class-save').addEventListener('click', saveClass);
+  bnbEl('sched-class-recurring').addEventListener('input', renderRecurringPreview);
+  bnbEl('sched-class-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-class-panel-backdrop') closeClassPanel(); });
 
   document.getElementById('sched-ptbook-cancel').addEventListener('click', closeBookPanel);
   document.getElementById('sched-ptbook-save').addEventListener('click', confirmBookPanel);
@@ -3174,22 +3174,22 @@
   document.getElementById('sched-move-cancel').addEventListener('click', closeMoveDialog);
   document.getElementById('sched-move-save').addEventListener('click', confirmMove);
   document.getElementById('sched-move-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-move-panel-backdrop') closeMoveDialog(); });
-  document.getElementById('sched-slot-cancel').addEventListener('click', ()=> document.getElementById('sched-slot-panel-backdrop').classList.remove('show'));
-  document.getElementById('sched-slot-save').addEventListener('click', ()=>{
-    addSlot(activeSlotFormTrainer, document.getElementById('sched-slot-date').value, document.getElementById('sched-slot-time').value, document.getElementById('sched-slot-duration').value);
-    document.getElementById('sched-slot-panel-backdrop').classList.remove('show');
+  bnbEl('sched-slot-cancel').addEventListener('click', ()=> bnbEl('sched-slot-panel-backdrop').classList.remove('show'));
+  bnbEl('sched-slot-save').addEventListener('click', ()=>{
+    addSlot(activeSlotFormTrainer, bnbEl('sched-slot-date').value, bnbEl('sched-slot-time').value, bnbEl('sched-slot-duration').value);
+    bnbEl('sched-slot-panel-backdrop').classList.remove('show');
   });
-  document.getElementById('sched-slot-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-slot-panel-backdrop') document.getElementById('sched-slot-panel-backdrop').classList.remove('show'); });
+  bnbEl('sched-slot-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-slot-panel-backdrop') bnbEl('sched-slot-panel-backdrop').classList.remove('show'); });
 
-  document.getElementById('sched-roster-close').addEventListener('click', ()=> document.getElementById('sched-session-panel-backdrop').classList.remove('show'));
-  document.getElementById('sched-session-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-session-panel-backdrop') document.getElementById('sched-session-panel-backdrop').classList.remove('show'); });
-  document.getElementById('sched-roster-confirmed').addEventListener('click', (e)=>{
+  bnbEl('sched-roster-close').addEventListener('click', ()=> bnbEl('sched-session-panel-backdrop').classList.remove('show'));
+  bnbEl('sched-session-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='sched-session-panel-backdrop') bnbEl('sched-session-panel-backdrop').classList.remove('show'); });
+  bnbEl('sched-roster-confirmed').addEventListener('click', (e)=>{
     const btn = e.target.closest('[data-action]'); if (!btn) return;
     const action = btn.getAttribute('data-action'), id = btn.getAttribute('data-id');
     if (action === 'mark-noshow') markNoShow(id);
     else if (action === 'roster-remove') rosterRemove(id);
   });
-  document.getElementById('sched-roster-waitlisted').addEventListener('click', (e)=>{
+  bnbEl('sched-roster-waitlisted').addEventListener('click', (e)=>{
     const btn = e.target.closest('[data-action]'); if (!btn) return;
     const action = btn.getAttribute('data-action'), id = btn.getAttribute('data-id');
     if (action === 'promote-booking') promoteBooking(id);
