@@ -12,6 +12,11 @@
   // (sql/109). The app reads the same settings and works out the same
   // picture, so a timed rotation matches on both.
   //
+  // A gym picture can carry a short looping clip (sql/111). It plays only on
+  // Home, only for people following the gym's default (and visitors), and not
+  // for anyone who asks the browser for less motion or less data; the photo
+  // is the still underneath.
+  //
   // Pages here map to the app's tabs: the site's Home is Home; in Gym, the
   // manual and Live Session are Workout, Booking is Book, Messages and
   // Notifications are Chat; everything else is More. The sign-in page
@@ -24,6 +29,7 @@
   const BUCKET = 'backdrops';
   const OWN_BUCKET = 'member-wallpapers';
   const OWN_MAX = 12;
+  const VIDEO_MB = 20, VIDEO_SECS = 20;
   const SLOTS = [
     { key: 'home', name: 'Home', desc: 'The gym\'s Home picture. The first one that\'s on is used, unless a member (or the default below) picks something else.' },
     { key: 'signin', name: 'Sign-in', desc: 'Behind the sign-in screen. Everyone sees it, signed in or not.' },
@@ -79,9 +85,9 @@
   // ---- working out the picture ----
   // A picture by its ref: "home" (the gym's Home picture), "g:<id>" (a gym wallpaper), "o:<id>" (their own photo).
   function refPic(ref, ownOk){
-    if (ref === 'home'){ const r = first('home'); return r ? { tall: r.tall_url, wide: r.wide_url } : null; }
+    if (ref === 'home'){ const r = first('home'); return r ? { tall: r.tall_url, wide: r.wide_url, video: r.video_url } : null; }
     if (typeof ref !== 'string') return null;
-    if (ref.startsWith('g:')){ const r = walls().find(x => x.id === ref.slice(2)); return r ? { tall: r.tall_url, wide: r.wide_url } : null; }
+    if (ref.startsWith('g:')){ const r = walls().find(x => x.id === ref.slice(2)); return r ? { tall: r.tall_url, wide: r.wide_url, video: r.video_url } : null; }
     if (ref.startsWith('o:') && ownOk){ const o = ownList().find(x => x.id === ref.slice(2) && x.url && x.exp > Date.now()); return o ? { tall: o.url, wide: null } : null; }
     return null;
   }
@@ -161,22 +167,47 @@
     }
     // "Living photos": a slow drift and zoom (css: html.bd-motion; still under reduce-motion).
     const motion = page !== 'signin' && effective().motion === 'gentle';
-    const sig = page + '|' + (pic ? pic.tall + '|' + pic.wide : '') + '|' + op + '|' + motion;
+    // A clip plays on Home for people following the gym, unless they want less motion or data.
+    const following = !(isMine() && mine.settings);
+    const quiet = matchMedia('(prefers-reduced-motion: reduce)').matches || !!(navigator.connection && navigator.connection.saveData);
+    const video = page === 'home' && following && !quiet && pic && pic.video ? pic.video : '';
+    setVideo(video);
+    const sig = page + '|' + (pic ? pic.tall + '|' + pic.wide : '') + '|' + op + '|' + motion + '|' + video;
     if (sig === lastApplied) return;
     lastApplied = sig;
     root.style.setProperty('--bd-wide', cssUrl(pic && (pic.wide || pic.tall)));
     root.style.setProperty('--bd-tall', cssUrl(pic && pic.tall));
     root.style.setProperty('--bd-op', String(Math.min(0.85, op).toFixed(3)));
     root.classList.toggle('has-bd', !!pic);
-    root.classList.toggle('bd-motion', !!pic && motion);
+    root.classList.toggle('bd-motion', !!pic && motion && !video);
   }
+  // The clip layer, made when first needed; it sits over the photo, which shows until it plays.
+  function setVideo(url){
+    let v = document.querySelector('body > .site-backdrop-video');
+    if (!url){ if (v){ v.pause(); v.removeAttribute('src'); v.load(); v.remove(); } document.documentElement.classList.remove('has-bdv'); return; }
+    if (!document.body) return;
+    if (!v){
+      v = document.createElement('video');
+      v.className = 'site-backdrop-video'; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true;
+      v.setAttribute('aria-hidden', 'true'); v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.preload = 'auto';
+      v.addEventListener('playing', () => document.documentElement.classList.add('has-bdv'));
+      v.addEventListener('error', () => document.documentElement.classList.remove('has-bdv'));
+      document.body.insertBefore(v, document.body.firstChild);
+    }
+    if (v.getAttribute('src') !== url){ document.documentElement.classList.remove('has-bdv'); v.src = url; }
+    if (!document.hidden) v.play().catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => {
+    const v = document.querySelector('body > .site-backdrop-video');
+    if (v){ if (document.hidden) v.pause(); else v.play().catch(() => {}); }
+  });
   let applyQueued = false;
   function applySoon(){ if (applyQueued) return; applyQueued = true; requestAnimationFrame(() => { applyQueued = false; apply(); }); }
 
   async function load(){
     if (typeof bnbClient === 'undefined') return;
     const [res, def] = await Promise.all([
-      bnbClient.from('app_backdrops').select('id, slot, name, tall_url, wide_url, unlock_sessions, sort, active, placeholder, updated_at').order('slot').order('sort'),
+      bnbClient.from('app_backdrops').select('id, slot, name, tall_url, wide_url, video_url, unlock_sessions, sort, active, placeholder, updated_at').order('slot').order('sort'),
       bnbClient.from('app_backdrop_defaults').select('settings').eq('id', 1).maybeSingle()
     ]);
     if (!def.error){ defaults = (def.data && def.data.settings) || null; writeJSON(DEF_KEY, defaults); }
@@ -217,10 +248,63 @@
   }
   // Removes files nothing points at any more. Failures only leave a stray file.
   async function dropFiles(urls){
-    const used = new Set(rows.flatMap(r => [r.tall_url, r.wide_url]));
+    const used = new Set(rows.flatMap(r => [r.tall_url, r.wide_url, r.video_url]));
     const paths = urls.filter(u => u && !used.has(u)).map(bucketPath).filter(Boolean);
     if (paths.length) await bnbClient.storage.from(BUCKET).remove(paths).catch(() => {});
   }
+
+  // ---- clips ----
+  // Reads a clip's length and shape before it goes up, so a too-long or too-big one is refused here.
+  function clipInfo(file){
+    return new Promise((resolve, reject) => {
+      const v = document.createElement('video'), url = URL.createObjectURL(file);
+      v.preload = 'metadata'; v.muted = true;
+      v.onloadedmetadata = () => { const r = { secs: v.duration, w: v.videoWidth, h: v.videoHeight }; URL.revokeObjectURL(url); resolve(r); };
+      v.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file isn\'t a video this browser can play. Use MP4.')); };
+      v.src = url;
+    });
+  }
+  async function checkClip(file){
+    if (!/^video\/(mp4|webm)$/.test(file.type)) throw new Error('Use an MP4 (or WebM) video.');
+    const mb = file.size / 1048576;
+    if (mb > VIDEO_MB) throw new Error('That clip is ' + mb.toFixed(1) + ' MB. Keep it under ' + VIDEO_MB + ' MB: trim it shorter or save it at 720p/HD, not 4K.');
+    const info = await clipInfo(file);
+    if (!isFinite(info.secs) || info.secs > VIDEO_SECS) throw new Error('That clip is ' + Math.round(info.secs) + ' seconds. Keep it to ' + VIDEO_SECS + ' or less (6–12 is best).');
+    return info;
+  }
+  async function uploadClip(file){
+    const path = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + (file.type === 'video/webm' ? '.webm' : '.mp4');
+    const { error } = await bnbClient.storage.from(BUCKET).upload(path, file, { contentType: file.type });
+    if (error) throw error;
+    return bnbClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+  // A still from about a second in, for a picture added with only a clip.
+  function frameFrom(file){
+    return new Promise((resolve, reject) => {
+      const v = document.createElement('video'), url = URL.createObjectURL(file);
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.onloadeddata = () => { v.currentTime = Math.min(1, (v.duration || 2) / 3); };
+      v.onseeked = () => {
+        const k = Math.min(1, 2200 / Math.max(v.videoWidth, v.videoHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => b ? resolve(new File([b], 'still.jpg', { type: 'image/jpeg' })) : reject(new Error('Could not take a still from that clip.')), 'image/jpeg', 0.86);
+      };
+      v.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file isn\'t a video this browser can play. Use MP4.')); };
+      v.src = url;
+    });
+  }
+  const CLIP_HELP = '<details class="bd-cliphelp"><summary>Video clips: how to make a good one</summary><ul>' +
+    '<li><b>Short:</b> 6 to 12 seconds, up to ' + VIDEO_SECS + '. It loops, so a clip that ends where it starts looks best.</li>' +
+    '<li><b>Small:</b> under ' + VIDEO_MB + ' MB, ideally 3 to 8. On the phone, trim it in Gallery (Edit &gt; trim) and save at 720p or HD, never 4K.</li>' +
+    '<li><b>Upright:</b> filmed in portrait for phones. Hold still or use a stand; let the movement come from the scene.</li>' +
+    '<li><b>Slow:</b> chalk drifting, a bar being racked, a rope swaying, light through a window. Nothing fast or flashing: it sits behind text.</li>' +
+    '<li><b>Calm at the top:</b> the greeting and cards sit over the top half.</li>' +
+    '<li><b>No faces</b> unless the person has agreed. Sound is never played.</li>' +
+    '<li>It plays only on Home, for members following the gym default (set it above) and website visitors. Phones download it on Wi-Fi only; until then, and on battery saver, the photo shows.</li>' +
+    '</ul></details>';
 
   // ---- the settings editor (members' page and the admin default) ----
   // ctx: { who: 'member' | 'admin', s: settings }
@@ -280,7 +364,7 @@
         const ref = 'g:' + w.id, need = w.unlock_sessions;
         const locked = !admin && need && days() < need && !st(ref);
         const hint = st(ref) ? (rot ? 'In the mix' : 'Chosen') : !need ? 'Free' : admin ? 'Earned · ' + need : locked ? (need - days()) + ' more ' + (need - days() === 1 ? 'session' : 'sessions') : 'Earned';
-        h += tileHtml(ref, w.tall_url, w.name, st(ref), hint, locked);
+        h += tileHtml(ref, w.tall_url, w.name, st(ref), hint + (admin && w.video_url ? ' · Video' : ''), locked);
       });
       if (!admin) ownList().forEach(o => { const ref = 'o:' + o.id; h += tileHtml(ref, o.url, o.name, st(ref), st(ref) ? (rot ? 'In the mix' : 'Chosen') : 'Yours', false); });
       h += '</div>';
@@ -376,7 +460,9 @@
       '<div class="bd-pics"><img alt="" loading="lazy" src="' + esc(r.tall_url) + '"><img alt="" loading="lazy" class="wide" src="' + esc(r.wide_url || r.tall_url) + '"></div>' +
       '<div class="bd-body">' +
         '<div class="bd-tags">' + (r.placeholder ? '<span class="bd-tag">Placeholder art</span>' : '') + (r.active ? '' : '<span class="bd-tag">Hidden</span>') +
-          (r.slot === 'wallpaper' && r.unlock_sessions ? '<span class="bd-tag">Earned · ' + esc(r.unlock_sessions) + '</span>' : '') + '</div>' +
+          (r.slot === 'wallpaper' && r.unlock_sessions ? '<span class="bd-tag">Earned · ' + esc(r.unlock_sessions) + '</span>' : '') +
+          (r.video_url ? '<span class="bd-tag">Video</span>' : '') + '</div>' +
+        (r.video_url ? '<video class="bd-clip" src="' + esc(r.video_url) + '" muted loop playsinline preload="metadata"></video>' : '') +
         '<input type="text" maxlength="60" data-bd-name value="' + esc(r.name) + '" aria-label="Name"' + dis + '>' +
         (r.slot === 'wallpaper' ? '<label class="bd-unlock">Unlocks after <input type="number" min="1" max="10000" data-bd-unlock value="' + esc(r.unlock_sessions || '') + '" placeholder="free"' + dis + '> sessions</label>' : '') +
         '<button type="button" class="btn2 primary" data-bd-save hidden>Save</button>' +
@@ -385,6 +471,10 @@
           '<label class="btn2' + (dis ? ' disabled' : '') + '">' + (r.wide_url ? 'Replace' : 'Add') + ' wide photo<input type="file" accept="image/*" data-bd-file="wide_url" hidden' + dis + '></label>' +
           (r.wide_url ? '<button type="button" class="btn2" data-bd-nowide' + dis + '>Remove wide</button>' : '') +
           '<button type="button" class="btn2" data-bd-preview>Preview</button>' +
+        '</div>' +
+        '<div class="bd-actions">' +
+          '<label class="btn2' + (dis ? ' disabled' : '') + '">' + (r.video_url ? 'Replace video' : 'Add video') + '<input type="file" accept="video/mp4,video/webm" data-bd-video hidden' + dis + '></label>' +
+          (r.video_url ? '<button type="button" class="btn2" data-bd-novideo' + dis + '>Remove video</button>' : '') +
         '</div>' +
         '<div class="bd-actions">' +
           '<button type="button" class="btn2" data-bd-up' + (dis || (i <= 0 ? ' disabled' : '')) + ' aria-label="Move up">↑</button>' +
@@ -400,9 +490,10 @@
   function addForm(slot){
     return '<form class="bd-add" data-bd-addform="' + slot + '">' +
       '<label>Name<input type="text" name="name" maxlength="60" placeholder="e.g. Squat rack at dawn"></label>' +
-      '<label>Phone photo (portrait)<input type="file" name="tall" accept="image/*" required></label>' +
+      '<label>Phone photo (portrait)<input type="file" name="tall" accept="image/*"></label>' +
       '<label>Wide photo, for computers (optional)<input type="file" name="wide" accept="image/*"></label>' +
       (slot === 'wallpaper' ? '<label>Unlocks after (sessions, blank = free)<input type="number" name="unlock" min="1" max="10000"></label>' : '') +
+      '<label>Video clip (optional; with no photo, a still is taken from it)<input type="file" name="video" accept="video/mp4,video/webm"></label>' +
       '<div class="bd-actions"><button type="submit" class="btn2 primary">Add</button><button type="button" class="btn2" data-bd-addcancel>Cancel</button></div>' +
     '</form>';
   }
@@ -418,7 +509,7 @@
       html += '<div class="bd-slot"><div class="bd-slot-head"><h3>Gym default for members</h3><span>What members see until they set their own on their Wallpaper page, and what visitors see on the website. Locked wallpapers chosen here show to everyone; a rotation through "everything" skips the ones a member hasn\'t earned.</span></div>' +
         editorHtml({ who: 'admin', s: clone(defaults || BUILTIN) }) + '</div>';
     }
-    html += '<p class="bd-help">Phone photos work best in portrait with calm space in the top half (the greeting and cards sit there). The wide photo is for computers; without one, the phone photo is used. Photos are shrunk before uploading, and deleting or replacing one removes the old file. Changes reach the app the next time it opens.</p>';
+    html += '<p class="bd-help">Phone photos work best in portrait with calm space in the top half (the greeting and cards sit there). The wide photo is for computers; without one, the phone photo is used. Photos are shrunk before uploading, and deleting or replacing one removes the old file. Changes reach the app the next time it opens.</p>' + (admin ? CLIP_HELP : '');
     SLOTS.forEach(s => {
       const list = slotList(s.key);
       html += '<div class="bd-slot"><div class="bd-slot-head"><h3>' + esc(s.name) + '</h3><span>' + esc(s.desc) + '</span>' +
@@ -437,18 +528,24 @@
       form.onsubmit = async e => {
         e.preventDefault();
         const slot = form.dataset.bdAddform, fd = new FormData(form);
-        const tall = fd.get('tall'), wide = fd.get('wide');
-        if (!tall || !tall.size) return toast('Choose a phone photo.');
-        const name = String(fd.get('name') || '').trim() || nameFromFile(tall) || 'New picture';
+        let tall = fd.get('tall');
+        const wide = fd.get('wide'), clip = fd.get('video');
+        const hasClip = clip && clip.size;
+        if ((!tall || !tall.size) && !hasClip) return toast('Choose a phone photo, or a video clip.');
+        const name = String(fd.get('name') || '').trim() || nameFromFile(tall && tall.size ? tall : clip) || 'New picture';
         const n = parseInt(fd.get('unlock'), 10);
         form.querySelectorAll('button, input').forEach(x => x.disabled = true);
         toast('Uploading…');
         const uploaded = [];
         try {
+          if (hasClip) await checkClip(clip);
+          if (!tall || !tall.size) tall = await frameFrom(clip);
           const tallUrl = await upload(tall); uploaded.push(tallUrl);
           const wideUrl = wide && wide.size ? await upload(wide) : null; if (wideUrl) uploaded.push(wideUrl);
+          if (hasClip) toast('Uploading the video…');
+          const videoUrl = hasClip ? await uploadClip(clip) : null; if (videoUrl) uploaded.push(videoUrl);
           const sort = slotList(slot).reduce((m, r) => Math.max(m, r.sort), -1) + 1;
-          const { error } = await bnbClient.from('app_backdrops').insert([{ slot, name, tall_url: tallUrl, wide_url: wideUrl, sort, unlock_sessions: slot === 'wallpaper' && n > 0 ? n : null }]);
+          const { error } = await bnbClient.from('app_backdrops').insert([{ slot, name, tall_url: tallUrl, wide_url: wideUrl, video_url: videoUrl, sort, unlock_sessions: slot === 'wallpaper' && n > 0 ? n : null }]);
           if (error) throw error;
           adding = null; toast('Added.'); load();
         } catch(err){
@@ -487,6 +584,24 @@
       }));
       const noWide = el.querySelector('[data-bd-nowide]');
       if (noWide) noWide.onclick = async () => { const before = r.wide_url; if (await save(id, { wide_url: null }, 'Wide photo removed. Computers use the phone photo.')) dropFiles([before]); };
+      const vin = el.querySelector('[data-bd-video]');
+      vin.addEventListener('change', async () => {
+        const file = vin.files && vin.files[0]; vin.value = '';
+        if (!file) return;
+        const before = r.video_url;
+        let url = null;
+        try {
+          await checkClip(file);
+          busy[id] = true; render(); toast('Uploading the video…');
+          url = await uploadClip(file); busy[id] = false;
+          if (await save(id, { video_url: url }, before ? 'Video replaced.' : 'Video added. It plays on Home for members following the gym default.')) dropFiles([before]);
+          else dropFiles([url]);
+        } catch(e){ busy[id] = false; render(); if (url) dropFiles([url]); toast('Couldn\'t add the video: ' + (e.message || e)); }
+      });
+      const noVid = el.querySelector('[data-bd-novideo]');
+      if (noVid) noVid.onclick = async () => { const before = r.video_url; if (await save(id, { video_url: null }, 'Video removed. The photo shows instead.')) dropFiles([before]); };
+      const clipEl = el.querySelector('.bd-clip');
+      if (clipEl){ clipEl.onmouseenter = () => clipEl.play().catch(() => {}); clipEl.onmouseleave = () => clipEl.pause(); clipEl.onclick = () => clipEl.paused ? clipEl.play().catch(() => {}) : clipEl.pause(); }
 
       el.querySelector('[data-bd-toggle]').onclick = () => save(id, { active: !r.active }, r.active ? 'Hidden.' : 'Showing.');
       const shift = d => {
@@ -511,7 +626,7 @@
         const { error } = await bnbClient.from('app_backdrops').delete().eq('id', id);
         if (error) return toast('Couldn\'t delete: ' + error.message);
         rows = rows.filter(x => x.id !== id);
-        await dropFiles([r.tall_url, r.wide_url]);
+        await dropFiles([r.tall_url, r.wide_url, r.video_url]);
         toast('Deleted.'); load();
       };
     });

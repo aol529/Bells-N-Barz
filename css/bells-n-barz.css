@@ -3881,6 +3881,14 @@ html.has-bd .site-backdrop-plate{display:none !important;}
 @keyframes bd-drift{from{transform:scale(1) translate(0,0);}to{transform:scale(1.08) translate(-3%,-1.5%);}}
 html.bd-motion body:not(.kiosk) > .site-backdrop-photo{animation:bd-drift 45s ease-in-out infinite alternate;will-change:transform;}
 @media (prefers-reduced-motion: reduce){ html.bd-motion body:not(.kiosk) > .site-backdrop-photo{animation:none;} }
+/* A gym clip (sql/111), over the photo, with the same fade. Shown once it's actually playing. */
+.site-backdrop-video{display:none;position:fixed;z-index:-1;pointer-events:none;left:0;right:0;top:0;width:100%;height:min(92vh, 900px);
+  object-fit:cover;object-position:center 60%;opacity:var(--bd-op,.55);
+  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);
+          mask-image:linear-gradient(to bottom, rgba(0,0,0,.55) 0, #000 35%, rgba(0,0,0,.6) 70%, transparent 100%);}
+html.has-bdv body:not(.kiosk) > .site-backdrop-video{display:block;}
+html[data-theme="light"] .site-backdrop-video{opacity:calc(var(--bd-op,.55) * .4);}
+@media print{.site-backdrop-video{display:none !important;}}
 @media print{.site-backdrop-photo{display:none !important;}}
 
 /* Admin > Backgrounds */
@@ -3972,3 +3980,10 @@ html.bd-motion body:not(.kiosk) > .site-backdrop-photo{animation:bd-drift 45s ea
 .wall-check{position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#111;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
 .wall-own img{display:block;width:100%;aspect-ratio:9/16;object-fit:cover;background:var(--surface-2);}
 .wall-own .wall-name{padding-bottom:6px;}
+
+.backdrops-admin .bd-clip{width:100%;max-height:220px;object-fit:cover;border-radius:4px;background:var(--surface-2);cursor:pointer;}
+.backdrops-admin .bd-cliphelp{margin:10px 0 4px;max-width:75ch;font-size:13px;border:1px solid var(--line);border-radius:6px;padding:8px 12px;background:var(--surface);}
+.backdrops-admin .bd-cliphelp summary{cursor:pointer;font-weight:600;color:var(--accent);}
+.backdrops-admin .bd-cliphelp ul{margin:8px 0 2px;padding-left:18px;color:var(--muted);}
+.backdrops-admin .bd-cliphelp li{margin:3px 0;}
+.backdrops-admin .bd-cliphelp b{color:var(--text);}
