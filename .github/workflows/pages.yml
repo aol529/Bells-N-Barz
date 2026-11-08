@@ -36,6 +36,8 @@ jobs:
           # Staff portal: Admin and Coach on their own page.
           cp staff.html _site/staff.html
           cp privacy.html _site/privacy.html
+          # Android app download page; the APK itself is the latest GitHub release's BellsNBarz.apk.
+          cp app.html _site/app.html
           cp pay.html _site/pay.html
           cp -r css _site/css
           cp -r js _site/js
