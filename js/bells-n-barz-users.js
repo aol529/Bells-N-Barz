@@ -854,8 +854,8 @@
     const { data, error } = await fpBusy(e.currentTarget, 'Checking…',
       () => bnbClient.rpc('password_help_lookup', { p_email: email }));
     if (error){ fpMessage('error', error.message || 'Could not check that email — try again.'); return; }
-    if (data === 'none'){ fpMessage('error', 'No account uses that email. Check the spelling, or sign up instead.'); return; }
-    if (data === 'archived'){ fpMessage('error', 'That account has been archived. Ask at the front desk to have it restored.'); return; }
+    // The lookup never says whether the email has an account (sql/113), so
+    // nobody can use this page to find out who's a member.
     fpEmail = email;
     document.getElementById('usr-fp-found-email').textContent = email;
     fpShowStep('options');
@@ -873,22 +873,24 @@
         const { error } = await fpBusy(btn, 'Sending…',
           () => bnbClient.auth.resetPasswordForEmail(fpEmail, { redirectTo }), btn.querySelector('.fp-option-title'));
         if (error){ fpMessage('error', error.message || 'Could not send the email — try again, or ask an admin.'); return; }
-        fpMessage('ok', 'Reset link sent to ' + fpEmail + '. It can take a few minutes; check your spam folder too.');
+        fpMessage('ok', 'If ' + fpEmail + ' has an account, a reset link is on its way. It can take a few minutes; check your spam folder too. Nothing after 15 minutes? Check the spelling, or ask at the front desk.');
       } else if (how === 'code'){
         // The code is in the email only if Supabase's Magic Link template
         // includes {{ .Token }}; if it only has the link, following it lands
         // on the reset view too (type=magiclink below).
         const { error } = await fpBusy(btn, 'Sending…',
           () => bnbClient.auth.signInWithOtp({ email: fpEmail, options: { shouldCreateUser: false, emailRedirectTo: redirectTo } }), btn.querySelector('.fp-option-title'));
-        if (error){ fpMessage('error', error.message || 'Could not send the code — try again, or ask an admin.'); return; }
+        // An unknown email comes back as an error from Supabase; answer the same
+        // way as a sent code so the page doesn't reveal who has an account.
+        if (error && /rate limit|too many/i.test(error.message || '')){ fpMessage('error', error.message); return; }
         document.getElementById('usr-fp-code-wrap').style.display = '';
         document.getElementById('usr-fp-code').focus();
-        fpMessage('ok', 'Code sent to ' + fpEmail + '. It can take a few minutes; check your spam folder too.');
+        fpMessage('ok', 'If ' + fpEmail + ' has an account, a code is on its way. It can take a few minutes; check your spam folder too.');
       } else if (how === 'admin'){
         const { error } = await fpBusy(btn, 'Sending…',
           () => bnbClient.rpc('request_password_help', { p_email: fpEmail }), btn.querySelector('.fp-option-title'));
         if (error){ fpMessage('error', error.message || 'Could not reach the admins — ask at the front desk.'); return; }
-        fpMessage('ok', "The admins have been told. One of them will set a temporary password and let you know — you'll choose your own when you log in with it.");
+        fpMessage('ok', "If that email has an account, the admins have been told. One of them will set a temporary password and let you know — you'll choose your own when you log in with it.");
       }
     });
   });
