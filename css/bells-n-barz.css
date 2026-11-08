@@ -3987,3 +3987,11 @@ html[data-theme="light"] .site-backdrop-video{opacity:calc(var(--bd-op,.55) * .4
 .backdrops-admin .bd-cliphelp ul{margin:8px 0 2px;padding-left:18px;color:var(--muted);}
 .backdrops-admin .bd-cliphelp li{margin:3px 0;}
 .backdrops-admin .bd-cliphelp b{color:var(--text);}
+
+/* Staff portal (staff.html) */
+.staff-badge{display:inline-block;margin-left:8px;padding:1px 8px;border:1px solid var(--accent);border-radius:999px;color:var(--accent);font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;vertical-align:middle;}
+.staff-portal .staff-only-msg{max-width:60ch;font-size:15px;}
+.staff-portal a.outer-link{text-decoration:none;}
+/* Accounts are made on the main site; the staff portal only signs people in. */
+.staff-portal .cat-card[data-mode="signup"],.staff-portal #usr-li-goto-signup,.staff-portal #usr-li-goto-signup + *{display:none;}
+.staff-portal #site-users .field-hint:has(#usr-li-goto-signup){display:none;}

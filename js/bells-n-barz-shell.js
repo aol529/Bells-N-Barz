@@ -1396,7 +1396,8 @@ const drills = [
 ];
 const drillsNew = ["Back Extensions","Cable Crunches","Cable Side Bends"];
 const driIdx = document.getElementById('drill-index');
-[...drills, ...drillsNew].sort((a,b)=>a.localeCompare(b)).forEach(name => {
+// (Only on the main page: the staff portal has no manual.)
+if (driIdx) [...drills, ...drillsNew].sort((a,b)=>a.localeCompare(b)).forEach(name => {
   const a = document.createElement('a');
   const isNew = drillsNew.includes(name);
   a.href = "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise tutorial");
@@ -1425,7 +1426,7 @@ funcRef.forEach(([fn, opts]) => {
   refHtml += `<tr><td><b>${fn}</b></td>` + opts.map(o => `<td><a href="${gsearch(o)}" target="_blank" rel="noopener">${o}</a></td>`).join('') + '</tr>';
 });
 refHtml += '</table>';
-document.getElementById('func-ref-table').innerHTML = refHtml;
+{ const frt = document.getElementById('func-ref-table'); if (frt) frt.innerHTML = refHtml; }
 
 /* ---------------- FUNCTION DETAIL PAGES ---------------- */
 const funcDetails = [
@@ -1466,7 +1467,7 @@ const funcDetails = [
      ["Bear Crawl","Additional"],["Farmer's Carry","Additional"],["Glute Bridge","Additional"]]}
 ];
 const fdWrap = document.getElementById('func-detail');
-funcDetails.forEach(f => {
+if (fdWrap) funcDetails.forEach(f => {
   const det = document.createElement('details');
   det.className = 'func-card';
   const rows = f.items.map(([n,t]) => `<tr><td><a href="${gsearch(n)}" target="_blank" rel="noopener">${n}</a></td><td>${t}</td></tr>`).join('');
@@ -1597,6 +1598,8 @@ backPill.addEventListener('click', () => {
   hideBackPill();
 });
 
+// The site search lives in the manual's header (main page only).
+if (searchInput && searchResultsEl && searchClearBtn){
 searchInput.addEventListener('input', (e) => {
   searchClearBtn.classList.toggle('show', e.target.value.length > 0);
   runSearch(e.target.value);
@@ -1622,6 +1625,7 @@ searchClearBtn.addEventListener('click', () => {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.search-wrap')) searchResultsEl.classList.remove('show');
 });
+}
 
 /* ---------------- INTERVAL TIMER ENGINE ---------------- */
 function fmtClock(sec){
@@ -1653,6 +1657,8 @@ function createIntervalTimer(ids, getConfig, opts){
   opts = opts || {};
   const els = {};
   for (const key in ids) els[key] = document.getElementById(ids[key]);
+  // Tools' timers live on the main page only (not the staff portal).
+  if (!els.card || !els.start || !els.pause || !els.reset) return { reset(){}, updateTotalLabel(){}, isRunning: () => false };
   // opts.labelMap lets a themed timer (e.g. Bring Sally Up) relabel
   // phases as "UP"/"DOWN" instead of "WORK"/"REST" — purely cosmetic,
   // the underlying phase.type driving data-phase (and its CSS) is
@@ -1830,6 +1836,7 @@ createIntervalTimer(
   };
   const fieldEls = {};
   for (const k in fieldIds) fieldEls[k] = document.getElementById(fieldIds[k]);
+  if (Object.values(fieldEls).some(el => !el)) return; // main page only
 
   function readConfig(){
     const clamp = (v, min, max, fallback) => {
