@@ -35,8 +35,6 @@ jobs:
           cp kiosk.html _site/kiosk.html
           # Staff portal: Admin and Coach on their own page.
           cp staff.html _site/staff.html
-          # Test copy of the main page without Admin/Coach (step 2 of the split); removed once it replaces the main page.
-          cp next.html _site/next.html
           cp privacy.html _site/privacy.html
           cp pay.html _site/pay.html
           cp -r css _site/css
@@ -51,7 +49,7 @@ jobs:
           cp -r img _site/img
           # Cache-bust css/ and js/ links with this commit's id (the page
           # uses ?v=__BUILD__ as a placeholder).
-          sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" _site/index.html _site/kiosk.html _site/staff.html _site/next.html
+          sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" _site/index.html _site/kiosk.html _site/staff.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
