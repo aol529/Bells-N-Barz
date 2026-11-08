@@ -337,7 +337,11 @@
     <button class="plate" data-tab="users"><span class="plate-title">Users</span><span class="plate-desc">Member and staff accounts, roles and notes</span></button>
     <button class="plate" data-tab="sessions"><span class="plate-title">Sessions</span><span class="plate-desc">Classes, trainer availability and rosters</span></button>
     <button class="plate" data-tab="reports"><span class="plate-title">Reports</span><span class="plate-desc">Revenue, attendance and retention</span></button>
-    <button class="plate" data-tab="content"><span class="plate-title">Content</span><span class="plate-desc">Blog, library, gallery and shop</span></button>
+    <button class="plate" data-tab="content"><span class="plate-title">Content</span><span class="plate-desc">Overview of the blog, library, gallery and shop</span></button>
+    <button class="plate" data-tab="edit-blog"><span class="plate-title">Blog</span><span class="plate-desc">Posts, drafts and the banner slides</span></button>
+    <button class="plate" data-tab="edit-shop"><span class="plate-title">Shop</span><span class="plate-desc">Products, orders and delivery areas</span></button>
+    <button class="plate" data-tab="edit-library"><span class="plate-title">Library</span><span class="plate-desc">Books on the shelf</span></button>
+    <button class="plate" data-tab="edit-gallery"><span class="plate-title">Gallery</span><span class="plate-desc">Photos for the gallery and the banner</span></button>
     <button class="plate" data-tab="switchboard"><span class="plate-title">Switchboard</span><span class="plate-desc">Turn app features on or off</span></button>
     <button class="plate" data-tab="backdrops"><span class="plate-title">Backgrounds</span><span class="plate-desc">Pictures behind Home, sign-in and the wallpapers</span></button>
     <button class="plate" data-tab="parking"><span class="plate-title">Parking</span><span class="plate-desc">Cars in and out, fees and member exemptions</span></button>
@@ -490,6 +494,416 @@
 <section class="admin-section" id="tab-content">
   <div class="day-head"><h2>Content — What Visitors Read &amp; See</h2><span class="day-sub">Blog posts, the blog banner, the library, the gallery and the shop, all in one place</span></div>
   <div id="content-body" class="content-portal"></div>
+</section>
+
+<section class="admin-section" id="tab-edit-blog">
+  <div class="day-head"><h2>Blog — Posts &amp; Banner</h2><span class="day-sub">Write, edit and publish posts, and choose the banner slides at the top of the Blog page</span></div>
+<div class="blog-scope portal-editor">
+<section class="view active" id="view-admin">
+  <div class="wrap">
+    <div class="admin-notice">Posts save to the database, so every staff member sees the same list. Export JSON for an offline backup.</div>
+    <div class="chip-filter cat-cards" id="blog-admin-subtabs">
+      <button type="button" class="cat-card active" data-blog-admin="posts"><span class="cat-card-icon" aria-hidden="true">📝</span><span class="cat-card-name">Posts</span><span class="cat-card-desc">Write, edit and publish posts</span><span class="cat-card-count" id="blog-admin-posts-count"></span></button>
+      <button type="button" class="cat-card" data-blog-admin="hero"><span class="cat-card-icon" aria-hidden="true">🖼️</span><span class="cat-card-name">Hero Slider</span><span class="cat-card-desc">Banner slides at the top of the blog</span><span class="cat-card-count" id="blog-admin-hero-count"></span></button>
+    </div>
+    <div class="blog-admin-panel" id="blog-admin-posts-panel">
+    <div class="admin-toolbar">
+      <button class="btn2 primary" id="new-post-btn">+ New Post</button>
+      <button class="btn2" id="export-btn">Export Posts JSON</button>
+      <button class="btn2" id="import-btn">Import Posts JSON</button>
+      <input type="file" id="import-file" accept="application/json" style="display:none;">
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr id="admin-thead-row"><th data-sort="title">Title<span class="sort-arrow">▾</span></th><th data-sort="category">Category<span class="sort-arrow">▾</span></th><th data-sort="date">Date<span class="sort-arrow">▾</span></th><th data-sort="status">Status<span class="sort-arrow">▾</span></th><th></th></tr>
+      </thead>
+      <tbody id="admin-tbody"></tbody>
+    </table>
+
+    </div>
+    <div class="blog-admin-panel" id="blog-admin-hero-panel" style="display:none;">
+    <div class="megatron-admin">
+      <h3>Hero Slider (Megatron)</h3>
+      <div class="sub">Banner slides shown at the top of the blog list — pulled from the gallery image pool.</div>
+      <div id="megatron-slide-list"></div>
+      <div class="megatron-add-row">
+        <select id="megatron-image-select"></select>
+        <input type="text" id="megatron-caption-input" placeholder="Caption (optional)">
+        <button class="btn2 primary" id="megatron-add-btn">+ Add Slide</button>
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<div class="panel-backdrop" id="panel-backdrop">
+  <div class="panel">
+    <h2 id="panel-title">New Post</h2>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f-title" placeholder="e.g. Why Progressive Overload Still Wins">
+    </div>
+    <div class="field-row2">
+      <div class="field">
+        <label>Slug</label>
+        <input type="text" id="f-slug" placeholder="auto-generated-from-title">
+      </div>
+      <div class="field">
+        <label>Topic</label>
+        <select id="f-category">
+          <option value="Recreation">Recreation</option>
+          <option value="Health &amp; Appearance">Health &amp; Appearance</option>
+          <option value="Wealth &amp; Finance">Wealth &amp; Finance</option>
+          <option value="Love &amp; Relationships">Love &amp; Relationships</option>
+          <option value="Community &amp; Charity">Community &amp; Charity</option>
+          <option value="Career">Career</option>
+          <option value="Personal Development">Personal Development</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label>Author</label>
+        <input type="text" id="f-author" placeholder="Coach KA">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-cover">Cover image (optional)</label>
+      <div class="blog-cover-row">
+        <input type="text" id="f-cover" placeholder="Paste an image link, or upload →">
+        <button type="button" class="btn2" id="f-cover-upload">Upload</button>
+        <input type="file" id="f-cover-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      </div>
+      <img class="blog-cover-preview" id="f-cover-preview" alt="" hidden>
+    </div>
+    <div class="field">
+      <label>Tags (comma separated)</label>
+      <input type="text" id="f-tags" placeholder="deload, hypertrophy, RIR">
+    </div>
+    <div class="field">
+      <label>Excerpt</label>
+      <textarea id="f-excerpt" rows="2" placeholder="One or two sentence summary shown on the blog card"></textarea>
+    </div>
+    <div class="field">
+      <label for="f-body">Body</label>
+      <div class="blog-md-bar" id="f-body-bar">
+        <div class="blog-md-tools" role="toolbar" aria-label="Formatting">
+          <button type="button" data-md="h2" title="Heading">H2</button>
+          <button type="button" data-md="h3" title="Subheading">H3</button>
+          <button type="button" data-md="bold" title="Bold"><b>B</b></button>
+          <button type="button" data-md="italic" title="Italic"><i>I</i></button>
+          <button type="button" data-md="list" title="Bullet list">• List</button>
+          <button type="button" data-md="quote" title="Quote">❝ Quote</button>
+          <button type="button" data-md="link" title="Link">Link</button>
+          <button type="button" data-md="image" title="Upload a picture into the post">Picture</button>
+          <button type="button" data-md="hr" title="Divider line">―</button>
+        </div>
+        <div class="status-toggle blog-md-mode" id="f-body-mode">
+          <button type="button" data-view="write" class="active">Write</button>
+          <button type="button" data-view="preview">Preview</button>
+        </div>
+      </div>
+      <input type="file" id="f-body-file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+      <textarea id="f-body" rows="14" placeholder="Write the post here. Pick some text and press B to make it bold, or H2 to make it a heading."></textarea>
+      <div class="post-body blog-md-preview" id="f-body-preview" hidden></div>
+      <div class="field-hint" id="f-body-count"></div>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <div class="status-toggle" id="status-toggle">
+        <button data-status="draft" class="active">Draft</button>
+        <button data-status="published">Published</button>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="panel-cancel">Cancel</button>
+      <button class="btn2 primary" id="panel-save">Save Post</button>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+
+<section class="admin-section" id="tab-edit-shop">
+  <div class="day-head"><h2>Shop — Products, Orders &amp; Delivery</h2><span class="day-sub">Products, prices and stock, orders to mark paid or handed over, and delivery areas</span></div>
+<div class="shop-scope portal-editor">
+<section class="view active" id="shop-view-admin">
+  <div class="wrap">
+    <div class="admin-notice">Products and orders save to the database. Merch/Supplement orders redirect to whatever checkout link you set per product; you mark payment received manually below. Buying a Session Package creates an invoice in Admin &gt; Billing.</div>
+    <div class="shop-type-tabs chip-filter cat-cards" id="shop-admin-subtabs">
+      <button type="button" class="cat-card active" data-admin-tab="products"><span class="cat-card-icon" aria-hidden="true">📦</span><span class="cat-card-name">Products</span><span class="cat-card-desc">Add, edit and hide shop items</span><span class="cat-card-count" id="shop-admin-products-count"></span></button>
+      <button type="button" class="cat-card" data-admin-tab="orders"><span class="cat-card-icon" aria-hidden="true">🧾</span><span class="cat-card-name">Orders</span><span class="cat-card-desc">Review and update customer orders</span><span class="cat-card-count" id="shop-admin-orders-count"></span></button>
+      <button type="button" class="cat-card" data-admin-tab="delivery"><span class="cat-card-icon" aria-hidden="true">🚚</span><span class="cat-card-name">Delivery</span><span class="cat-card-desc">Areas and fees</span></button>
+    </div>
+
+    <div id="shop-admin-products-panel">
+      <div class="admin-notice" id="shop-admin-only-note" style="display:none;">Only admins can add or change products, prices and stock. You can see them here and handle orders.</div>
+      <div class="admin-toolbar">
+        <button class="btn2 primary" id="shop-new-product-btn">+ Add Product</button>
+      </div>
+      <table class="admin-grid-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Price</th><th>Stock / Credits</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="shop-admin-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="shop-admin-delivery-panel" style="display:none;">
+      <div class="admin-notice">Set an area and fee for each delivery distance. Fees are in dollars, like other prices. Past orders keep the fee they were placed with.</div>
+      <div class="admin-toolbar" id="shop-zone-form">
+        <input type="text" id="shop-zone-name" maxlength="80" placeholder="Area, e.g. Within 5 km" aria-label="Delivery area name">
+        <input type="number" id="shop-zone-fee" min="0" step="0.01" placeholder="Fee in $" aria-label="Delivery fee in dollars">
+        <span class="field-hint" id="shop-zone-kes"></span>
+        <button class="btn2 primary" id="shop-zone-save">Add area</button>
+      </div>
+      <table class="admin-grid-table">
+        <thead>
+          <tr><th>Area</th><th>Fee</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody id="shop-zones-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="shop-admin-orders-panel" style="display:none;">
+      <table class="admin-grid-table">
+        <thead>
+          <tr><th>Buyer</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Date</th><th></th></tr>
+        </thead>
+        <tbody id="shop-orders-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="panel-backdrop" id="shop-panel-backdrop">
+  <div class="panel">
+    <h2 id="shop-panel-title">Add Product</h2>
+    <div class="field">
+      <label>Type</label>
+      <select id="shop-f-type">
+        <option value="merch">Merch</option>
+        <option value="supplement">Supplement</option>
+        <option value="package">Session Package</option>
+        <option value="digital">Digital / Ebook</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="shop-f-name" placeholder="e.g. Bell(e)s N' Barz Tee">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="shop-f-desc" rows="2" placeholder="Short line — e.g. Heavyweight cotton, gold logo print"></textarea>
+    </div>
+    <div class="field-row2">
+      <div class="field" id="shop-f-price-wrap">
+        <label>Price (USD)</label>
+        <input type="number" min="0" step="0.01" id="shop-f-price" placeholder="0.00">
+      </div>
+      <div class="field" id="shop-f-stock-wrap">
+        <label>Stock</label>
+        <input type="number" min="0" step="1" id="shop-f-stock" placeholder="0">
+      </div>
+      <div class="field" id="shop-f-credits-wrap" style="display:none;">
+        <label>Credits</label>
+        <input type="number" min="1" step="1" id="shop-f-credits" placeholder="e.g. 10">
+      </div>
+    </div>
+    <div class="field" id="shop-f-checkout-wrap">
+      <label>Checkout Link <span style="text-transform:none; font-weight:400;">(optional — Stage 2)</span></label>
+      <input type="text" id="shop-f-checkout" placeholder="https://buy.stripe.com/...">
+    </div>
+    <div class="field" id="shop-f-download-wrap" style="display:none;">
+      <label>Download Link</label>
+      <input type="text" id="shop-f-download" placeholder="https://drive.google.com/...">
+      <div class="field-hint">Freely downloadable — no payment gate. Price is a suggested/requested amount, not enforced.</div>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="shop-f-active">
+        <option value="1">Active — visible in Shop</option>
+        <option value="0">Hidden — draft/out of season</option>
+      </select>
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="shop-f-cancel">Cancel</button>
+      <button class="btn2 primary" id="shop-f-save">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+
+<section class="admin-section" id="tab-edit-library">
+  <div class="day-head"><h2>Library — Books</h2><span class="day-sub">The books on the Library shelf: covers, why each one matters, takeaways and where to buy</span></div>
+<div class="library-scope portal-editor">
+<section class="view active" id="lib-view-admin">
+  <div class="wrap">
+    <div class="admin-notice">Write the notes and takeaways in your own words, and keep any quote to a sentence or two. The books are still in copyright, so the shelf points people to them rather than copying them. Hide takes a book off the shelf without deleting it.</div>
+    <div class="admin-notice lib-error" id="lib-admin-error" style="display:none;"></div>
+    <div class="admin-toolbar">
+      <button class="btn2 primary" id="lib-new-btn">+ Add Book</button>
+    </div>
+    <table class="admin-grid-table">
+      <thead><tr><th></th><th>Book</th><th>Status</th><th>Order</th><th></th></tr></thead>
+      <tbody id="lib-admin-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="panel-backdrop" id="lib-panel-backdrop">
+  <div class="panel">
+    <h2 id="lib-panel-title">Add Book</h2>
+    <div class="field lib-lookup">
+      <label for="lib-lookup-q">Look up a book</label>
+      <div class="lib-cover-row">
+        <input type="text" id="lib-lookup-q" placeholder="Title, author or ISBN">
+        <button class="btn2" id="lib-lookup-btn" type="button">🔍 Look up</button>
+      </div>
+      <div class="field-hint">Pick a match to fill in the title, author and cover, plus a "Get the book" link if that's empty. Your notes stay as they are.</div>
+      <div class="lib-lookup-results" id="lib-lookup-results"></div>
+    </div>
+    <div class="field-row2">
+      <div class="field">
+        <label for="lib-f-title">Title</label>
+        <input type="text" id="lib-f-title" placeholder="e.g. Never Let Go">
+      </div>
+      <div class="field">
+        <label for="lib-f-author">Author</label>
+        <input type="text" id="lib-f-author" placeholder="e.g. Dan John">
+      </div>
+    </div>
+    <div class="field">
+      <label for="lib-f-cover">Cover image</label>
+      <div class="lib-cover-row">
+        <input type="text" id="lib-f-cover" placeholder="Paste an image link, or upload →">
+        <button class="btn2" id="lib-upload-btn" type="button">Upload</button>
+      </div>
+      <input type="file" id="lib-f-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none;">
+      <div class="field-hint">Leave empty for a plain cover with the title and author.</div>
+      <div class="preview-wrap" id="lib-preview-wrap" style="display:none;"><img id="lib-preview-img" alt="Cover preview"></div>
+    </div>
+    <div class="field">
+      <label for="lib-f-why">Why this book</label>
+      <textarea id="lib-f-why" rows="3" placeholder="How it shaped Bells n Barz"></textarea>
+    </div>
+    <div class="field">
+      <label for="lib-f-takeaways">Takeaways</label>
+      <textarea id="lib-f-takeaways" rows="5" placeholder="One per line, short and direct"></textarea>
+      <div class="field-hint">One per line. Each line becomes a bullet.</div>
+    </div>
+    <div class="field">
+      <label for="lib-f-quote">Short quote (optional)</label>
+      <input type="text" id="lib-f-quote" placeholder="A sentence or two at most">
+    </div>
+    <div class="field">
+      <label for="lib-f-buy">"Get the book" link (optional)</label>
+      <input type="text" id="lib-f-buy" placeholder="https://…">
+    </div>
+    <div class="field">
+      <div class="featured-toggle">
+        <label class="switch"><input type="checkbox" id="lib-f-hidden"><span class="slider"></span></label>
+        <span class="field-hint" style="margin:0;">Hidden (keep it off the shelf for now)</span>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="lib-panel-cancel" type="button">Cancel</button>
+      <button class="btn2 primary" id="lib-panel-save" type="button">Save Book</button>
+    </div>
+  </div>
+</div>
+<div class="gal-toast" id="lib-toast"></div>
+</div>
+</section>
+
+<section class="admin-section" id="tab-edit-gallery">
+  <div class="day-head"><h2>Gallery — Photos</h2><span class="day-sub">Photos on the Gallery page, which are also the pictures the blog banner can use</span></div>
+<div class="gallery-scope portal-editor">
+<section class="view active" id="gal-view-admin">
+  <div class="wrap">
+    <div class="admin-notice">Images save to the database: either a link to an image elsewhere, or a file you upload to the site's image storage. Keep uploads modest in size. Export JSON for an offline backup.</div>
+    <div class="admin-toolbar">
+      <button class="btn2 primary" id="gal-new-img-btn">+ Add Image</button>
+      <button class="btn2" id="gal-export-btn">Export Gallery JSON</button>
+      <button class="btn2" id="gal-import-btn">Import Gallery JSON</button>
+      <input type="file" id="gal-import-file" accept="application/json" style="display:none;">
+    </div>
+    <table class="admin-grid-table">
+      <thead>
+        <tr id="gal-admin-thead-row"><th></th><th data-sort="title">Title<span class="sort-arrow">▾</span></th><th data-sort="category">Category<span class="sort-arrow">▾</span></th><th data-sort="date">Date<span class="sort-arrow">▾</span></th><th data-sort="featured">Status<span class="sort-arrow">▾</span></th><th></th></tr>
+      </thead>
+      <tbody id="gal-admin-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="panel-backdrop" id="gal-panel-backdrop">
+  <div class="panel">
+    <h2 id="gal-panel-title">Add Image</h2>
+
+    <div class="source-toggle" id="gal-source-toggle">
+      <button data-source="url" class="active">Image URL</button>
+      <button data-source="upload">Upload File</button>
+    </div>
+
+    <div class="field" id="gal-url-field">
+      <label>Image URL</label>
+      <input type="text" id="gal-f-url" placeholder="https://…">
+    </div>
+    <div class="field" id="gal-upload-field" style="display:none;">
+      <label>Upload from device</label>
+      <div class="upload-drop" id="gal-upload-drop">Click to choose an image file…</div>
+      <input type="file" id="gal-f-file" accept="image/*" style="display:none;">
+      <div class="field-hint">Uploaded to the site's image storage when you save — keep files reasonably small.</div>
+    </div>
+    <div class="preview-wrap" id="gal-preview-wrap" style="display:none;"><img id="gal-preview-img" alt="Preview"></div>
+
+    <div class="field-row2">
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="gal-f-title" placeholder="e.g. Off-Season Transformation — 12 Weeks">
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="gal-f-category" placeholder="e.g. Transformations">
+      </div>
+    </div>
+    <div class="field-row2">
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="gal-f-date">
+      </div>
+      <div class="field">
+        <label>Alt text (accessibility)</label>
+        <input type="text" id="gal-f-alt" placeholder="Short description of the image">
+      </div>
+    </div>
+    <div class="field">
+      <label>Caption</label>
+      <textarea id="gal-f-caption" rows="2" placeholder="Shown under the image in the lightbox"></textarea>
+    </div>
+    <div class="field">
+      <label>Featured</label>
+      <div class="featured-toggle">
+        <label class="switch">
+          <input type="checkbox" id="gal-f-featured">
+          <span class="slider"></span>
+        </label>
+        <span class="field-hint" style="margin:0;">Show a "Featured" badge on this image</span>
+      </div>
+    </div>
+    <div class="panel-actions">
+      <button class="btn2" id="gal-panel-cancel">Cancel</button>
+      <button class="btn2 primary" id="gal-panel-save">Save Image</button>
+    </div>
+  </div>
+</div>
+</div>
 </section>
 
 <section class="admin-section" id="tab-switchboard">
