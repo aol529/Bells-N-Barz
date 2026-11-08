@@ -112,6 +112,12 @@ const BNB_MODULES = {
   planProgram:  { file: 'js/bells-n-barz-plan-program.js', deps: ['targets'] },
   mealplan:     { file: 'js/bells-n-barz-mealplan.js', deps: ['dietCoachKa', 'planProgram'] },
   reports:      { file: 'js/bells-n-barz-reports.js' },
+  // The four content editors (Admin > Blog / Shop / Library / Gallery on the
+  // staff portal). Each needs its reader module for the shared data.
+  blogAdmin:    { file: 'js/bells-n-barz-blog-admin.js', deps: ['blog', 'gallery'] },
+  galleryAdmin: { file: 'js/bells-n-barz-gallery-admin.js', deps: ['gallery'] },
+  libraryAdmin: { file: 'js/bells-n-barz-library-admin.js', deps: ['library'] },
+  shopAdmin:    { file: 'js/bells-n-barz-shop-admin.js', deps: ['shop'] },
   // Admin > Content: the owner's overview of the blog, library, gallery and shop.
   content:      { file: 'js/bells-n-barz-content.js' },
   // Member > Leaderboard and Me > Photos.

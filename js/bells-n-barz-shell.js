@@ -176,12 +176,12 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
 const memberSectionTabs = ['session','me','leaderboard','accountability','messages','schedule'];
-const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'switchboard', 'backdrops', 'parking'];
+const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'edit-blog', 'edit-shop', 'edit-library', 'edit-gallery', 'switchboard', 'backdrops', 'parking'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin', backdrops: 'tab-admin', parking: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', 'edit-blog': 'tab-admin', 'edit-shop': 'tab-admin', 'edit-library': 'tab-admin', 'edit-gallery': 'tab-admin', switchboard: 'tab-admin', backdrops: 'tab-admin', parking: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -246,7 +246,7 @@ const TAB_TITLES = {
   overview: 'Training Manual', mon: 'Training Manual', tue: 'Training Manual',
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
-  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin', backdrops: 'Backgrounds — Admin', parking: 'Parking — Admin',
+  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', 'edit-blog': 'Blog — Admin', 'edit-shop': 'Shop — Admin', 'edit-library': 'Library — Admin', 'edit-gallery': 'Gallery — Admin', switchboard: 'Switchboard — Admin', backdrops: 'Backgrounds — Admin', parking: 'Parking — Admin',
   session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', messages: 'Messages', inbox: 'Inbox'
 };
 
@@ -288,6 +288,10 @@ function switchTab(rawTab, scrollTop){
     users: 'migrate',
     reports: 'reports',
     content: 'content',
+    'edit-blog': 'blogAdmin',
+    'edit-shop': 'shopAdmin',
+    'edit-library': 'libraryAdmin',
+    'edit-gallery': 'galleryAdmin',
     tools: 'tools'
   };
   if (TAB_TO_MODULE[tab] && typeof bnbLoadModule === 'function'){
@@ -403,6 +407,9 @@ function switchTab(rawTab, scrollTop){
   if (tab === 'reports' && typeof window.bnbReportsOnTabShown === 'function') window.bnbReportsOnTabShown();
   // Content: posts, books and products may have changed in their editors.
   if (tab === 'content' && typeof window.bnbContentOnTabShown === 'function') window.bnbContentOnTabShown();
+  // The content editors: redraw from the latest data (each draws itself on first load).
+  { const ed = { 'edit-blog': 'bnbBlogAdmin', 'edit-shop': 'bnbShopAdmin', 'edit-library': 'bnbLibraryAdmin', 'edit-gallery': 'bnbGalleryAdmin' }[tab];
+    if (ed && window[ed]) window[ed].render(); }
   // Switchboard: a switch may have been flipped on another device.
   if (tab === 'switchboard' && typeof window.bnbSwitchboardOnTabShown === 'function') window.bnbSwitchboardOnTabShown();
   // Parking: cars come and go all day.

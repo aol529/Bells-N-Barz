@@ -15,24 +15,27 @@
     return dt && !isNaN(dt) ? dt.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
   }
 
-  // site: outer site page; mod: its lazy module; admin: its Read/Admin switch.
+  // tab: its Admin section on the staff portal; mod: the editor module.
+  // site/admin: the older route, the site page's Read/Admin switch, used
+  // only where the portal has no section for it.
   const AREAS = {
-    blog:    { site: 'blog',    mod: 'blog',    admin: '.blog-scope #mode-switch [data-mode=admin]' },
-    hero:    { site: 'blog',    mod: 'blog',    admin: '.blog-scope #mode-switch [data-mode=admin]', card: '#blog-admin-subtabs [data-blog-admin=hero]' },
-    library: { site: 'library', mod: 'library', admin: '#lib-mode-switch [data-mode=admin]', add: '#lib-new-btn' },
-    gallery: { site: 'gallery', mod: 'gallery', admin: '#gal-mode-switch [data-mode=admin]', add: '#gal-new-img-btn' },
-    shop:    { site: 'shop',    mod: 'shop',    admin: '#shop-mode-switch [data-mode=admin]', card: '#shop-admin-subtabs [data-admin-tab=products]', add: '#shop-new-product-btn' }
+    blog:    { tab: 'edit-blog',    mod: 'blogAdmin',    site: 'blog',    admin: '.blog-scope #mode-switch [data-mode=admin]', card: '#blog-admin-subtabs [data-blog-admin=posts]' },
+    hero:    { tab: 'edit-blog',    mod: 'blogAdmin',    site: 'blog',    admin: '.blog-scope #mode-switch [data-mode=admin]', card: '#blog-admin-subtabs [data-blog-admin=hero]' },
+    library: { tab: 'edit-library', mod: 'libraryAdmin', site: 'library', admin: '#lib-mode-switch [data-mode=admin]', add: '#lib-new-btn' },
+    gallery: { tab: 'edit-gallery', mod: 'galleryAdmin', site: 'gallery', admin: '#gal-mode-switch [data-mode=admin]', add: '#gal-new-img-btn' },
+    shop:    { tab: 'edit-shop',    mod: 'shopAdmin',    site: 'shop',    admin: '#shop-mode-switch [data-mode=admin]', card: '#shop-admin-subtabs [data-admin-tab=products]', add: '#shop-new-product-btn' }
   };
 
-  // Leaves the gym app for that site page, in Admin mode; then optionally
-  // a sub-card, a "+ Add" button, or a callback once the module is ready.
+  // Opens that editor; then optionally a sub-card, a "+ Add" button, or a
+  // callback once the module is ready.
   async function open(key, action){
     const a = AREAS[key];
-    window.switchSite(a.site);
-    try { await bnbLoadModule(a.mod); }
+    const onPortal = !!document.getElementById('tab-' + a.tab);
+    if (onPortal) window.switchTab(a.tab);
+    else window.switchSite(a.site);
+    try { await bnbLoadModule(onPortal ? a.mod : a.site); }
     catch(err){ console.error(err); toast('Could not open that editor — check your connection.'); return; }
-    const btn = document.querySelector(a.admin);
-    if (btn) btn.click();
+    if (!onPortal){ const btn = document.querySelector(a.admin); if (btn) btn.click(); }
     if (a.card){ const c = document.querySelector(a.card); if (c) c.click(); }
     if (action === 'add' && a.add){ const add = document.querySelector(a.add); if (add) add.click(); }
     if (typeof action === 'function') action();
