@@ -3877,6 +3877,10 @@ html.has-bd body:not(.kiosk) > .site-backdrop-photo{display:block;background-ima
 @media (max-width:700px){ html.has-bd body:not(.kiosk) > .site-backdrop-photo{background-image:var(--bd-tall);} }
 html[data-theme="light"] .site-backdrop-photo{opacity:calc(var(--bd-op,.55) * .4) !important;}
 html.has-bd .site-backdrop-plate{display:none !important;}
+/* Living photos: a slow drift and zoom, then back. Off for anyone who asks the browser for less motion. */
+@keyframes bd-drift{from{transform:scale(1) translate(0,0);}to{transform:scale(1.08) translate(-3%,-1.5%);}}
+html.bd-motion body:not(.kiosk) > .site-backdrop-photo{animation:bd-drift 45s ease-in-out infinite alternate;will-change:transform;}
+@media (prefers-reduced-motion: reduce){ html.bd-motion body:not(.kiosk) > .site-backdrop-photo{animation:none;} }
 @media print{.site-backdrop-photo{display:none !important;}}
 
 /* Admin > Backgrounds */

@@ -159,13 +159,16 @@
       // Busy pages get a fainter picture so lists stay readable.
       op = 0.55 * (STRENGTH[effective().strength] || 1) * (page === 'home' ? 1 : 0.6);
     }
-    const sig = page + '|' + (pic ? pic.tall + '|' + pic.wide : '') + '|' + op;
+    // "Living photos": a slow drift and zoom (css: html.bd-motion; still under reduce-motion).
+    const motion = page !== 'signin' && effective().motion === 'gentle';
+    const sig = page + '|' + (pic ? pic.tall + '|' + pic.wide : '') + '|' + op + '|' + motion;
     if (sig === lastApplied) return;
     lastApplied = sig;
     root.style.setProperty('--bd-wide', cssUrl(pic && (pic.wide || pic.tall)));
     root.style.setProperty('--bd-tall', cssUrl(pic && pic.tall));
     root.style.setProperty('--bd-op', String(Math.min(0.85, op).toFixed(3)));
     root.classList.toggle('has-bd', !!pic);
+    root.classList.toggle('bd-motion', !!pic && motion);
   }
   let applyQueued = false;
   function applySoon(){ if (applyQueued) return; applyQueued = true; requestAnimationFrame(() => { applyQueued = false; apply(); }); }
@@ -248,6 +251,7 @@
     let h = '<div class="wall-ed" data-ed="' + who + '">';
     h += '<h4>Where it shows</h4>' + seg('Where', [['home', 'Home only'], ['all', 'Everywhere'], ['pages', 'Page by page']], s.where || 'home', 'data-ed-where');
     h += '<h4>How strong</h4>' + seg('Strength', [['subtle', 'Subtle'], ['normal', 'Normal'], ['bold', 'Bold']], s.strength || 'normal', 'data-ed-strength');
+    h += '<h4>Motion</h4>' + seg('Motion', [['off', 'Still'], ['gentle', 'Gentle drift']], s.motion || 'off', 'data-ed-motion');
     if (s.where === 'pages'){
       h += '<h4>Page</h4><div class="wall-seg wall-pages">' + PAGES.map(([k, l]) => {
         const p = (s.pages && s.pages[k]) || { mode: 'default' };
@@ -297,6 +301,7 @@
       save(s);
     });
     el.querySelectorAll('[data-ed-strength]').forEach(b => b.onclick = () => { s.strength = b.dataset.edStrength; save(s); });
+    el.querySelectorAll('[data-ed-motion]').forEach(b => b.onclick = () => { s.motion = b.dataset.edMotion; save(s); });
     el.querySelectorAll('[data-ed-page]').forEach(b => b.onclick = () => { ui[who] = b.dataset.edPage; who === 'admin' ? render() : renderPicker(); });
     el.querySelectorAll('[data-ed-mode]').forEach(b => b.onclick = () => {
       const t = target(), m = b.dataset.edMode;
@@ -321,7 +326,7 @@
     });
   }
   // A fresh start for a member: the gym's layout and strength, every picture following the gym.
-  function startFrom(d){ return { where: (d && d.where) || 'home', strength: (d && d.strength) || 'normal', main: { mode: 'default' }, pages: {} }; }
+  function startFrom(d){ return { where: (d && d.where) || 'home', strength: (d && d.strength) || 'normal', motion: (d && d.motion) || 'off', main: { mode: 'default' }, pages: {} }; }
 
   // ---- Admin > Backgrounds ----
   async function save(id, patch, okMsg){
