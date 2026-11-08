@@ -1994,11 +1994,11 @@
     return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   }
 
-  document.getElementById('admin-add-block').onclick = ()=>{
+  bnbEl('admin-add-block').onclick = ()=>{
     (adminProgramData[adminDay] = adminProgramData[adminDay] || []).push({name:'New Block', exercises:[]});
     saveAdminProgram(); renderAdminBlocks();
   };
-  document.getElementById('admin-reset-day').onclick = ()=>{
+  bnbEl('admin-reset-day').onclick = ()=>{
     if(!confirm('Reset ' + DAY_META[adminDay].title + ' back to the manual\u2019s original Perform blocks? This discards your edits for this day.')) return;
     adminProgramData[adminDay] = clone(DEFAULT_PROGRAM[adminDay]);
     saveAdminProgram(); renderAdminBlocks();
@@ -2035,15 +2035,15 @@
     saveAdminProgram(); renderAdminBlocks(); renderMlsDay();
   }
   window.bnbLoadProgramForClient = loadProgramForClient;
-  document.getElementById('admin-export').onclick = ()=>{
+  bnbEl('admin-export').onclick = ()=>{
     const blob = new Blob([JSON.stringify(adminProgramData, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'bnb-program-export.json'; a.click();
     URL.revokeObjectURL(url);
   };
-  document.getElementById('admin-import-btn').onclick = ()=> document.getElementById('admin-import-file').click();
-  document.getElementById('admin-import-file').onchange = (e)=>{
+  bnbEl('admin-import-btn').onclick = ()=> document.getElementById('admin-import-file').click();
+  bnbEl('admin-import-file').onchange = (e)=>{
     const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
     reader.onload = ()=>{
@@ -2850,11 +2850,11 @@
         syncBtn.textContent = tName ? ('Sync to ' + tName + "'s Log") : 'Sync to Member Log';
       }
     });
-    document.getElementById('cs-date').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'meta','date')]=e.target.value; saveSession(); });
-    document.getElementById('cs-bw').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'meta','bw')]=e.target.value; saveSession(); });
-    document.getElementById('cs-notes').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'notes')]=e.target.value; saveSession(); });
+    bnbEl('cs-date').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'meta','date')]=e.target.value; saveSession(); });
+    bnbEl('cs-bw').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'meta','bw')]=e.target.value; saveSession(); });
+    bnbEl('cs-notes').addEventListener('input', e=>{ sessionStore[csKey(csSlot,csDay,'notes')]=e.target.value; saveSession(); });
 
-    document.getElementById('cs-clear').onclick = ()=>{
+    bnbEl('cs-clear').onclick = ()=>{
       const name = slotTraineeName(csSlot) || ('Slot ' + (csSlot+1));
       if(!confirm("Clear " + name + "'s slot — name, all days' sets, weight, reps and notes for this slot only? The other slots are untouched. Do this once you're done saving a copy for this trainee.")) return;
       const prefix = 's' + csSlot + ':';
@@ -2864,10 +2864,10 @@
       renderSessionDay();
     };
 
-    document.getElementById('cs-save-pdf').onclick = ()=> saveSessionAs('pdf');
-    document.getElementById('cs-save-md').onclick = ()=> saveSessionAs('md');
-    document.getElementById('cs-save-txt').onclick = ()=> saveSessionAs('txt');
-    document.getElementById('cs-sync-member').onclick = ()=> syncFreeformToMemberLog(csSlot, csDay);
+    bnbEl('cs-save-pdf').onclick = ()=> saveSessionAs('pdf');
+    bnbEl('cs-save-md').onclick = ()=> saveSessionAs('md');
+    bnbEl('cs-save-txt').onclick = ()=> saveSessionAs('txt');
+    bnbEl('cs-sync-member').onclick = ()=> syncFreeformToMemberLog(csSlot, csDay);
     // A trainee picked or typed in full: their last times and suggestions.
     traineeEl.addEventListener('change', ()=> renderSessionDay());
     const csFinish = document.getElementById('cs-finish');
@@ -2882,11 +2882,11 @@
     };
     if (window.BNB_PLUS) window.BNB_PLUS.loadGuides(renderSessionDay);
 
-    document.getElementById('cs-mode-program').onclick = ()=>{
+    bnbEl('cs-mode-program').onclick = ()=>{
       setCsMode(csSlot, csDay, 'program');
       renderSessionDay();
     };
-    document.getElementById('cs-mode-freeform').onclick = ()=>{
+    bnbEl('cs-mode-freeform').onclick = ()=>{
       setCsMode(csSlot, csDay, 'freeform');
       renderSessionDay();
     };
@@ -4865,15 +4865,22 @@
   };
 
   /* -------------------------------- INIT ---------------------------------- */
+  // Coach's parts (Program Builder, coach Live Session) are only on the
+  // staff portal (staff.html); the main page skips them.
+  const onPage = id => !!document.getElementById(id);
   renderAllPerform();
   renderTodayProgram();
-  populateAdminClientPicker(); // no-op if not signed in yet; the Coach sub-switcher re-calls this (via window.bnbProgramBuilderOnShown) whenever Program Builder is actually opened
-  renderAdminDayTabs();
-  renderAdminBlocks();
-  renderSlotSwitch();
-  renderSessionDayTabs();
-  renderSessionDay();
-  wireSessionOnce();
+  if (onPage('admin-day-tabs')){
+    populateAdminClientPicker(); // no-op if not signed in yet; the Coach sub-switcher re-calls this (via window.bnbProgramBuilderOnShown) whenever Program Builder is actually opened
+    renderAdminDayTabs();
+    renderAdminBlocks();
+  }
+  if (onPage('tab-coach')){
+    renderSlotSwitch();
+    renderSessionDayTabs();
+    renderSessionDay();
+    wireSessionOnce();
+  }
   renderMlsDayTabs();
   renderMlsDay();
   wireMlsOnce();

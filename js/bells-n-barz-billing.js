@@ -572,21 +572,21 @@
   }
 
   /* ---------------- WIRING ---------------- */
-  document.getElementById('bill-view-switch').querySelectorAll('button').forEach(btn=>{
+  bnbEl('bill-view-switch').querySelectorAll('button').forEach(btn=>{
     btn.addEventListener('click', ()=> setView(btn.getAttribute('data-view')));
   });
-  document.getElementById('bill-inv-cancel').addEventListener('click', closeInvoicePanel);
-  document.getElementById('bill-inv-save').addEventListener('click', saveInvoice);
-  document.getElementById('bill-invoice-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-invoice-panel-backdrop') closeInvoicePanel(); });
+  bnbEl('bill-inv-cancel').addEventListener('click', closeInvoicePanel);
+  bnbEl('bill-inv-save').addEventListener('click', saveInvoice);
+  bnbEl('bill-invoice-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-invoice-panel-backdrop') closeInvoicePanel(); });
 
-  document.getElementById('bill-pay-cancel').addEventListener('click', closePaymentPanel);
-  document.getElementById('bill-pay-save').addEventListener('click', savePayment);
-  document.getElementById('bill-payment-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-payment-panel-backdrop') closePaymentPanel(); });
+  bnbEl('bill-pay-cancel').addEventListener('click', closePaymentPanel);
+  bnbEl('bill-pay-save').addEventListener('click', savePayment);
+  bnbEl('bill-payment-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-payment-panel-backdrop') closePaymentPanel(); });
 
-  document.getElementById('bill-statement-close').addEventListener('click', closeStatement);
-  document.getElementById('bill-statement-print').addEventListener('click', ()=> window.print());
-  document.getElementById('bill-statement-export').addEventListener('click', exportStatement);
-  document.getElementById('bill-statement-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-statement-panel-backdrop') closeStatement(); });
+  bnbEl('bill-statement-close').addEventListener('click', closeStatement);
+  bnbEl('bill-statement-print').addEventListener('click', ()=> window.print());
+  bnbEl('bill-statement-export').addEventListener('click', exportStatement);
+  bnbEl('bill-statement-panel-backdrop').addEventListener('click', (e)=>{ if (e.target.id==='bill-statement-panel-backdrop') closeStatement(); });
 
   // Cross-module invoice creation, same pattern as window.BNB_USERS /
   // window.BNB_PRODUCTS — lets Shop's package checkout create a real

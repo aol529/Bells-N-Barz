@@ -265,6 +265,12 @@ function switchTab(rawTab, scrollTop){
   // 'member'/'admin' (the rack pills themselves) resolve to their default
   // sub-tab — everything downstream operates on the resolved tab.
   const tab = TAB_ALIASES[rawTab] || rawTab;
+  // Admin and Coach live on the staff portal (staff.html). Asked for here (a
+  // notification, signing in as staff, an old link), go there instead.
+  if ((tab === 'coach' || rawTab === 'admin' || adminSectionTabs.includes(tab)) && !document.getElementById(NESTED_TAB_PARENT[tab] || ('tab-' + tab))){
+    location.href = 'staff.html#' + (rawTab === 'admin' ? 'admin' : tab);
+    return;
+  }
   // Kick off loading this tab's module (if it has one) as early as
   // possible — before the visual switch below, not after — since it's
   // a network fetch and every bit of head start helps. Modules already
@@ -862,6 +868,9 @@ function refreshNavAuthGate(){
     const locked = !signedIn || (STAFF_ONLY_TABS.includes(tab) && !staff);
     p.classList.toggle('locked', locked);
   });
+  // The STAFF button (a link to the staff portal) is for staff only.
+  const staffLink = document.getElementById('nav-staff-link');
+  if (staffLink) staffLink.hidden = !(signedIn && staff);
   refreshAccountMenu(signedIn);
   refreshNotificationBell(signedIn);
   if (window.bnbInboxRefreshBadge) window.bnbInboxRefreshBadge();
@@ -1265,6 +1274,7 @@ refreshNavAuthGate();
 plates.forEach(p => {
   p.addEventListener('click', () => {
     const tab = p.getAttribute('data-tab');
+    if (!tab) return; // e.g. the STAFF link, which is a plain link to staff.html
     // Member's own sections (Me, My Teams, Messages…) and Admin's
     // (Billing, Users…) are gated like their parent tab, so a deep link
     // such as #me:recipes or #billing can't open them for the wrong person.

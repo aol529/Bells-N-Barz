@@ -157,3 +157,9 @@ window.BNB_UUID = function(){
     const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
   });
 };
+
+// An element by id, or a detached stand-in when it isn't on this page. For
+// wiring up buttons that only exist on one of the two pages (the staff
+// screens are on staff.html, not the main page): listeners on the stand-in
+// simply never fire, instead of an error stopping the rest of the script.
+function bnbEl(id){ return document.getElementById(id) || document.createElement('div'); }

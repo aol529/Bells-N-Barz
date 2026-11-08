@@ -1410,6 +1410,7 @@
   }
 
   function renderAdmin(){
+    if (!document.getElementById('tab-users')) return; // Members — Admin is on staff.html only
     renderRoleChips();
     const tbody = document.getElementById('usr-admin-tbody');
     const emptyMsg = document.getElementById('usr-admin-empty');
@@ -1458,7 +1459,7 @@
     });
   }
 
-  document.getElementById('usr-search-input').addEventListener('input', (e)=>{
+  bnbEl('usr-search-input').addEventListener('input', (e)=>{
     searchTerm = e.target.value.trim();
     renderAdmin();
   });
@@ -1744,7 +1745,7 @@
     showToast(entry.type + ' saved');
     renderAssessmentTab();
   });
-  document.getElementById('usr-new-user-btn').addEventListener('click', ()=> openEditor(null));
+  bnbEl('usr-new-user-btn').addEventListener('click', ()=> openEditor(null));
   document.getElementById('usr-panel-cancel').addEventListener('click', ()=> backdrop.classList.remove('show'));
   backdrop.addEventListener('click', (e)=>{ if (e.target === backdrop) backdrop.classList.remove('show'); });
 
@@ -1809,15 +1810,15 @@
   });
 
   /* ---------------- IMPORT / EXPORT ---------------- */
-  document.getElementById('usr-export-btn').addEventListener('click', ()=>{
+  bnbEl('usr-export-btn').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(users, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'wkab-users-export.json'; a.click();
     URL.revokeObjectURL(url);
   });
-  document.getElementById('usr-import-btn').addEventListener('click', ()=> document.getElementById('usr-import-file').click());
-  document.getElementById('usr-import-file').addEventListener('change', (e)=>{
+  bnbEl('usr-import-btn').addEventListener('click', ()=> document.getElementById('usr-import-file').click());
+  bnbEl('usr-import-file').addEventListener('change', (e)=>{
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = ()=>{
@@ -2015,11 +2016,12 @@
 
   /* ---------------- INIT ---------------- */
   renderProfile();
-  renderAdmin();
+  // Members — Admin is on the staff portal (staff.html) only.
+  if (document.getElementById('tab-users')) renderAdmin();
   refreshModeSwitchVisibility();
   // Members — Admin now lives inside the gym app's ADMIN tab (moved off
   // the old site-users Admin mode) — hook into the same onTabShown pattern
   // Schedule/Coach/Live Session already use so it re-renders on open.
-  window.usersOnTabShown = renderAdmin;
+  window.usersOnTabShown = () => { if (document.getElementById('tab-users')) renderAdmin(); };
 
 })();
