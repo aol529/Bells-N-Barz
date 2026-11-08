@@ -872,7 +872,8 @@
   }
   const authRedirect = () => window.location.origin + window.location.pathname;
 
-  // Google: only shown once it's switched on in Supabase (Authentication >
+  // Google: shown when the google-sign-in switch is on (Admin > Switchboard,
+  // via data-feature) AND Google is switched on in Supabase (Authentication >
   // Sign In / Providers > Google).
   (async function showGoogleIfOn(){
     try {

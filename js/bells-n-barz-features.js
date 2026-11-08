@@ -25,7 +25,11 @@
     { key: 'pre-session-screening', name: 'Pre-session screening', defaultOn: false,
       desc: 'Me > Screening: members fill in a health check (PAR-Q), goals, lifestyle and emergency contact, and sign the waiver. Booking a 1-on-1 without one asks for it first; coaches are told and see it in Users > Assessment, where it pre-fills the Initial Assessment. Needs sql/89. Off: none of it shows and booking works as before.' },
     { key: 'library', name: 'Library', defaultOn: false,
-      desc: 'The Library page: the books that inspired Bells n Barz, with why each matters and short takeaways. Off: the Library link disappears from the menu.' }
+      desc: 'The Library page: the books that inspired Bells n Barz, with why each matters and short takeaways. Off: the Library link disappears from the menu.' },
+    { key: 'google-sign-in', name: 'Google sign-in', defaultOn: false,
+      desc: '"Continue with Google" on Log In and "Sign up with Google" on Sign Up, on the website and in the app. A first-time Google account gets a member profile from its Google name and email. Also needs Google switched on in Supabase (Authentication > Sign In / Providers); until then the button stays hidden even with this on.' },
+    { key: 'email-code-login', name: 'Email code login',
+      desc: 'Log In > "Log in with an emailed code instead" (app: "Email me a code"): a 6-digit code and link by email to an existing account, no password. Off: password only (Forgot password works as set above).' }
   ];
 
   const CACHE_KEY = 'bnb-features-v1';
