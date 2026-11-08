@@ -181,7 +181,7 @@ const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin', parking: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', switchboard: 'tab-admin', backdrops: 'tab-admin', parking: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -246,7 +246,7 @@ const TAB_TITLES = {
   overview: 'Training Manual', mon: 'Training Manual', tue: 'Training Manual',
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
-  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin', parking: 'Parking — Admin',
+  schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', switchboard: 'Switchboard — Admin', backdrops: 'Backgrounds — Admin', parking: 'Parking — Admin',
   session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', messages: 'Messages', inbox: 'Inbox'
 };
 

@@ -3995,3 +3995,5 @@ html[data-theme="light"] .site-backdrop-video{opacity:calc(var(--bd-op,.55) * .4
 /* Accounts are made on the main site; the staff portal only signs people in. */
 .staff-portal .cat-card[data-mode="signup"],.staff-portal #usr-li-goto-signup,.staff-portal #usr-li-goto-signup + *{display:none;}
 .staff-portal #site-users .field-hint:has(#usr-li-goto-signup){display:none;}
+/* The manual's footer links (audit, revision log, credits, points) point at manual pages, which aren't on the staff portal. */
+.staff-portal footer.site{display:none;}
