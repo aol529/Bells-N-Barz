@@ -271,6 +271,15 @@ function switchTab(rawTab, scrollTop){
     location.href = 'staff.html#' + (rawTab === 'admin' ? 'admin' : tab);
     return;
   }
+  // On the portal, each staff role opens only its own sections (ROLE_TABS);
+  // anything else goes to that person's start page instead. Before sign-in
+  // is known this lets it through: the portal re-routes once it is.
+  if ((tab === 'coach' || rawTab === 'admin' || adminSectionTabs.includes(tab)) && isSignedIn() &&
+      !(rawTab === 'admin' ? adminSectionTabs.some(canOpenTab) : canOpenTab(tab))){
+    const home = staffHomeTab();
+    if (home !== rawTab && home !== tab) switchTab(home, scrollTop);
+    return;
+  }
   // Kick off loading this tab's module (if it has one) as early as
   // possible — before the visual switch below, not after — since it's
   // a network fetch and every bit of head start helps. Modules already
@@ -847,6 +856,32 @@ function hideBackPill(){
 const GATED_TABS = ['member', 'coach', 'schedule', 'admin', 'inbox'];
 const STAFF_ROLES = ['admin', 'trainer', 'staff'];
 const STAFF_ONLY_TABS = ['coach', 'admin'];
+// What each staff role can open on the staff portal (ROLE_TABS below);
+// admins open everything.
+// Someone with two roles (say coach and front desk) gets both lists. This is
+// only what the portal shows: the database rules (sql/100, sql/101) decide
+// what each role can actually read and change.
+function canOpenTab(tab){
+  // Inside the function so it's ready even if switchTab() runs while this
+  // file is still loading.
+  const ROLE_TABS = {
+    trainer: ['coach', 'edit-blog', 'edit-library', 'edit-gallery'],   // coach
+    staff:   ['billing', 'sessions', 'edit-shop', 'parking']           // front desk
+  };
+  const me = window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf();
+  const roles = (me && me.roles) || [];
+  if (roles.includes('admin')) return true;
+  return roles.some(r => (ROLE_TABS[r] || []).includes(tab));
+}
+// Where a staff member lands on the portal: Admin's cards for admins, Coach
+// for coaches, otherwise their first Admin section (front desk: Billing).
+function staffHomeTab(){
+  if (canOpenTab('billing') && canOpenTab('users')) return 'admin';
+  if (canOpenTab('coach')) return 'coach';
+  return adminSectionTabs.find(canOpenTab) || 'staff-only';
+}
+window.bnbCanOpenTab = canOpenTab;
+window.bnbStaffHomeTab = staffHomeTab;
 function isSignedIn(){
   return !!(window.BNB_USERS && window.BNB_USERS.getSelf && window.BNB_USERS.getSelf());
 }

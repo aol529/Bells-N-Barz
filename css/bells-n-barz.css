@@ -3997,3 +3997,6 @@ html[data-theme="light"] .site-backdrop-video{opacity:calc(var(--bd-op,.55) * .4
 .staff-portal #site-users .field-hint:has(#usr-li-goto-signup){display:none;}
 /* The manual's footer links (audit, revision log, credits, points) point at manual pages, which aren't on the staff portal. */
 .staff-portal footer.site{display:none;}
+
+/* Staff portal: cards and nav buttons a role can't open (ROLE_TABS in the shell) */
+.plate[hidden]{display:none !important;}
