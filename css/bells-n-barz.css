@@ -4000,3 +4000,18 @@ html[data-theme="light"] .site-backdrop-video{opacity:calc(var(--bd-op,.55) * .4
 
 /* Staff portal: cards and nav buttons a role can't open (ROLE_TABS in the shell) */
 .plate[hidden]{display:none !important;}
+
+/* ---------- Sign-in extras: Google, emailed code, password strength ---------- */
+.users-scope .auth-google{width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:11px 14px; font-size:14px; color:var(--text); background:var(--bg);}
+.users-scope .auth-google svg{flex:0 0 auto;}
+.users-scope .auth-or{display:flex; align-items:center; gap:10px; margin:16px 0; font-size:11px; font-family:'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.05em; color:var(--muted-2);}
+.users-scope .auth-or::before, .users-scope .auth-or::after{content:""; flex:1; height:1px; background:var(--line);}
+.users-scope .auth-code{margin-top:14px;}
+.users-scope .pw-meter{display:flex; align-items:center; gap:10px; margin-top:6px;}
+.users-scope .pw-meter-bar{flex:1; height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
+.users-scope .pw-meter-bar i{display:block; height:100%; width:0; background:#e0736a; transition:width .2s, background .2s;}
+.users-scope .pw-meter-word{font-size:11px; font-family:'IBM Plex Mono',monospace; min-width:64px; text-align:right; color:var(--muted-2);}
+.users-scope .pw-meter[data-score="2"] i{background:var(--accent);}
+.users-scope .pw-meter[data-score="3"] i, .users-scope .pw-meter[data-score="4"] i{background:var(--accent-3);}
+.users-scope .pw-match{font-size:11px; margin-top:4px; color:#e0736a;}
+.users-scope .pw-match.ok{color:var(--accent-3);}

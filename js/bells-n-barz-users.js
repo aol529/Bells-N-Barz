@@ -479,6 +479,58 @@
     });
   });
 
+  /* ---------------- PASSWORD RULES + STRENGTH METER ----------------
+     New passwords (sign up, reset): at least 8 characters, not the email,
+     and at least "Fair" here. The same rule as the Android app
+     (LoginScreen.kt passwordStrength). */
+  const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  const PW_WORDS = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
+  function pwStrength(pw){
+    if (!pw) return 0;
+    let s = 0;
+    if (pw.length >= 8) s++;
+    if (pw.length >= 12) s++;
+    const kinds = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter(r => r.test(pw)).length;
+    if (kinds >= 2) s++;
+    if (kinds >= 3) s++;
+    if (pw.length < 8) s = Math.min(s, 1);
+    if (['password','12345678','123456789','qwertyui','bellsnbarz'].includes(pw.toLowerCase())) s = 0;
+    return s;
+  }
+  function pwProblem(pw, email){
+    if (!pw || pw.length < 8) return 'Use a password of at least 8 characters.';
+    if (email && pw.toLowerCase() === email.trim().toLowerCase()) return "Your password can't be your email.";
+    if (pwStrength(pw) < 2) return 'Make your password stronger: mix letters with numbers or symbols.';
+    return null;
+  }
+  document.querySelectorAll('#site-users .pw-meter').forEach(meter=>{
+    const input = document.getElementById(meter.dataset.for);
+    if (!input) return;
+    input.addEventListener('input', ()=>{
+      const score = pwStrength(input.value);
+      meter.hidden = !input.value;
+      meter.dataset.score = score;
+      meter.querySelector('i').style.width = ((score + 1) * 20) + '%';
+      meter.querySelector('.pw-meter-word').textContent = PW_WORDS[score];
+    });
+  });
+  document.querySelectorAll('#site-users .pw-match').forEach(hint=>{
+    const second = document.getElementById(hint.dataset.for);
+    const first = document.getElementById(hint.dataset.match);
+    if (!second || !first) return;
+    const check = ()=>{
+      hint.hidden = !second.value;
+      const ok = second.value === first.value;
+      hint.classList.toggle('ok', ok);
+      hint.textContent = ok ? 'Passwords match' : "Doesn't match yet";
+    };
+    second.addEventListener('input', check);
+    first.addEventListener('input', ()=>{ if (second.value) check(); });
+  });
+  function resetPwHints(){
+    document.querySelectorAll('#site-users .pw-meter, #site-users .pw-match').forEach(el => { el.hidden = true; });
+  }
+
   /* ---------------- VIEW SWITCH ---------------- */
   function switchView(view){
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -532,6 +584,31 @@
   }
 
   /* ================= MEMBER: SIGN UP ================= */
+  // The member profile (users row) for a brand-new login — from the sign-up
+  // form, or from a Google account the first time it signs in. sql/74
+  // adds the registration invoice when the row lands.
+  async function createMemberProfile(authUser, f){
+    // Use a real UUID for the profile row's id (matches Supabase's uuid
+    // primary key) rather than the old 'u'+timestamp local-only id scheme.
+    const id = (crypto.randomUUID ? crypto.randomUUID() :
+      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
+        const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
+      }));
+    const newUser = {
+      id, authId: authUser.id, fullName: f.fullName, email: f.email, roles:['member'], status:'active',
+      avatar: f.avatar || ('https://i.pravatar.cc/150?img=' + (10 + Math.floor(Math.random()*60))),
+      createdAt: TODAY, lastLogin: TODAY,
+      dob:'', phone: f.phone || '', address:'',
+      height:'', weight:'', experience:'beginner',
+      goals:'', injury:'', ecName:'', ecPhone:'', prefTime:'', trainer:'',
+      plan:'', mstatus:'pending', contractEnd:'', balance:0, comp:'', lastCheckin:'', autoRenew:false,
+      flag:'green', leadSource: f.leadSource || 'Sign-up form', internalNotes:''
+    };
+    users.push(newUser);
+    await saveUsers();
+    return newUser;
+  }
+
   function showSignupError(msg){
     const el = document.getElementById('usr-su-error');
     el.textContent = msg;
@@ -552,6 +629,7 @@
 
     if (!fullName){ showSignupError('Give your account a name first.'); return; }
     if (!email){ showSignupError('An email is required to sign up.'); return; }
+    if (!EMAIL_RE.test(email)){ showSignupError('Enter a valid email, like you@example.com.'); return; }
     if (!email2){ showSignupError('Retype your email to confirm it.'); return; }
     if (email.toLowerCase() !== email2.toLowerCase()){ showSignupError('Emails do not match.'); return; }
     if (users.some(u=>u.email.toLowerCase() === email.toLowerCase())){
@@ -559,7 +637,8 @@
       return;
     }
     if (!password){ showSignupError('Choose a password first.'); return; }
-    if (password.length < 6){ showSignupError('Password must be at least 6 characters.'); return; }
+    const pwIssue = pwProblem(password, email);
+    if (pwIssue){ showSignupError(pwIssue); return; }
     if (!password2){ showSignupError('Retype your password to confirm it.'); return; }
     if (password !== password2){ showSignupError('Passwords do not match.'); return; }
 
@@ -571,35 +650,22 @@
     btn.disabled = false; btn.textContent = 'Create Account';
 
     if (authError){
-      showSignupError(authError.message || 'Could not create account — please try again.');
+      showSignupError(/already registered|already been registered/i.test(authError.message || '')
+        ? 'An account with that email already exists. Log in instead (or use Forgot your password?).'
+        : (authError.message || 'Could not create account — please try again.'));
       return;
     }
-    if (!authData.user){
-      showSignupError('Check your email to confirm your account, then log in.');
+    // Email confirmation is on: no session until they follow the link.
+    if (!authData.session){
+      showSignupError('Check ' + email + ' for a link to confirm your account, then log in. Nothing after a few minutes? Check spam, or use "Log in with an emailed code".');
       return;
     }
 
-    // Use a real UUID for the profile row's id (matches Supabase's uuid
-    // primary key) rather than the old 'u'+timestamp local-only id scheme.
-    const id = (crypto.randomUUID ? crypto.randomUUID() :
-      'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c=>{
-        const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
-      }));
-    const newUser = {
-      id, authId: authData.user.id, fullName, email, roles:['member'], status:'active',
-      avatar:'https://i.pravatar.cc/150?img=' + (10 + Math.floor(Math.random()*60)),
-      createdAt: TODAY, lastLogin: TODAY,
-      dob:'', phone, address:'',
-      height:'', weight:'', experience:'beginner',
-      goals:'', injury:'', ecName:'', ecPhone:'', prefTime:'', trainer:'',
-      plan:'', mstatus:'pending', contractEnd:'', balance:0, comp:'', lastCheckin:'', autoRenew:false,
-      flag:'green', leadSource:'Sign-up form', internalNotes:''
-    };
-    users.push(newUser);
-    saveUsers();
-    selfId = id;
-    saveSelfId(id);
+    const newUser = await createMemberProfile(authData.user, { fullName, email, phone, leadSource: 'Sign-up form' });
+    selfId = newUser.id;
+    saveSelfId(newUser.id);
     startSessionClock();
+    resetPwHints();
 
     document.getElementById('usr-su-fullname').value = '';
     document.getElementById('usr-su-email').value = '';
@@ -754,6 +820,160 @@
     routeAfterAuth(matched);
   }
   document.getElementById('usr-login-btn').addEventListener('click', attemptLogin);
+
+  /* ---- Finishing any sign-in that isn't the password form: Google, an
+     emailed code or link. A Google account with no member profile yet
+     gets one (it's how people sign up with Google); a code or link only
+     ever signs in an existing account. ---- */
+  async function finishSignIn(authUser, opts){
+    let matched = await signInLocallyAs(authUser), created = false;
+    if (!matched && !lastSignInArchived && opts.create){
+      created = true;
+      const m = authUser.user_metadata || {};
+      const email = authUser.email || m.email || '';
+      const created = await createMemberProfile(authUser, {
+        fullName: (m.full_name || m.name || email.split('@')[0] || 'New member').trim(),
+        email, avatar: m.avatar_url || m.picture || '', leadSource: 'Google sign-in'
+      });
+      matched = await signInLocallyAs(authUser) || created;
+      selfId = matched.id; saveSelfId(matched.id);
+    }
+    if (!matched){
+      if (!lastSignInArchived){ try { await bnbClient.auth.signOut(); } catch(e){} }
+      showUsersSite();
+      switchView('login');
+      showLoginError(lastSignInArchived
+        ? 'This account has been archived. Contact the gym if you\'d like it restored.'
+        : 'Signed in, but no member profile was found for that email. Sign up first, or contact your coach.');
+      return null;
+    }
+    clearLoginAttempts();
+    setRememberMe(!!opts.remember);
+    startSessionClock();
+    showToast((created ? 'Account created — welcome, ' : 'Welcome back, ') + (matched.fullName || '').split(' ')[0] + '!');
+    routeAfterAuth(matched);
+    return matched;
+  }
+
+  // Google and emailed links leave the page and come back. What was being
+  // done is kept here (with "Keep me signed in") so the return is handled
+  // as a sign-in, not as a password reset. Good for an hour.
+  const AUTH_RETURN_KEY = 'bnb-auth-return';
+  function rememberAuthReturn(kind){
+    const rem = document.getElementById('usr-li-remember');
+    try { localStorage.setItem(AUTH_RETURN_KEY, JSON.stringify({ kind, remember: !!(rem && rem.checked), at: Date.now() })); } catch(e){}
+  }
+  function takeAuthReturn(){
+    try {
+      const r = JSON.parse(localStorage.getItem(AUTH_RETURN_KEY) || 'null');
+      localStorage.removeItem(AUTH_RETURN_KEY);
+      return (r && Date.now() - r.at < 60 * 60 * 1000) ? r : null;
+    } catch(e){ return null; }
+  }
+  const authRedirect = () => window.location.origin + window.location.pathname;
+
+  // Google: only shown once it's switched on in Supabase (Authentication >
+  // Sign In / Providers > Google).
+  (async function showGoogleIfOn(){
+    try {
+      const res = await fetch(BNB_SUPABASE_URL + '/auth/v1/settings', { headers: { apikey: BNB_SUPABASE_ANON_KEY } });
+      const settings = await res.json();
+      if (settings && settings.external && settings.external.google)
+        document.querySelectorAll('#site-users .auth-google-wrap').forEach(el => { el.hidden = false; });
+    } catch(e){}
+  })();
+  document.querySelectorAll('#usr-li-google, #usr-su-google').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const onSignup = btn.id === 'usr-su-google';
+      const fail = onSignup ? showSignupError : showLoginError;
+      rememberAuthReturn('google');
+      btn.disabled = true;
+      const { error } = await bnbClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: authRedirect() } });
+      if (error){ btn.disabled = false; takeAuthReturn(); fail(error.message || 'Could not open Google sign-in.'); }
+    });
+  });
+
+  // Emailed one-time code (Supabase's Magic Link email; the code shows if
+  // its template includes {{ .Token }}, the link works either way).
+  let codeEmail = '';
+  async function sendLoginCode(){
+    const email = document.getElementById('usr-li-email').value.trim();
+    document.getElementById('usr-li-error').style.display = 'none';
+    if (!EMAIL_RE.test(email)){ showLoginError('Type your email above first, then ask for a code.'); document.getElementById('usr-li-email').focus(); return false; }
+    rememberAuthReturn('code');
+    const { error } = await bnbClient.auth.signInWithOtp({ email, options: { shouldCreateUser: false, emailRedirectTo: authRedirect() } });
+    // An unknown email errors in Supabase; answer as if sent so the page
+    // doesn't reveal who has an account. Only a rate limit is worth saying.
+    if (error && /rate limit|too many|security purposes/i.test(error.message || '')){ showLoginError(error.message); return false; }
+    codeEmail = email;
+    document.getElementById('usr-li-code-sent').textContent = 'If ' + email + ' has an account, an email is on its way with a 6-digit code and a link. Type the code here or open the link in this browser. Check spam too.';
+    document.getElementById('usr-li-code-wrap').style.display = '';
+    document.getElementById('usr-li-code').value = '';
+    document.getElementById('usr-li-code').focus();
+    return true;
+  }
+  const codeToggle = document.getElementById('usr-li-code-toggle');
+  if (codeToggle){
+    codeToggle.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      const was = codeToggle.textContent;
+      codeToggle.textContent = 'Sending…';
+      try { await sendLoginCode(); } finally { codeToggle.textContent = was; }
+    });
+    document.getElementById('usr-li-code-resend').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      if (await sendLoginCode()) showToast('New code sent.');
+    });
+    const verifyCode = async ()=>{
+      const token = document.getElementById('usr-li-code').value.replace(/\s/g, '');
+      if (!/^\d{6}$/.test(token)){ showLoginError('Enter the 6-digit code from the email.'); return; }
+      const btn = document.getElementById('usr-li-code-btn');
+      btn.disabled = true; btn.textContent = 'Checking…';
+      const { data, error } = await bnbClient.auth.verifyOtp({ email: codeEmail, token, type: 'email' });
+      btn.disabled = false; btn.textContent = 'Log In With Code';
+      if (error){ recordFailedLogin(); showLoginError("That code didn't work — it may have expired. Send a new one."); return; }
+      const ret = takeAuthReturn();
+      document.getElementById('usr-li-code-wrap').style.display = 'none';
+      await finishSignIn(data.user, { remember: ret ? ret.remember : document.getElementById('usr-li-remember').checked });
+    };
+    document.getElementById('usr-li-code-btn').addEventListener('click', verifyCode);
+    document.getElementById('usr-li-code').addEventListener('keydown', (e)=>{ if (e.key === 'Enter') verifyCode(); });
+  }
+
+  /* Back from Google, or from an emailed sign-in link. Runs before the
+     password-reset check, which would otherwise take a sign-in link
+     (type=magiclink) for "choose a new password". */
+  // Synchronous on purpose: supabase-js clears the #access_token=… part
+  // of the address once it has read it.
+  function detectAuthReturn(){
+    const hash = window.location.hash, query = window.location.search;
+    const landed = /access_token=|error_description=/.test(hash) || /[?&](code|error_description)=/.test(query);
+    if (!landed || /type=recovery/.test(hash)) return null;
+    const ret = takeAuthReturn();
+    if (!ret) return null;
+    ret.params = new URLSearchParams(hash.slice(1) + '&' + query.slice(1));
+    return ret;
+  }
+  async function finishAuthReturn(ret){
+    const params = ret.params;
+    if (params.get('error_description')){
+      history.replaceState(null, '', window.location.pathname);
+      showUsersSite(); switchView('login');
+      showLoginError((ret.kind === 'google' ? 'Google sign-in didn\'t finish: ' : 'That link didn\'t work: ') + params.get('error_description').replace(/\+/g, ' '));
+      return true;
+    }
+    // getSession waits for supabase-js to read the tokens from the address.
+    const { data } = await bnbClient.auth.getSession();
+    const session = data && data.session;
+    if (window.location.hash || window.location.search) history.replaceState(null, '', window.location.pathname);
+    if (!session){
+      showUsersSite(); switchView('login');
+      showLoginError('Could not finish signing in. Please try again.');
+      return true;
+    }
+    await finishSignIn(session.user, { remember: ret.remember, create: ret.kind === 'google' });
+    return true;
+  }
   document.getElementById('usr-li-password').addEventListener('keydown', (e)=>{
     if (e.key === 'Enter') attemptLogin();
   });
@@ -960,7 +1180,8 @@
     const errEl = document.getElementById('usr-rs-error');
     errEl.style.display = 'none';
 
-    if (!p1 || p1.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; errEl.style.display = 'block'; return; }
+    const pwIssue = pwProblem(p1, '');
+    if (pwIssue){ errEl.textContent = pwIssue; errEl.style.display = 'block'; return; }
     if (p1 !== p2){ errEl.textContent = 'Passwords do not match.'; errEl.style.display = 'block'; return; }
 
     const btn = document.getElementById('usr-rs-save-btn');
@@ -978,6 +1199,7 @@
 
     document.getElementById('usr-rs-password').value = '';
     document.getElementById('usr-rs-password2').value = '';
+    resetPwHints();
     showToast('Password updated.');
 
     // No longer on an admin-set temporary password (sql/76).
@@ -1037,6 +1259,8 @@
      (missing or past its window) means we tear down any lingering
      Supabase session instead of restoring it. ---- */
   window.bnbSessionReady = (async function restoreSession(){
+    const authReturn = detectAuthReturn();
+    if (authReturn){ await finishAuthReturn(authReturn); return; } // Google / emailed sign-in link
     if (checkForPasswordRecovery()) return; // reset view handles its own flow
     if (!hasValidSessionCookie()){
       try { await bnbClient.auth.signOut(); } catch(e){}
