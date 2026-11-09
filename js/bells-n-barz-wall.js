@@ -155,10 +155,12 @@
     try {
       const p = await loadPotw(fresh === true);
       // Not over another window, and not mid-set in Live Session.
-      if (p && due(p) && !document.querySelector('.bnb-modal, .t-panel-backdrop.open') && !isActive('tab-session')) openPopup(p);
+      if (p && due(p) && !document.querySelector('.bnb-modal, .t-panel-backdrop.open') && !isShowing('tab-session')) openPopup(p);
     } finally { checking = false; }
   }
   function isActive(id){ const el = document.getElementById(id); return !!(el && el.classList.contains('active')); }
+  // Active and on screen: a section keeps .active while another site or page is showing.
+  function isShowing(id){ const el = document.getElementById(id); return isActive(id) && el.getClientRects().length > 0; }
 
   // The strip on Member's card screen, under the Today card.
   function renderStrip(){
