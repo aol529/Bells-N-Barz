@@ -147,12 +147,13 @@
   }
 
   let checking = false, lastCheck = 0;
-  async function check(){
+  // fresh: coming back to the page fetches it again, so a new one shows straight away.
+  async function check(fresh){
     if (checking || popupOpen || !me() || !feature('photo-of-the-week') || document.hidden) return;
     if (Date.now() - lastCheck < 30e3) return;
     checking = true; lastCheck = Date.now();
     try {
-      const p = await loadPotw(false);
+      const p = await loadPotw(fresh === true);
       // Not over another window, and not mid-set in Live Session.
       if (p && due(p) && !document.querySelector('.bnb-modal, .t-panel-backdrop.open') && !isActive('tab-session')) openPopup(p);
     } finally { checking = false; }
@@ -354,8 +355,8 @@
   window.bnbWallOnTabShown = function(){ render(); loadPotw(true).then(render); loadWall(false); };
 
   // Coming back to the page counts as opening the app.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
-  window.addEventListener('focus', check);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(true); });
+  window.addEventListener('focus', () => check(true));
   document.addEventListener('bnb-auth-changed', e => {
     potw = null; potwAt = 0; posts = []; stopComposing(); lastCheck = 0;
     renderStrip();
