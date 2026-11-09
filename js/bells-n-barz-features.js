@@ -29,7 +29,11 @@
     { key: 'google-sign-in', name: 'Google sign-in', defaultOn: false,
       desc: '"Continue with Google" on Log In and "Sign up with Google" on Sign Up, on the website and in the app. A first-time Google account gets a member profile from its Google name and email. Also needs Google switched on in Supabase (Authentication > Sign In / Providers); until then the button stays hidden even with this on.' },
     { key: 'email-code-login', name: 'Email code login',
-      desc: 'Log In > "Log in with an emailed code instead" (app: "Email me a code"): a 6-digit code and link by email to an existing account, no password. Off: password only (Forgot password works as set above).' }
+      desc: 'Log In > "Log in with an emailed code instead" (app: "Email me a code"): a 6-digit code and link by email to an existing account, no password. Off: password only (Forgot password works as set above).' },
+    { key: 'photo-wall', name: 'Wall', defaultOn: false,
+      desc: 'Member > Wall (app: More > Wall): members post gym photos with a caption, give them a thumbs up, and report anything wrong; admins and coaches hide posts. Last week\'s most-liked post becomes the Photo of the Week. Needs sql/114. Off: the Wall disappears.' },
+    { key: 'photo-of-the-week', name: 'Photo of the Week', defaultOn: false,
+      desc: 'A photo that pops up the first time someone opens the site or app after a new one, then after 8:00 and after 13:00 each day, with a caption and likes. An admin sets it on the Wall ("Set Photo of the Week"); otherwise last week\'s top Wall post. Needs sql/114. Off: no popup.' }
   ];
 
   const CACHE_KEY = 'bnb-features-v1';

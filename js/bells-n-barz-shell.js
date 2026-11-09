@@ -175,13 +175,13 @@ const manualTabs = ['overview','mon','tue','wed','thu','fri','sat','sun','append
 // rather than a top-level pill per item or a hidden toggle-reveal.
 const navMemberBtn = document.getElementById('nav-member-btn');
 const navAdminBtn = document.getElementById('nav-admin-btn');
-const memberSectionTabs = ['session','me','leaderboard','accountability','messages','schedule'];
+const memberSectionTabs = ['session','me','leaderboard','wall','accountability','messages','schedule'];
 const adminSectionTabs = ['billing', 'users', 'sessions', 'reports', 'content', 'edit-blog', 'edit-shop', 'edit-library', 'edit-gallery', 'switchboard', 'backdrops', 'parking'];
 // Clicking the rack's MEMBER/ADMIN pill should land on that page's default
 // sub-tab, not a page of its own — so 'member'/'admin' are aliases, resolved
 // before anything else runs.
 const TAB_ALIASES = { member: 'session', admin: 'billing' };
-const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', 'edit-blog': 'tab-admin', 'edit-shop': 'tab-admin', 'edit-library': 'tab-admin', 'edit-gallery': 'tab-admin', switchboard: 'tab-admin', backdrops: 'tab-admin', parking: 'tab-admin' };
+const NESTED_TAB_PARENT = { session: 'tab-member', me: 'tab-member', leaderboard: 'tab-member', wall: 'tab-member', accountability: 'tab-member', messages: 'tab-member', schedule: 'tab-member', billing: 'tab-admin', users: 'tab-admin', sessions: 'tab-admin', reports: 'tab-admin', content: 'tab-admin', 'edit-blog': 'tab-admin', 'edit-shop': 'tab-admin', 'edit-library': 'tab-admin', 'edit-gallery': 'tab-admin', switchboard: 'tab-admin', backdrops: 'tab-admin', parking: 'tab-admin' };
 
 /* ---------------- WEEKDAY DROPDOWN (phone-width stand-in for the Mon–Sun plates) ---------------- */
 const weekdayDropdown = document.getElementById('weekday-dropdown');
@@ -247,7 +247,7 @@ const TAB_TITLES = {
   wed: 'Training Manual', thu: 'Training Manual', fri: 'Training Manual', sun: 'Training Manual', sat: 'Training Manual',
   appendix: 'Appendix', glance: 'At a Glance', points: 'How Points Work',
   schedule: 'Booking', coach: 'Coach', billing: 'Billing', users: 'Members — Admin', sessions: 'Sessions — Admin', reports: 'Reports — Admin', content: 'Content — Admin', 'edit-blog': 'Blog — Admin', 'edit-shop': 'Shop — Admin', 'edit-library': 'Library — Admin', 'edit-gallery': 'Gallery — Admin', switchboard: 'Switchboard — Admin', backdrops: 'Backgrounds — Admin', parking: 'Parking — Admin',
-  session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', messages: 'Messages', inbox: 'Inbox'
+  session: 'Live Session Log', tools: 'Tools', 'member-preview': 'Member Area', me: 'Me', accountability: 'My Teams', leaderboard: 'Leaderboard', wall: 'Wall', messages: 'Messages', inbox: 'Inbox'
 };
 
 // Resolves the precise current tab key — checking for an active nested
@@ -288,6 +288,7 @@ function switchTab(rawTab, scrollTop){
     me: 'bmi', // "Me" defaults to its Weight sub-section; loads bmi.js, which pulls in weight.js first via deps. Period/Track load lazily from the inner me-section-switch instead, once actually selected.
     accountability: 'accountability',
     leaderboard: 'engage',
+    wall: 'wall',
     messages: 'messages',
     inbox: 'inbox',
     schedule: 'bookingCoach',
@@ -403,6 +404,8 @@ function switchTab(rawTab, scrollTop){
   if (tab === 'accountability' && typeof window.bnbAccountabilityOnTabShown === 'function') window.bnbAccountabilityOnTabShown();
   // Leaderboard: fresh counts each time (the module draws itself on first load).
   if (tab === 'leaderboard' && typeof window.bnbLeaderboardOnTabShown === 'function') window.bnbLeaderboardOnTabShown();
+  // Wall: newest posts and likes each time (the module draws itself on first load).
+  if (tab === 'wall' && typeof window.bnbWallOnTabShown === 'function') window.bnbWallOnTabShown();
   // Member's card screen: the Today card (js/bells-n-barz-today.js).
   if (rawTab === 'member' && typeof window.bnbMemberTodayRender === 'function') window.bnbMemberTodayRender();
   // Messages: same reasoning as My Teams above — refresh on tab-open so a
@@ -2626,3 +2629,11 @@ document.querySelectorAll('[data-home-gym]').forEach(card => {
   setInterval(check, 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
 })();
+
+/* ---------------- WALL + PHOTO OF THE WEEK ----------------
+   The popup has to be able to show from any page once someone's signed
+   in, so the Wall module (js/bells-n-barz-wall.js) loads at sign-in
+   rather than waiting for Member > Wall to be opened. */
+document.addEventListener('bnb-auth-changed', e => {
+  if (e.detail && e.detail.signedIn && document.getElementById('tab-wall') && typeof bnbLoadModule === 'function') bnbLoadModule('wall').catch(() => {});
+});

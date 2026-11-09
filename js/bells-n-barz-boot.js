@@ -122,6 +122,8 @@ const BNB_MODULES = {
   content:      { file: 'js/bells-n-barz-content.js' },
   // Member > Leaderboard and Me > Photos.
   engage:       { file: 'js/bells-n-barz-engage.js' },
+  // Member > Wall and the Photo of the Week popup (sql/114). Loads at sign-in.
+  wall:         { file: 'js/bells-n-barz-wall.js' },
   // Coach > Program Builder > Build a Program.
   programGenerator: { file: 'js/bells-n-barz-program-generator.js' }
 };
