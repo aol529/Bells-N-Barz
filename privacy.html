@@ -19,7 +19,7 @@
 <body>
 <main>
 <h1>Privacy Policy</h1>
-<p class="muted">Bell(e)s n' Barz gym: the website and the Android app. Last updated 5 November 2026 (Health Connect blood oxygen, background sync and connected apps added).</p>
+<p class="muted">Bell(e)s n' Barz gym: the website and the Android app. Last updated 11 November 2026 (crash reports from the Android app added).</p>
 
 <p>This explains what the gym's website and Android app keep about you, why, who can see it, and how to have it deleted. The website and the app share one database, so this applies to both.</p>
 
@@ -31,15 +31,17 @@
   <li><b>Bookings and messages:</b> classes and 1-on-1 sessions you book, and messages and files you send to coaches, members or groups.</li>
   <li><b>Gym operations:</b> front-door check-ins (including a check-in PIN, stored only as a one-way hash) and, if you use the gym's parking, your car's number plate and parking times.</li>
   <li><b>Phone alerts:</b> if you allow notifications, a push token for your browser or phone, so the gym can send you booking, message and reminder alerts.</li>
+  <li><b>Crash reports (Android app):</b> if the app crashes or hits certain errors, a report goes to Google Firebase Crashlytics so we can fix it: what went wrong in the app's code, the app version, your phone's model and Android version, and your account's ID number (not your name, email or any health readings). Reports are kept for 90 days.</li>
 </ul>
 <p><b>Health Connect (Android app, optional):</b> if you connect it, the app reads blood pressure, heart rate, blood oxygen, steps and weight from Health Connect (where blood pressure cuffs, watches and other health apps store readings) while the app is open and, if you allow background access, up to about once an hour while it is closed where your phone allows it, and saves them to your own logs above, which your coach can see. It does not write to Health Connect or read any other kind of health data, and you can disconnect at any time in the app or in Health Connect's settings. <b>Connected apps:</b> to show which of your health apps can share with us, the app checks which apps on your phone use Health Connect and what they are allowed to share; that list stays on your phone. <b>Heart rate from the camera (optional):</b> when you choose to measure, the app uses the camera and flash for about 20 seconds to read your pulse from your fingertip; only the resulting number is saved, never images. <b>Step counting (optional):</b> with your permission the app counts steps with your phone's step sensor and saves the daily total to your step log.</p>
-<p>The Android app does not use advertising, does not track you across other apps, and does not read your contacts or location. The camera is used only by Google's barcode scanner when you choose to scan a check-in code, and photos only leave your phone when you choose to upload one.</p>
+<p>The Android app does not use advertising, does not track you across other apps, and does not read your contacts or location. The camera is used only when you choose to scan a check-in code or measure your heart rate, and photos only leave your phone when you choose to upload one.</p>
 
 <h2>Why we keep it</h2>
 <ul>
   <li>To run your membership: bookings, check-ins, credits, points, billing and the front door.</li>
   <li>So your coach can plan your training and nutrition safely (programs, logs, screening, meal plans).</li>
   <li>To send you messages and alerts you've asked for.</li>
+  <li>To find and fix problems in the app (crash reports).</li>
 </ul>
 
 <h2>Who can see it</h2>
@@ -47,7 +49,7 @@
   <li><b>You</b> can see everything in your own account.</li>
   <li><b>Your coach and the gym's staff</b> can see what they need to coach you and run the gym. Health details, screening answers, food logs and progress photos are limited to your coach and the gym admin.</li>
   <li><b>Other members</b> only see what you choose to share: your name in chats you take part in, accountability groups you join, and the monthly leaderboard (you can hide yourself from it in the app).</li>
-  <li><b>Service providers</b> that store or deliver the data for us: Supabase (database, file storage and sign-in), Google Firebase Cloud Messaging (Android alerts), and GitHub Pages (hosting the website). They process it only to provide their service. We do not sell your data or share it with advertisers.</li>
+  <li><b>Service providers</b> that store or deliver the data for us: Supabase (database, file storage and sign-in), Google Firebase Cloud Messaging (Android alerts) and Firebase Crashlytics (Android crash reports), and GitHub Pages (hosting the website). They process it only to provide their service. We do not sell your data or share it with advertisers.</li>
 </ul>
 <p>Data is sent over encrypted connections (HTTPS). Access is controlled per account in the database, so members can only read their own records.</p>
 
